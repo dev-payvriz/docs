@@ -1,0 +1,81 @@
+---
+title: "IDTO Verification API — Indian Identity & Document Checks"
+sidebarTitle: "Introduction"
+description: "IDTO is a unified REST API for verifying Indian identities, documents, and businesses — PAN, Aadhaar, GST, biometrics, DigiLocker, and more."
+---
+
+IDTO is a comprehensive REST API platform that gives you a single integration point for every identity, document, and business verification workflow used in India. From instant PAN validation and Aadhaar OTP-based KYC to GST lookups, face-match biometrics, and DigiLocker document retrieval, IDTO abstracts the complexity of dealing with multiple government data sources behind a consistent, well-documented interface — so your engineering team can ship compliant verification flows in days, not months.
+
+## Key Capabilities
+
+<CardGroup cols={2}>
+  <Card title="PAN Verification" icon="id-card">
+    Validate PAN numbers, retrieve holder names, check PAN status, verify PAN-to-Aadhaar linking, and perform 206 and 206A checks for high-value transaction compliance.
+  </Card>
+  <Card title="Aadhaar KYC" icon="fingerprint">
+    Perform OTP-based Aadhaar Offline KYC (OKYC) to retrieve full demographic data — name, DOB, address, gender, and photo — with citizen consent.
+  </Card>
+  <Card title="Document OCR" icon="file-magnifying-glass">
+    Extract structured data from scanned or photographed documents: Aadhaar cards, PAN cards, passports, driving licences, voter IDs, and more. Supports both front and back sides.
+  </Card>
+  <Card title="Business & Corporate" icon="building">
+    Look up live GST registrations, MCA company details, CIN records, FSSAI licences, and Udyam (MSME) registrations to power B2B due-diligence and onboarding workflows.
+  </Card>
+  <Card title="Bank Account Verification" icon="building-columns">
+    Verify bank account numbers and IFSC codes for validity, retrieve account holder names, and confirm account status without a penny drop.
+  </Card>
+  <Card title="Biometric & Face Match" icon="face-viewfinder">
+    Compare a selfie against a document photo or Aadhaar record using our liveness-aware face-match engine. Supports base64-encoded JPEG and PNG images.
+  </Card>
+  <Card title="DigiLocker Integration" icon="vault">
+    Initiate a citizen-consent DigiLocker session to pull government-issued documents — Aadhaar XML, driving licence, degree certificates, and more — directly into your application.
+  </Card>
+  <Card title="Vehicle & RC Lookup" icon="car">
+    Retrieve registration certificate (RC) data for any vehicle, including owner name, chassis number, fuel type, and insurance validity, from the Vahan database.
+  </Card>
+  <Card title="Mobile & Telecom" icon="mobile">
+    Run mobile number intelligence checks: verify operator, circle, porting history, and whether a number is active.
+  </Card>
+  <Card title="eSign" icon="pen-nib">
+    Collect Aadhaar-based electronic signatures on documents with full audit trail, compliant with the IT Act.
+  </Card>
+</CardGroup>
+
+## Base URL
+
+All API requests are made over HTTPS to the production server:
+
+```
+https://prod.idto.ai
+```
+
+There are no separate staging or sandbox hostnames. Use test credentials provided by the IDTO team during development to avoid consuming production credits.
+
+## API Versioning
+
+IDTO exposes two API versions that co-exist on the same host:
+
+| Version | Path prefix | Status | Notes |
+|---------|-------------|--------|-------|
+| v1 | `/verify/...` | Legacy | Supported, but no new features added |
+| v2 | `/v2/verify/...` | **Recommended** | Flat response envelope, richer error codes, idempotency support |
+
+Use **v2 for all new integrations**. The v2 response envelope looks like this:
+
+```json
+{
+  "status": "success",
+  "message": "PAN details fetched successfully",
+  "error_code": null,
+  "data": { ... },
+  "billed": true,
+  "tranx_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "timestamp": "2026-07-11T10:20:30.123456"
+}
+```
+
+The v1 envelope wraps errors differently (inside a `detail` object), which makes consistent error handling harder. Migrate existing v1 integrations to v2 when possible.
+
+## Support
+
+For credentials, billing questions, or technical issues, contact the IDTO engineering team at [tech@idto.ai](mailto:tech@idto.ai).

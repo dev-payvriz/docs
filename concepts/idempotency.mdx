@@ -1,0 +1,191 @@
+---
+title: "Idempotency: Safe Retries with the Idempotency-Key Header"
+sidebarTitle: "Idempotency"
+description: "Use the Idempotency-Key header on v2 endpoints to retry safely after network failures without re-running verifications or consuming extra credits."
+---
+
+Network failures happen. A request might time out before you receive the response, leaving you unsure whether the verification ran and whether a credit was consumed. The `Idempotency-Key` header solves this by letting you replay the exact same request — IDTO returns the original response without re-executing the verification or charging your account again. This makes retries safe by design.
+
+## How It Works
+
+When you include an `Idempotency-Key` header on a v2 request, IDTO stores the response against that key for your account. If you send the same key again within the retention window, the stored response is returned immediately — no upstream lookup is performed and no additional credit is consumed.
+
+```http
+POST /v2/verify/pan HTTP/1.1
+Host: prod.idto.ai
+Content-Type: application/json
+X-Client-ID: <your_client_id>
+X-API-KEY: <your_api_key>
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+
+{
+  "pan": "ABCDE1234F",
+  "name": "Ravi Kumar",
+  "user_consent": true
+}
+```
+
+On the second (and any subsequent) call with the same key, the response body is identical to the first, including `tranx_id`, `billed`, and `data`.
+
+## Key Rules
+
+<Note>
+`Idempotency-Key` is **optional**. You do not need to include it on every request — only on those where safe retry behaviour matters.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Format" icon="key">
+    Any string up to **512 characters**. We recommend UUID v4, which is collision-resistant and easy to generate in every language.
+  </Card>
+  <Card title="Scope" icon="lock">
+    Keys are scoped to your account. Two different accounts can use the same key string independently — they do not conflict.
+  </Card>
+  <Card title="One key, one request" icon="circle-1">
+    A key is permanently bound to the first request that used it. Sending the same key with a **different body** returns the original response, not a new one. See the warning below.
+  </Card>
+  <Card title="In-flight protection" icon="spinner">
+    If a request is still being processed when a duplicate key arrives, IDTO returns `IDTO_004` (409) instead of queuing the second call.
+  </Card>
+</CardGroup>
+
+## Generating Keys
+
+Use UUID v4 — generate one fresh key per verification attempt before you send the request. Store the key alongside your pending request record so you can resend it on retry.
+
+<CodeGroup>
+
+```python Python
+import uuid
+
+idempotency_key = str(uuid.uuid4())
+# e.g. "550e8400-e29b-41d4-a716-446655440000"
+```
+
+```javascript Node.js
+import { randomUUID } from "crypto";
+
+const idempotencyKey = randomUUID();
+// e.g. "550e8400-e29b-41d4-a716-446655440000"
+```
+
+```java Java
+import java.util.UUID;
+
+String idempotencyKey = UUID.randomUUID().toString();
+// e.g. "550e8400-e29b-41d4-a716-446655440000"
+```
+
+```go Go
+import "github.com/google/uuid"
+
+idempotencyKey := uuid.New().String()
+// e.g. "550e8400-e29b-41d4-a716-446655440000"
+```
+
+</CodeGroup>
+
+## Safe Retry Pattern
+
+The recommended pattern for any network-sensitive verification call is:
+
+<Steps>
+  <Step title="Generate a UUID v4 key">
+    Create the key before sending the request. Persist it to your database or job queue alongside the request payload so it survives a process restart.
+  </Step>
+  <Step title="Send the request with the key">
+    Include `Idempotency-Key: <uuid>` in the request headers. Send the request normally.
+  </Step>
+  <Step title="On timeout or network error, wait and retry">
+    If you do not receive a response (connection reset, timeout), wait a short back-off period and resend the **exact same request with the exact same key**.
+  </Step>
+  <Step title="Parse the response normally">
+    Whether this is the original call or a replayed one, the response envelope is identical. Check `billed` to confirm whether a credit was consumed.
+  </Step>
+  <Step title="Discard the key after a confirmed response">
+    Once you have received and persisted a successful response, retire the key. Do not reuse it for a future verification — even for the same user and the same document.
+  </Step>
+</Steps>
+
+```python
+import uuid
+import time
+import requests
+
+def verify_pan_with_retry(pan: str, name: str, max_retries: int = 3):
+    idempotency_key = str(uuid.uuid4())  # Generate once before the loop
+    headers = {
+        "X-Client-ID": "<your_client_id>",
+        "X-API-KEY": "<your_api_key>",
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotency_key,  # Same key on every attempt
+    }
+    payload = {
+        "pan": pan,
+        "name": name,
+        "user_consent": True,
+    }
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(
+                "https://prod.idto.ai/v2/verify/pan",
+                headers=headers,
+                json=payload,
+                timeout=10,
+            )
+            return response.json()
+        except requests.Timeout:
+            if attempt == max_retries:
+                raise
+            wait = 2 ** attempt  # Exponential back-off: 2s, 4s, 8s …
+            print(f"Timeout on attempt {attempt}. Retrying in {wait}s "
+                  f"with key {idempotency_key}")
+            time.sleep(wait)
+```
+
+## IDTO_004: In-Flight Duplicate
+
+If you send a second request with the same `Idempotency-Key` while the first request is still being processed, IDTO returns:
+
+```json
+{
+  "status": "error",
+  "message": "A request with this idempotency key is already being processed.",
+  "error_code": "IDTO_004",
+  "data": null,
+  "billed": false,
+  "tranx_id": "g7h8i9j0-k1l2-3456-ghij-567890123456",
+  "timestamp": "2026-07-11T10:30:00.000000"
+}
+```
+
+This is a `409 Conflict` HTTP status. Wait for the first request to complete (poll if using async) before retrying with the same key, or back off and retry after a few seconds.
+
+## Special Case: Aadhaar QR with `include_photo=true`
+
+<Note>
+When you call the Aadhaar QR v2 endpoint with `include_photo=true`, the decoded photo is included in the stored idempotency response. Replayed responses within the retention window will return the photo without re-processing the image or consuming an additional credit.
+</Note>
+
+This is particularly useful if your downstream pipeline processes the photo asynchronously — you can safely re-fetch the result using the same key if the initial response was lost.
+
+## What Not to Do
+
+<Warning>
+**Never reuse an idempotency key for a different request.** If you send key `abc-123` with PAN `ABCDE1234F` and then send key `abc-123` with PAN `ZYXWV9876U`, IDTO returns the **original** response for `ABCDE1234F` — not a new lookup for `ZYXWV9876U`. The second PAN is never verified.
+
+Always generate a fresh UUID v4 for each distinct verification attempt.
+</Warning>
+
+## Quick Reference
+
+| Property | Value |
+|---|---|
+| Header name | `Idempotency-Key` |
+| Required? | No — optional on all v2 endpoints |
+| Max length | 512 characters |
+| Recommended format | UUID v4 |
+| Scope | Per account — keys from different accounts are independent |
+| Duplicate in-flight | Returns `IDTO_004` (409) — not billed |
+| Replayed response | Returns original response — not re-billed |
+| v1 support | Not supported — v2 only |
