@@ -1,7 +1,7 @@
 ---
 title: "Error Codes"
 sidebarTitle: "Error Codes"
-description: "How IDTO reports success, no-record, and failure outcomes across every v2 endpoint, and where to look up a specific error code."
+description: "How idto reports success, no-record, and failure outcomes across every v2 endpoint, and where to look up a specific error code."
 ---
 
 Every `/v2/verify/*` response carries the same three fields for figuring out what happened: `status`, `error_code`, and `billed`. Branch your integration on `error_code`, not on `message` text, `message` is written for a human and can change wording between releases without notice.
@@ -40,7 +40,7 @@ Treat this as a distinct, expected outcome in your application, alongside "match
 
 ## Raised errors
 
-Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status on a raised error tells you the category (`400`/`422` for a bad request, `402` for insufficient credits, `429` for rate limiting, `500`/`503` for an IDTO-side or upstream issue), and `error_code` tells you exactly which one.
+Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status on a raised error tells you the category (`400`/`422` for a bad request, `402` for insufficient credits, `429` for rate limiting, `500`/`503` for an idto-side or upstream issue), and `error_code` tells you exactly which one.
 
 ```json
 {

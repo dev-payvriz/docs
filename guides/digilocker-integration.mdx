@@ -4,11 +4,11 @@ sidebarTitle: "DigiLocker"
 description: "Connect an end customer's DigiLocker account, pull their linked identity, and fetch specific issued documents (Aadhaar, PAN, driving licence, marksheets) afterward."
 ---
 
-DigiLocker is an OAuth 2.0 + PKCE flow: your end customer authorizes access on DigiLocker's own consent screen, DigiLocker redirects back to you with a one-time authorization code, and you exchange that code for their linked identity and documents. IDTO handles the exchange and the document retrieval so you never touch DigiLocker's token endpoints directly.
+DigiLocker is an OAuth 2.0 + PKCE flow: your end customer authorizes access on DigiLocker's own consent screen, DigiLocker redirects back to you with a one-time authorization code, and you exchange that code for their linked identity and documents. idto handles the exchange and the document retrieval so you never touch DigiLocker's token endpoints directly.
 
 ## Step 1: Send the user to DigiLocker's consent screen
 
-You need a PKCE `code_verifier` and its `code_challenge` for this authorization request, standard OAuth PKCE (RFC 7636), generated on your side. IDTO also offers a convenience endpoint that builds the redirect URL for you:
+You need a PKCE `code_verifier` and its `code_challenge` for this authorization request, standard OAuth PKCE (RFC 7636), generated on your side. idto also offers a convenience endpoint that builds the redirect URL for you:
 
 ```bash
 curl --request POST \
@@ -35,7 +35,7 @@ curl --request POST \
 Redirect the user's browser to the `url` returned here.
 
 <Warning>
-  Verified against the current implementation: `initiate_session` generates its own PKCE `code_verifier`/`code_challenge` pair internally to build this URL, and only returns the `url`, the `code_verifier` it used is not given back to you. If your integration plans to complete the token exchange itself, generate and hold your own PKCE pair and build the consent URL's `code_challenge` from it directly, rather than relying on the pair `initiate_session` used internally. If you're unsure which path fits your integration, confirm with your IDTO contact before depending on this endpoint for a production PKCE round-trip.
+  Verified against the current implementation: `initiate_session` generates its own PKCE `code_verifier`/`code_challenge` pair internally to build this URL, and only returns the `url`, the `code_verifier` it used is not given back to you. If your integration plans to complete the token exchange itself, generate and hold your own PKCE pair and build the consent URL's `code_challenge` from it directly, rather than relying on the pair `initiate_session` used internally. If you're unsure which path fits your integration, confirm with your idto contact before depending on this endpoint for a production PKCE round-trip.
 </Warning>
 
 ## Step 2: Handle the redirect back
@@ -144,7 +144,7 @@ The other fetch endpoints follow the same `{"reference_key": "..."}` request sha
 Every one of these has an `/xml` sibling (for example `/verify/digilocker/fetch_pan/xml`) that returns the same document as XML instead of PDF. `/verify/digilocker/user_details` returns the linked account's profile as JSON instead of a file, useful if you only need identity fields via this surface rather than `/v2/verify/digilocker`.
 
 <Note>
-  The full field-level JSON schema for `get_reference` and `user_details` isn't pinned down in the OpenAPI reference beyond the request shape, this legacy surface passes through fields close to DigiLocker's own API rather than a standardized IDTO shape. If you need identity fields in a stable, documented shape, use `/v2/verify/digilocker` from step 3 instead, and reserve this surface for pulling the actual issued documents.
+  The full field-level JSON schema for `get_reference` and `user_details` isn't pinned down in the OpenAPI reference beyond the request shape, this legacy surface passes through fields close to DigiLocker's own API rather than a standardized idto shape. If you need identity fields in a stable, documented shape, use `/v2/verify/digilocker` from step 3 instead, and reserve this surface for pulling the actual issued documents.
 </Note>
 
 ## Optional: pass `workflow_session_token`

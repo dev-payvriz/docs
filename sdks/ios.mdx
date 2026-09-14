@@ -1,7 +1,7 @@
 ---
 title: "iOS SDK"
 sidebarTitle: "iOS (Swift)"
-description: "Add the IDTO verification flow to a native iOS app via Swift Package Manager or CocoaPods, backed by IDtoConfig and a small set of lifecycle callbacks."
+description: "Add the idto verification flow to a native iOS app via Swift Package Manager or CocoaPods, backed by IDtoConfig and a small set of lifecycle callbacks."
 ---
 
 The iOS SDK targets iOS 15.0+ with Swift 6.0 tools, and requires Xcode 16+. It enforces `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` at runtime, throwing `IDtoError.missingUsageDescription` if either is empty or missing from your app's Info.plist.
@@ -68,7 +68,7 @@ Configuration is supplied via `IDtoConfig`.
 | `readyTimeout` | Time to wait for the flow to become ready before failing. |
 
 <ParamField body="skippable" type="[String]">
-  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, iOS included.
+  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every idto SDK, iOS included.
 </ParamField>
 
 ## Callbacks

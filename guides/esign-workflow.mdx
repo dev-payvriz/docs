@@ -4,7 +4,7 @@ sidebarTitle: "eSign Workflow"
 description: "Submit a document for electronic signature, track its signers, and retrieve the signed PDF once everyone has signed."
 ---
 
-eSign is a three-part flow: you submit one or more PDFs and who needs to sign them, your eSign provider collects signatures (in person over email/SMS links, or however your signers are configured), and once every signer has signed, you pull the finished PDF back through IDTO. IDTO never hands you a raw link to the signing provider's own dashboard, everything you need comes back through this API.
+eSign is a three-part flow: you submit one or more PDFs and who needs to sign them, your eSign provider collects signatures (in person over email/SMS links, or however your signers are configured), and once every signer has signed, you pull the finished PDF back through idto. idto never hands you a raw link to the signing provider's own dashboard, everything you need comes back through this API.
 
 ## Step 1: Create the docket
 
@@ -105,10 +105,10 @@ Once every signer on the document has signed:
 `content` is the base64-encoded signed PDF. A docket with multiple documents needs `document_id` on the request to pick a specific one, otherwise the first is returned.
 
 <Note>
-  We could not verify a fixed retention window in the current source for how long a completed signed document stays retrievable from IDTO's own archive. What is verified: IDTO archives a copy of every signed document out of its own eSign provider as soon as all signers finish, specifically because the provider's own copy can be deleted at any time without notice (see below). Fetch the document promptly once you know signing is complete rather than assuming a long window either side.
+  We could not verify a fixed retention window in the current source for how long a completed signed document stays retrievable from idto's own archive. What is verified: idto archives a copy of every signed document out of its own eSign provider as soon as all signers finish, specifically because the provider's own copy can be deleted at any time without notice (see below). Fetch the document promptly once you know signing is complete rather than assuming a long window either side.
 </Note>
 
-If the underlying eSign provider has already deleted its copy of the document before IDTO could archive it, `POST /verify/esign/document` returns:
+If the underlying eSign provider has already deleted its copy of the document before idto could archive it, `POST /verify/esign/document` returns:
 
 ```json
 {
@@ -117,15 +117,15 @@ If the underlying eSign provider has already deleted its copy of the document be
 }
 ```
 
-That's an HTTP `410`. If this happens, the only path forward is contacting IDTO support with the `docket_id`, the document cannot be regenerated from IDTO's side once the provider's copy is gone and no archive was made in time.
+That's an HTTP `410`. If this happens, the only path forward is contacting idto support with the `docket_id`, the document cannot be regenerated from idto's side once the provider's copy is gone and no archive was made in time.
 
 <Warning>
-  If a docket's documents never finish signing, IDTO stops polling the provider for that docket's completion **90 days** after the original `POST /verify/esign` call (verified: `ESIGN_ARCHIVE_ABANDON_DAYS`). Don't rely on an eSign docket resolving itself after months of inactivity, treat a docket that hasn't completed within a reasonable business timeframe (days, not months) as abandoned and start a new one if needed.
+  If a docket's documents never finish signing, idto stops polling the provider for that docket's completion **90 days** after the original `POST /verify/esign` call (verified: `ESIGN_ARCHIVE_ABANDON_DAYS`). Don't rely on an eSign docket resolving itself after months of inactivity, treat a docket that hasn't completed within a reasonable business timeframe (days, not months) as abandoned and start a new one if needed.
 </Warning>
 
 ## Step 4: The completion webhook
 
-If you have a webhook URL configured for your account, IDTO POSTs a completion event once a document's signers have all signed and it has been archived:
+If you have a webhook URL configured for your account, idto POSTs a completion event once a document's signers have all signed and it has been archived:
 
 ```json
 {
@@ -139,13 +139,13 @@ If you have a webhook URL configured for your account, IDTO POSTs a completion e
 }
 ```
 
-The payload carries no PDF bytes and no expiry field, it's a signal to go fetch the document, not the document itself. Call `POST /verify/esign/document` with the `docket_id` (and `document_id`, if the docket has more than one) as soon as you receive it. The webhook is signed the same way as every other IDTO webhook:
+The payload carries no PDF bytes and no expiry field, it's a signal to go fetch the document, not the document itself. Call `POST /verify/esign/document` with the `docket_id` (and `document_id`, if the docket has more than one) as soon as you receive it. The webhook is signed the same way as every other idto webhook:
 
 | Header | Meaning |
 | --- | --- |
-| `X-Idto-Event-Id` | Matches `event_id` in the body, use it to deduplicate retried deliveries. |
-| `X-Idto-Timestamp` | Unix timestamp the signature was computed over. |
-| `X-Idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your webhook signing secret. |
+| `X-idto-Event-Id` | Matches `event_id` in the body, use it to deduplicate retried deliveries. |
+| `X-idto-Timestamp` | Unix timestamp the signature was computed over. |
+| `X-idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your webhook signing secret. |
 
 ```python
 import hashlib

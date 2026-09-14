@@ -4,7 +4,7 @@ sidebarTitle: "Async Polling"
 description: "How to handle verifications that don't finish inline: the 202 pending pattern, and the bank-statement multi-step session flow."
 ---
 
-Most IDTO endpoints respond inline, you send a request, you get a result. A few can't: the underlying check takes longer than a single HTTP request should reasonably block for, or it's inherently multi-step (upload a document, wait for it to process, fetch the result). Both cases use the same building block: a pending state you poll until it resolves.
+Most idto endpoints respond inline, you send a request, you get a result. A few can't: the underlying check takes longer than a single HTTP request should reasonably block for, or it's inherently multi-step (upload a document, wait for it to process, fetch the result). Both cases use the same building block: a pending state you poll until it resolves.
 
 ## The pending envelope: `IDTO_203`
 

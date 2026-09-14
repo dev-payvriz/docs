@@ -50,7 +50,7 @@
         ]
       },
       {
-        "tab": "API Reference (v2 Preview)",
+        "tab": "API Reference",
         "groups": [
           {
             "group": "All Endpoints",
@@ -110,7 +110,7 @@
       }
     ]
   },
-  "description": "IDTO API documentation — verify PAN, Aadhaar, GST, bank accounts, and more via a unified REST API for Indian identity, document, and business verification.",
+  "description": "idto API documentation — verify PAN, Aadhaar, GST, bank accounts, and more via a unified REST API for Indian identity, document, and business verification.",
   "api": {
     "openapi": "openapi2.0.json"
   }
