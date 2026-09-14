@@ -278,6 +278,47 @@
             }
           }
         ]
+      },
+      {
+        "tab": "SDKs",
+        "groups": [
+          {
+            "group": "Web (ReactJS)",
+            "pages": [
+              "sdks/web"
+            ]
+          },
+          {
+            "group": "Android (Kotlin)",
+            "pages": [
+              "sdks/android"
+            ]
+          },
+          {
+            "group": "iOS (Swift)",
+            "pages": [
+              "sdks/ios"
+            ]
+          },
+          {
+            "group": "Flutter",
+            "pages": [
+              "sdks/flutter"
+            ]
+          },
+          {
+            "group": "React Native",
+            "pages": [
+              "sdks/react-native"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "sdks/modules"
+            ]
+          }
+        ]
       }
     ]
   },

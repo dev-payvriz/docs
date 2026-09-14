@@ -1,0 +1,143 @@
+---
+title: "Android SDK"
+sidebarTitle: "Android (Kotlin)"
+description: "Add the IDTO verification flow to a native Android app via Gradle, backed by IDtoConfig and a small set of lifecycle callbacks."
+---
+
+The Android SDK is a Kotlin library distributed via JitPack. It targets `minSdk 24`, `compileSdk 36`, and JDK 17.
+
+<Note>
+  The SDK's own manifest does not declare the `INTERNET` permission. Your host app's manifest must include it for the SDK to reach the network.
+</Note>
+
+## Install
+
+Add the JitPack repository, then the dependency:
+
+```kotlin settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        maven("https://jitpack.io")
+    }
+}
+```
+
+```kotlin build.gradle.kts
+dependencies {
+    implementation("com.github.idto-ai:idto-android:0.1.1")
+}
+```
+
+<Note>
+  `0.1.1` is the version currently declared in the SDK's own build configuration. Some in-repo documentation for this SDK has historically lagged behind and still referenced `0.1.0`. Confirm the latest published tag before pinning a version in a new integration.
+</Note>
+
+## Configuration
+
+Configuration is supplied via `IDtoConfig.Builder`.
+
+### Required fields
+
+<ParamField body="clientToken" type="String" required>
+  Passed as the first constructor argument to `IDtoConfig.Builder`.
+</ParamField>
+
+<ParamField body="workflowTemplateId" type="String" required>
+  Passed as the second constructor argument to `IDtoConfig.Builder`.
+</ParamField>
+
+### Optional fields
+
+| Field | Purpose |
+| --- | --- |
+| `sessionToken` | Resume a previously started verification session. |
+| `merchantUserId` | Your own identifier for this end user. |
+| `phone` | Pre-fill the user's mobile number. |
+| `startFresh` | Force a new session even if a prior one exists for this user. |
+| `preVerified` | Mark specific modules as already verified, skipping them. |
+| `accumulatedData` | Seed the session with data already collected outside the SDK. |
+| `referenceName` | A name to cross-check against document data via name matching. |
+| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
+| `nameMatchConfig` | Configuration for the name-match comparison. |
+| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
+| `faceMatchConfig` | Configuration for the face-match comparison. |
+| `panConfig` | Configuration for the PAN verification step. |
+| `businessName` | Display name shown in the flow header. |
+| `logo` | Logo shown in the flow. |
+| `theme` | Visual theme overrides. |
+| `language` | Locale for flow copy. |
+| `displayMode` | Layout mode for the flow. |
+| `bottomSheet` | Whether to render as a bottom sheet. |
+| `colors` | Color token overrides. |
+| `debug` | Enable verbose SDK logging. |
+| `readyTimeoutMs` | Milliseconds to wait for the flow to become ready before failing. |
+| `allowedHosts` | Restrict which hosts the embedded flow may load. |
+| `env` | Target environment (e.g. sandbox vs. production). |
+| `baseUrl` | Override the API base URL the SDK calls. |
+
+<ParamField body="skippable" type="List<String>">
+  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, Android included.
+</ParamField>
+
+## Callbacks
+
+<ResponseField name="onStepComplete" type="function">
+  Fires after each module finishes.
+
+  <Expandable title="IDtoStepCompleteData fields">
+    <ResponseField name="step" type="String">The module slug that just completed.</ResponseField>
+    <ResponseField name="result" type="Object">The step's verification result.</ResponseField>
+    <ResponseField name="accumulatedData" type="Object">All data collected across the session so far.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+    <ResponseField name="creditsDeducted" type="Number">Credits deducted for this step.</ResponseField>
+    <ResponseField name="balanceRemaining" type="Number">Your account's remaining credit balance after this step.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onWorkflowComplete" type="function">
+  Fires when the whole workflow finishes.
+
+  <Expandable title="IDtoWorkflowCompleteData fields">
+    <ResponseField name="allSteps" type="List">Every module result from the session.</ResponseField>
+    <ResponseField name="accumulatedData" type="Object">All data collected across the session.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+
+  <Warning>
+    `onWorkflowComplete` is non-terminal: the verification sheet stays open to show the success or report screen. `onClose` is the only terminal event, and it always fires exactly once.
+  </Warning>
+</ResponseField>
+
+<ResponseField name="onAbandon" type="function">
+  Fires when the user leaves the flow before completion.
+
+  <Expandable title="IDtoAbandonData fields">
+    <ResponseField name="atStep" type="String">The module slug the user was on when they left.</ResponseField>
+    <ResponseField name="reason" type="String">Why the session ended, where known.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onError" type="function">
+  Fires on a recoverable or fatal error.
+
+  <Expandable title="IDtoErrorData fields">
+    <ResponseField name="step" type="String">The module slug active when the error occurred.</ResponseField>
+    <ResponseField name="error" type="String">Error detail.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onClose()" type="function">
+  Fires when the sheet closes. No payload. This is the only terminal callback.
+</ResponseField>
+
+## Integration notes
+
+<Note>
+  There is no `"failed"` status on this SDK. A failed check rolls up into `outcome: not_verified` rather than a separate status value.
+</Note>
+
+<Tip>
+  If you persist `sessionToken` to resume a session across app launches, treat it as a secret.
+</Tip>

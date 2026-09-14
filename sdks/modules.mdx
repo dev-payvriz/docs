@@ -1,0 +1,40 @@
+---
+title: "SDK Modules"
+sidebarTitle: "Reference"
+description: "Module slugs you can include in a workflow template and reference in an SDK's skippable configuration."
+---
+
+A workflow template is built from modules. Each module has a slug you use when configuring `skippable` (see each platform's SDK page) or when reading a step result off `onStepComplete` / `onWorkflowComplete`.
+
+## Shared modules
+
+These modules work identically across all 5 SDKs: Web, Android, iOS, Flutter, and React Native.
+
+| Module slug | Description |
+| --- | --- |
+| `mobile_verification` | Verifies the user's mobile number. |
+| `aadhar_verification` | Verifies an Aadhaar number. |
+| `pan_verification` | Verifies a PAN number. |
+| `face_match` | Compares a live selfie capture against a reference photo. |
+| `account_verification` | Verifies a bank account. |
+| `driving_licence` | Verifies a driving licence. |
+| `vehicle_rc` | Verifies a vehicle registration certificate. |
+| `e_sign` | Collects an electronic signature. |
+| `govt_id_selection` | Lets the user choose which government ID to submit. |
+| `name_match` | Cross-checks a reference name against document data. |
+
+## Web-only modules
+
+These modules are currently available only through the Web SDK's own step registry. They have not been found in any native SDK (Android, iOS, Flutter, React Native) at this time, so do not reference them in a native integration.
+
+| Module slug | Description |
+| --- | --- |
+| `address_verification` | Verifies a user's address. |
+| `business_type` | Collects and verifies business type information. |
+| `cin_verification` | Verifies a Corporate Identification Number. |
+| `gst_verification` | Verifies a GST registration. |
+| `business_pan` | Verifies a business PAN. |
+
+<Note>
+  If your product needs one of these on a native platform, check with your IDTO contact before building around it, native support is not guaranteed.
+</Note>

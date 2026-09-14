@@ -1,0 +1,121 @@
+---
+title: "Flutter SDK"
+sidebarTitle: "Flutter"
+description: "Add the IDTO verification flow to a Flutter app via pub.dev, backed by IDtoConfig and a small set of lifecycle callbacks."
+---
+
+The Flutter SDK targets Dart SDK `^3.10.0` and Flutter `>=3.38.0`.
+
+<Warning>
+  This SDK does not bundle `permission_handler`. Your host app must request camera and microphone permission before calling `IDto.open`, otherwise the underlying WebView shows a black screen with no prompt.
+</Warning>
+
+## Install
+
+```yaml pubspec.yaml
+dependencies:
+  idto_flutter: ^0.4.1
+```
+
+## Configuration
+
+Configuration is supplied via `IDtoConfig`.
+
+### Required fields
+
+<ParamField body="clientToken" type="String" required>
+  Field on `IDtoConfig`.
+</ParamField>
+
+<ParamField body="workflowTemplateId" type="String" required>
+  Field on `IDtoConfig`.
+</ParamField>
+
+### Optional fields
+
+| Field | Purpose |
+| --- | --- |
+| `sessionToken` | Resume a previously started verification session. |
+| `merchantUserId` | Your own identifier for this end user. |
+| `phone` | Pre-fill the user's mobile number. |
+| `startFresh` | Force a new session even if a prior one exists for this user. |
+| `preVerified` | Mark specific modules as already verified, skipping them. |
+| `accumulatedData` | Seed the session with data already collected outside the SDK. |
+| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
+| `referenceName` | A name to cross-check against document data via name matching. |
+| `nameMatchConfig` | Configuration for the name-match comparison. |
+| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
+| `faceMatchConfig` | Configuration for the face-match comparison. |
+| `panConfig` | Configuration for the PAN verification step. |
+| `businessName` | Display name shown in the flow header. |
+| `logo` | Logo shown in the flow. |
+| `language` | Locale for flow copy. |
+| `theme` | Visual theme overrides. |
+| `displayMode` | Layout mode for the flow. |
+| `desktopModal` | Whether to render as a centered modal on larger screens. This is a web-contract-parity field only, it drives no native UI in this SDK. |
+| `bottomSheet` | Whether to render as a bottom sheet. |
+| `env` | Target environment (e.g. sandbox vs. production). |
+| `baseUrl` | Override the API base URL the SDK calls. |
+| `colors` | Color token overrides. |
+| `debug` | Enable verbose SDK logging. |
+| `readyTimeoutMs` | Milliseconds to wait for the flow to become ready before failing. |
+| `allowedHosts` | Restrict which hosts the embedded flow may load. |
+
+<ParamField body="skippable" type="List<String>">
+  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, Flutter included.
+</ParamField>
+
+## Callbacks
+
+<ResponseField name="onStepComplete" type="function">
+  Fires after each module finishes.
+
+  <Expandable title="IDtoStepData fields">
+    <ResponseField name="step" type="String">The module slug that just completed.</ResponseField>
+    <ResponseField name="result" type="Object">The step's verification result.</ResponseField>
+    <ResponseField name="accumulatedData" type="Object">All data collected across the session so far.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+    <ResponseField name="creditsDeducted" type="num">Credits deducted for this step.</ResponseField>
+    <ResponseField name="balanceRemaining" type="num">Your account's remaining credit balance after this step.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onWorkflowComplete" type="function">
+  Fires when the whole workflow finishes.
+
+  <Expandable title="IDtoWorkflowCompleteData fields">
+    <ResponseField name="allSteps" type="List">Every module result from the session.</ResponseField>
+    <ResponseField name="accumulatedData" type="Object">All data collected across the session.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onError" type="function">
+  Fires on a recoverable or fatal error.
+
+  <Expandable title="IDtoErrorData fields">
+    <ResponseField name="step" type="String">The module slug active when the error occurred.</ResponseField>
+    <ResponseField name="error" type="String">Error detail.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onAbandon" type="function">
+  Fires when the user leaves the flow before completion.
+
+  <Expandable title="IDtoAbandonData fields">
+    <ResponseField name="atStep" type="String">The module slug the user was on when they left.</ResponseField>
+    <ResponseField name="reason" type="String">Why the session ended, where known.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Integration notes
+
+<Warning>
+  If the user denies the camera permission, iOS will not prompt again. The only way back is the system Settings app, so surface clear guidance in your own UI rather than retrying the request.
+</Warning>
+
+<Tip>
+  Always confirm the final outcome on your backend before granting access. Never trust the on-device result alone.
+</Tip>
