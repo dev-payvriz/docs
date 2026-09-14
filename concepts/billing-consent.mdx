@@ -1,0 +1,65 @@
+---
+title: "Billing & Consent"
+sidebarTitle: "Billing & Consent"
+description: "When a v2 call is billed, when it isn't, and the exact request field that enforces user consent."
+---
+
+## Billing
+
+The rule for every `/v2/verify/*` product is the same: **a call is billed exactly when it returns a 2xx response with `status: "success"`.**
+
+That covers two outcomes:
+
+- A **full match**: `error_code` is `null` and `data` is populated.
+- A **definitive no-record result**: `error_code` is set to an `IDTO_2xx` code and `data` is `null`. The lookup still ran to completion, it just didn't find anything, and that is a billable outcome, not a free one.
+
+Both cases carry `billed: true`.
+
+A **raised error** (any non-2xx response) is never billed. `status` is `"error"`, `data` is `null`, and `billed` is `false`.
+
+There is exactly one exception: `IDTO_204` (no readable Aadhaar QR found in the uploaded image) is a raised, non-2xx error, but it is still `billed: false` like every other raised error. It gets called out on its own because it is the one product-specific code integrators ask about by name, not because its billing behavior is actually different from the rule above.
+
+```json
+{
+  "status": "success",
+  "message": "Record is invalid or does not exist.",
+  "error_code": "IDTO_202",
+  "data": null,
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+Charging and persisting the result happen in the same database transaction, so a failed credit deduction rolls back the whole call rather than leaving a billed record with no corresponding charge. There is no separate `_billable` marker anywhere in the response, `billed` is the single source of truth, and it means the same thing on every v2 product regardless of which underlying provider served the request.
+
+For the full per-code billing table, see [Error Codes](/reference/v2-error-codes).
+
+## Consent
+
+Consent is enforced per product, not globally. Four v2 endpoints currently require a `user_consent` boolean field in the request body: `pan_validation`, `pan_detailed`, `okyc_generate_otp`, and `aadhaar_qr`.
+
+```json
+{
+  "pan_number": "ABCDE1234F",
+  "user_consent": true
+}
+```
+
+If `user_consent` is missing or not truthy, the request is rejected before any verification runs:
+
+```json
+{
+  "status": "error",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
+  "data": null,
+  "billed": false,
+  "chargeble": "false",
+  "user_consent": "false"
+}
+```
+
+This is a raised error (HTTP 400), so it is never billed, you can correct the request and resend without losing a credit. `true`, `"true"`, and `"True"` are all accepted as truthy; anything else, including `false`, an empty string, or a missing field, triggers `IDTO_005`.
+
+The other v2 products do not currently declare a `user_consent` field. Consent enforcement is added product by product as each one is built, so check the specific endpoint's request schema (under the API Reference tab) rather than assuming every v2 product requires it. If you don't see `user_consent` listed as a required field for the endpoint you're calling, it isn't enforced there today.

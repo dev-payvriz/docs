@@ -1,0 +1,85 @@
+---
+title: "Quickstart"
+sidebarTitle: "Quickstart"
+description: "Get credentials, make your first IDTO verification call, and read the response, in one pass."
+---
+
+<Steps>
+
+### Get credentials
+
+Every call to IDTO needs two headers: `X-Client-ID` and `X-API-Key`. Request sandbox credentials from your IDTO contact. Use them against `https://dev.idto.ai` while you build, sandbox calls don't touch real verification sources and aren't billed. Switch the host to `https://prod.idto.ai` only when you're ready to go live; see [Authentication](/authentication) for the full detail on both hosts and both auth methods.
+
+```bash
+export IDTO_CLIENT_ID="your_client_id"
+export IDTO_API_KEY="your_api_key"
+```
+
+### Make a call
+
+`POST /v2/verify/pan_validation` is the smallest useful call: it checks whether a PAN exists and is active, and returns the name and holder category on file. Every v2 verification endpoint takes `user_consent: true` in the body, this is a hard requirement, not a formality: the call is rejected without it.
+
+<CodeGroup>
+
+```bash cURL
+curl --request POST \
+  --url https://dev.idto.ai/v2/verify/pan_validation \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "pan_number": "ABCDE1234F",
+    "user_consent": true
+  }'
+```
+
+```python Python
+import os
+import requests
+
+response = requests.post(
+    "https://dev.idto.ai/v2/verify/pan_validation",
+    headers={
+        "X-Client-ID": os.environ["IDTO_CLIENT_ID"],
+        "X-API-Key": os.environ["IDTO_API_KEY"],
+    },
+    json={"pan_number": "ABCDE1234F", "user_consent": True},
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+### Read the response
+
+A match returns HTTP `200` with the PAN holder's name and status:
+
+```json
+{
+  "status": "success",
+  "message": "PAN verified successfully.",
+  "error_code": null,
+  "data": {
+    "pan_name": "RAHUL SHARMA",
+    "pan_number": "ABCDE1234F",
+    "pan_status": "Active",
+    "category": "individual"
+  },
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+Four fields drive your integration logic:
+
+| Field | What it tells you |
+| --- | --- |
+| `status` | `"success"` for any 2xx response, `"error"` for anything raised. There's no `"failed"` value anywhere in v2. |
+| `error_code` | `null` on a full match. An `IDTO_*` code on a no-record result or a raised error, for example a request without `user_consent` returns `IDTO_005`. |
+| `data` | The verification result. `null` whenever `error_code` is set. |
+| `billed` | Whether this call consumed a credit. A definitive no-record result is still `billed: true`, since it still cost a verification. |
+
+This is the same four-field shape on every v2 endpoint, not just PAN. Read [Request & Response](/concepts/request-response) for the complete envelope reference, including how multipart (image upload) endpoints differ, and [Error Codes](/error-codes) for how to branch on every outcome.
+
+</Steps>

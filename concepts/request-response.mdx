@@ -1,0 +1,106 @@
+---
+title: "Request & Response"
+sidebarTitle: "Request & Response"
+description: "The mechanics of a single call: base URLs, required headers, request and response bodies, and what each HTTP status means."
+---
+
+## Base URLs
+
+IDTO runs two separate origins:
+
+| Host | Purpose |
+| --- | --- |
+| `https://dev.idto.ai` | Sandbox. Use your development credentials here while building and testing. |
+| `https://prod.idto.ai` | Production. Billable, and every call reaches a real verification source. |
+
+Dev and prod credentials are separate pairs and are not interchangeable.
+
+## Required headers
+
+Every call to `/verify/*` (v1) or `/v2/verify/*` (v2) needs both of these on every request:
+
+| Header | Value |
+| --- | --- |
+| `X-Client-ID` | Your client identifier |
+| `X-API-Key` | Your secret API key |
+| `Content-Type` | `application/json` for JSON-bodied endpoints |
+
+## Request and response bodies
+
+Most v2 endpoints take a JSON body and return a JSON body. Here is a complete example against `/v2/verify/pan_validation`.
+
+**Request**
+
+```bash
+curl --request POST \
+  --url https://dev.idto.ai/v2/verify/pan_validation \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "pan_number": "ABCDE1234F",
+    "user_consent": true
+  }'
+```
+
+**Response, full match (HTTP 200)**
+
+```json
+{
+  "status": "success",
+  "message": "PAN verified successfully.",
+  "error_code": null,
+  "data": {
+    "pan_name": "RAHUL SHARMA",
+    "pan_number": "ABCDE1234F",
+    "pan_status": "Active",
+    "category": "individual"
+  },
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+**Response, no matching record (still HTTP 200)**
+
+```json
+{
+  "status": "success",
+  "message": "Record is invalid or does not exist.",
+  "error_code": "IDTO_202",
+  "data": null,
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+**Response, raised error (HTTP 400)**
+
+```json
+{
+  "status": "error",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
+  "data": null,
+  "billed": false,
+  "chargeble": "false",
+  "user_consent": "false"
+}
+```
+
+The full request and response schema for every v2 endpoint, including every field on `data`, lives under the API Reference tab, generated directly from the OpenAPI spec.
+
+## What the HTTP status tells you (v2)
+
+For every `/v2/verify/*` endpoint, the HTTP status is the first thing to branch on:
+
+- **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code` set to an `IDTO_2xx` code). Both are `status: "success"` and both are billed. Never treat `error_code` being non-null as a failure by itself, check whether the code falls in the `IDTO_2xx` range.
+- **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"`, `data` is `null`, and `billed` is `false` in every case except `IDTO_204`, which is the one raised error that is also unbilled by design rather than an exception to the unbilled rule.
+
+The exact status code for each `IDTO_*` code is fixed and documented in the [Error Codes reference](/reference/v2-error-codes), for example `IDTO_001` is always 400, `IDTO_009` is always 402, `IDTO_006` is always 429.
+
+## v1 responses look different
+
+v1 endpoints (`/verify/*`) do not use this envelope. A v1 response is close to the raw reply from whichever verification source served it, with only `tranx_id` and `timestamp` always added. There is no `error_code` field and no fixed shape across products. See [API Versioning](/concepts/api-versioning) for the full comparison.

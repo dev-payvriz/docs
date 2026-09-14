@@ -1,0 +1,161 @@
+---
+title: "eSign Workflow"
+sidebarTitle: "eSign Workflow"
+description: "Submit a document for electronic signature, track its signers, and retrieve the signed PDF once everyone has signed."
+---
+
+eSign is a three-part flow: you submit one or more PDFs and who needs to sign them, your eSign provider collects signatures (in person over email/SMS links, or however your signers are configured), and once every signer has signed, you pull the finished PDF back through IDTO. IDTO never hands you a raw link to the signing provider's own dashboard, everything you need comes back through this API.
+
+## Step 1: Create the docket
+
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/esign \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "agreement_type": "loan_agreement",
+    "docket_title": "Loan Agreement - RAHUL SHARMA",
+    "docket_description": "Loan agreement for onboarding",
+    "final_copy_recipients": "rahul.sharma@example.com",
+    "documents": [
+      {
+        "reference_doc_id": "doc_1",
+        "content_type": "pdf",
+        "content": "JVBERi0xLjQKJcOkw7zDtsO...",
+        "signature_sequence": "sequential",
+        "return_url": "https://acme.example.com/kyc/esign/callback"
+      }
+    ],
+    "signers_info": [
+      {
+        "signer_ref_id": "signer_1",
+        "signer_name": "RAHUL SHARMA",
+        "signer_email": "rahul.sharma@example.com",
+        "signer_mobile": "9999999999",
+        "signature_type": "aadhaar",
+        "trigger_esign_request": true,
+        "authentication_mode": "both",
+        "document_to_be_signed": "doc_1",
+        "signer_position": { "appearance": "bottom-right" },
+        "page_number": "all",
+        "sequence": "1"
+      }
+    ]
+  }'
+```
+
+```json
+{
+  "status": "success",
+  "message": "Docket created.",
+  "data": { "docket_id": "b6e1f2a0-1234-4abc-9def-0123456789ab" }
+}
+```
+
+A few fields worth calling out:
+
+- `documents[].content` is base64-encoded PDF content, capped at 10 MB per document.
+- `signer_position.appearance` is either one of the four preset strings (`top-left`, `top-right`, `bottom-left`, `bottom-right`, exact casing) or an array of `{x1, y1, x2, y2}` coordinate boxes if you need precise placement. Which page(s) the signature lands on is controlled separately by `page_number` (`"1"`, `"all"`, or a list like `"3,5"`), not per coordinate box.
+- `final_copy_recipients` is a comma-separated list of emails to receive the signed copy once complete.
+- Save the `docket_id` you get back, it's what you use for every call after this.
+
+## Step 2: The signer's redirect (`return_url`)
+
+Each document can carry its own `return_url`. Once a signer finishes (or abandons) signing, they land back on that URL. Treat `return_url` as **redirect-only**, it tells you the signer is done interacting, it never carries the signed document itself. Don't try to parse a document out of the query string or the request that hits `return_url`, there isn't one there.
+
+## Step 3: Fetch the signed document
+
+`POST /verify/esign/document` is the only way to retrieve the signed PDF. Poll it after you expect signing to be done (for example, after the signer returns via `return_url`, or on receiving the completion webhook below):
+
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/esign/document \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"docket_id": "b6e1f2a0-1234-4abc-9def-0123456789ab"}'
+```
+
+While signing is still in progress:
+
+```json
+{
+  "status": "success",
+  "signing_status": "pending",
+  "document_id": "doc_00000001",
+  "content": null,
+  "content_type": "pdf"
+}
+```
+
+Once every signer on the document has signed:
+
+```json
+{
+  "status": "success",
+  "signing_status": "signed",
+  "document_id": "doc_00000001",
+  "content": "JVBERi0xLjQK...",
+  "content_type": "pdf"
+}
+```
+
+`content` is the base64-encoded signed PDF. A docket with multiple documents needs `document_id` on the request to pick a specific one, otherwise the first is returned.
+
+<Note>
+  We could not verify a fixed retention window in the current source for how long a completed signed document stays retrievable from IDTO's own archive. What is verified: IDTO archives a copy of every signed document out of its own eSign provider as soon as all signers finish, specifically because the provider's own copy can be deleted at any time without notice (see below). Fetch the document promptly once you know signing is complete rather than assuming a long window either side.
+</Note>
+
+If the underlying eSign provider has already deleted its copy of the document before IDTO could archive it, `POST /verify/esign/document` returns:
+
+```json
+{
+  "status": "error",
+  "message": "This signed document is no longer available from our eSign provider. Contact support with your docket ID."
+}
+```
+
+That's an HTTP `410`. If this happens, the only path forward is contacting IDTO support with the `docket_id`, the document cannot be regenerated from IDTO's side once the provider's copy is gone and no archive was made in time.
+
+<Warning>
+  If a docket's documents never finish signing, IDTO stops polling the provider for that docket's completion **90 days** after the original `POST /verify/esign` call (verified: `ESIGN_ARCHIVE_ABANDON_DAYS`). Don't rely on an eSign docket resolving itself after months of inactivity, treat a docket that hasn't completed within a reasonable business timeframe (days, not months) as abandoned and start a new one if needed.
+</Warning>
+
+## Step 4: The completion webhook
+
+If you have a webhook URL configured for your account, IDTO POSTs a completion event once a document's signers have all signed and it has been archived:
+
+```json
+{
+  "event": "esign.completed",
+  "event_id": "evt_esign_8f14e45f-ceea-467e-bd93-4a2c11e0a1b2_doc_00000001_signed",
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "docket_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "document_id": "doc_00000001",
+  "signing_status": "signed",
+  "signed_at": "2026-09-14T10:22:11Z"
+}
+```
+
+The payload carries no PDF bytes and no expiry field, it's a signal to go fetch the document, not the document itself. Call `POST /verify/esign/document` with the `docket_id` (and `document_id`, if the docket has more than one) as soon as you receive it. The webhook is signed the same way as every other IDTO webhook:
+
+| Header | Meaning |
+| --- | --- |
+| `X-Idto-Event-Id` | Matches `event_id` in the body, use it to deduplicate retried deliveries. |
+| `X-Idto-Timestamp` | Unix timestamp the signature was computed over. |
+| `X-Idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your webhook signing secret. |
+
+```python
+import hashlib
+import hmac
+
+def verify_idto_webhook(secret, raw_body, timestamp, signature_header):
+    expected = hmac.new(
+        secret.encode(),
+        (timestamp + ".").encode() + raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest("sha256=" + expected, signature_header)
+```

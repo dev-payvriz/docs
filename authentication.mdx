@@ -1,0 +1,88 @@
+---
+title: "Authentication"
+sidebarTitle: "Authentication"
+description: "How to authenticate server-to-server calls with API key headers, and how to mint short-lived tokens for browser and mobile SDKs."
+---
+
+IDTO has two ways to authenticate, depending on where the call originates.
+
+## Server-to-server: API key headers
+
+Every call to `/verify/*` (v1) or `/v2/verify/*` (v2) is authenticated with a static header pair:
+
+| Header | Value |
+| --- | --- |
+| `X-Client-ID` | Your client identifier |
+| `X-API-Key` | Your secret API key |
+
+Send both on every request. There's no separate login step for this method, the headers are the credential.
+
+```bash
+curl --request POST \
+  --url https://dev.idto.ai/v2/verify/pan_validation \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"pan_number": "ABCDE1234F", "user_consent": true}'
+```
+
+Because these headers work in any request, this method is for calls your own backend makes. Never embed a client ID and API key in a mobile app or a web page, anyone who reads the app bundle or the network tab gets your permanent credential.
+
+### Hosts
+
+| Host | Purpose |
+| --- | --- |
+| `https://dev.idto.ai` | Sandbox. Use your dev credentials here while building and testing. |
+| `https://prod.idto.ai` | Production. Billable, and every call reaches a real verification source. Use only once you're ready to go live. |
+
+Dev and prod credentials are separate pairs. A dev `X-Client-ID` and `X-API-Key` won't authenticate against `prod.idto.ai`, and vice versa.
+
+## Browser and mobile SDKs: token exchange
+
+The IDTO SDKs (web, Android, iOS, Flutter, React Native) run in an environment you don't control, a user's browser or device, so they can't hold your permanent `X-Client-ID` / `X-API-Key` pair. Instead, your backend exchanges that pair for a short-lived token and hands the token to the SDK.
+
+<Steps>
+
+### Your backend requests a token
+
+```bash
+curl --request POST \
+  --url https://dev.idto.ai/auth/sdk/token \
+  --header "Content-Type: application/json" \
+  --data '{
+    "client_id": "your_client_id",
+    "client_secret": "your_api_key"
+  }'
+```
+
+`client_id` and `client_secret` are the same values as your `X-Client-ID` and `X-API-Key`.
+
+### IDTO returns a bearer token
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.example.sdk-token",
+  "token_type": "bearer",
+  "expires_in": 900
+}
+```
+
+The token is valid for 900 seconds (15 minutes) and only permits running the verification flows exposed by the SDK. It can't call server-to-server verification endpoints, merchant-management endpoints, or webhook configuration.
+
+### Your backend passes the token to the SDK
+
+Hand `access_token` to the SDK at init time as its client token. If a session runs longer than 15 minutes, the SDK calls back to your backend to request a fresh token the same way, rather than re-exchanging your permanent credentials from the client side.
+
+</Steps>
+
+<Warning>
+  `POST /auth/sdk/token` is meant to be called from your backend, not from the browser or app itself. If the client-side code called it directly, it would need your permanent `X-API-Key` to do so, which defeats the purpose of the exchange.
+</Warning>
+
+## Which method to use
+
+| Where the call originates | Method |
+| --- | --- |
+| Your backend, calling `/verify/*` or `/v2/verify/*` directly | `X-Client-ID` + `X-API-Key` headers |
+| Your backend, provisioning a session for a web or mobile SDK | `POST /auth/sdk/token`, then hand the returned token to the SDK |
+| The SDK itself, running in a user's browser or app | The short-lived token from `/auth/sdk/token`, never your permanent key pair |

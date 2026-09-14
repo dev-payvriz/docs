@@ -1,0 +1,58 @@
+---
+title: "Idempotency"
+sidebarTitle: "Idempotency"
+description: "Use the Idempotency-Key header on any v2 endpoint to make retries safe without re-running or re-billing a verification."
+---
+
+Every `/v2/verify/*` POST endpoint accepts an optional `Idempotency-Key` header. It exists for one situation: your request timed out, your connection dropped, or your process crashed after sending the request but before you saw the response, and you don't know whether the verification ran or whether you were charged. Retrying with the same key answers that safely.
+
+```http
+POST /v2/verify/pan_validation HTTP/1.1
+Host: dev.idto.ai
+Content-Type: application/json
+X-Client-ID: <your_client_id>
+X-API-Key: <your_api_key>
+Idempotency-Key: pan-check-a1b2c3d4
+
+{
+  "pan_number": "ABCDE1234F",
+  "user_consent": true
+}
+```
+
+## Generating a key
+
+Pick a unique string per logical operation, a UUID, a request id from your own job queue, or any client-chosen value that won't collide with another distinct verification attempt. Keys are scoped per customer account, so two different accounts can safely reuse the same string. The only hard constraint is length: at most 255 characters. A longer key is rejected outright with `IDTO_001` (400), before anything is attempted.
+
+## What happens on retry
+
+IDTO fingerprints the request body under each key. What happens next depends on whether the body matches:
+
+<CardGroup cols={2}>
+  <Card title="Same key, same body" icon="rotate">
+    The stored result from the first attempt is returned as-is. The verification is not re-run and the account is not billed again.
+  </Card>
+  <Card title="Same key, different body" icon="triangle-exclamation">
+    Rejected with `IDTO_010` (422). The key is bound to the first body it was used with; reusing it for a different request is a client error, not a new lookup.
+  </Card>
+</CardGroup>
+
+```json
+{
+  "status": "error",
+  "message": "Idempotency-Key was already used with a different request body.",
+  "error_code": "IDTO_010",
+  "data": null,
+  "billed": false,
+  "chargeble": "false",
+  "user_consent": "false"
+}
+```
+
+If a second request with the same key arrives while the first one is still being processed, it is rejected with `IDTO_004` (409) rather than queued or replayed, since there is no completed result yet to return.
+
+Omitting the header is fine and is the default: without it, every request runs and bills independently, with no replay protection.
+
+## v2 only
+
+`Idempotency-Key` is part of the v2 contract. v1 (`/verify/*`) has no equivalent, retrying a v1 request always runs it again. See [API Versioning](/concepts/api-versioning) for how the two contracts differ.

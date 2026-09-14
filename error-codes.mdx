@@ -1,0 +1,61 @@
+---
+title: "Error Codes"
+sidebarTitle: "Error Codes"
+description: "How IDTO reports success, no-record, and failure outcomes across every v2 endpoint, and where to look up a specific error code."
+---
+
+Every `/v2/verify/*` response carries the same three fields for figuring out what happened: `status`, `error_code`, and `billed`. Branch your integration on `error_code`, not on `message` text, `message` is written for a human and can change wording between releases without notice.
+
+## The three fields
+
+<ResponseField name="status" type="string">
+  `"success"` for any 2xx response, `"error"` for a raised, non-2xx response. There's no `"failed"` value in v2, a definitive no-match is still `"success"`, see below.
+</ResponseField>
+
+<ResponseField name="error_code" type="string | null">
+  `null` on a full match. Set to an `IDTO_*` code on a no-record result or on a raised error. The code, not the HTTP status or the message, is what identifies the exact outcome.
+</ResponseField>
+
+<ResponseField name="billed" type="boolean">
+  Whether the call consumed a credit. Always matches whether the response is a 2xx `"success"`: `true` for a full match, `true` for a definitive no-record result, `false` for anything raised.
+</ResponseField>
+
+## No-record is still success
+
+The pattern most integrations trip on: a query that runs cleanly but finds nothing (an invalid PAN, a bank account that doesn't exist) is not an error. It's HTTP `200`, `status: "success"`, `data: null`, and an `IDTO_2xx` code in `error_code`. `billed` is `true`, the check still ran and still cost a credit.
+
+```json
+{
+  "status": "success",
+  "message": "Record is invalid or does not exist.",
+  "error_code": "IDTO_202",
+  "data": null,
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+Treat this as a distinct, expected outcome in your application, alongside "matched" and "raised error", not as a failure to catch and retry.
+
+## Raised errors
+
+Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status on a raised error tells you the category (`400`/`422` for a bad request, `402` for insufficient credits, `429` for rate limiting, `500`/`503` for an IDTO-side or upstream issue), and `error_code` tells you exactly which one.
+
+```json
+{
+  "status": "error",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
+  "data": null,
+  "billed": false
+}
+```
+
+## Idempotent retries
+
+Send an `Idempotency-Key` header on a `/v2/verify/*` request to make retrying that exact call safe. Replaying the same key with the same body returns the original result rather than running (and billing) the check again. Replaying the same key with a different body is rejected.
+
+## Full code reference
+
+The complete `IDTO_*` table, every code, its HTTP status, its default message, and whether it's billed, lives on one page: [v2 Error Codes](/reference/v2-error-codes). This page explains the pattern; that page is the lookup table.

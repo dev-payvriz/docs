@@ -18,6 +18,38 @@
   "navigation": {
     "tabs": [
       {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication",
+              "error-codes"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/api-versioning",
+              "concepts/request-response",
+              "concepts/billing-consent",
+              "concepts/idempotency"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/kyc-workflow",
+              "guides/digilocker-integration",
+              "guides/async-polling",
+              "guides/esign-workflow"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "API Reference (v2 Preview)",
         "groups": [
           {

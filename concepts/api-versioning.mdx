@@ -1,0 +1,66 @@
+---
+title: "API Versioning"
+sidebarTitle: "API Versioning"
+description: "Why /verify/* and /v2/verify/* run side by side, what the v2 envelope actually guarantees, and which one to call for a given product."
+---
+
+IDTO exposes two live API surfaces at the same time: `/verify/*` (v1) and `/v2/verify/*` (v2). Neither is deprecated on a fixed timeline. v2 is the current standard and the one you should reach for by default. v1 stays live because a large share of products have not been ported onto the v2 envelope yet, and because some integrations depend on the exact legacy response shape.
+
+## The v2 envelope
+
+Every `/v2/verify/*` product returns one of two shapes, regardless of which underlying provider served the request.
+
+A success (any 2xx status) always looks like this:
+
+```json
+{
+  "status": "success",
+  "message": "PAN verified successfully.",
+  "error_code": null,
+  "data": { "...": "..." },
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+`error_code` stays `null` on a full match and carries an `IDTO_2xx` code on a definitive no-record result (`data` is `null` in that case). Both are still `status: "success"` and both are billed: v2 has no `"failed"` status anywhere in its contract, so never branch your integration on `status`, branch on `error_code`.
+
+A raised error (any non-2xx status) always looks like this instead:
+
+```json
+{
+  "status": "error",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
+  "data": null,
+  "billed": false,
+  "chargeble": "false",
+  "user_consent": "false"
+}
+```
+
+`chargeble` and `user_consent` are legacy string flags carried over from v1 for contract uniformity across the stack. On every v2 error they are hardcoded to `"false"`; they are not a second consent signal, ignore them and read `billed` instead. Unlike the success shape, an error response never carries `tranx_id` or `timestamp`, since no verification ran to produce a transaction record.
+
+## Vendor-agnostic by construction
+
+For a given v2 product, the request contract, the canonical response keys, the `IDTO_*` error codes, and the billing outcome are identical no matter which provider actually served the call. A no-record PAN lookup returns `error_code: "IDTO_202"` and `billed: true` whether it was served by one underlying provider or another; a rate limit returns `IDTO_006` either way. Provider-specific translation lives entirely inside each product's internal vendor adapter and never leaks into the response you see. See [Error Codes](/reference/v2-error-codes) for the full `IDTO_*` table.
+
+## v1: raw pass-through, no shared envelope
+
+v1 predates the shared envelope. A v1 response is close to whatever the underlying verification provider returned, reshaped only in two ways:
+
+- `tranx_id` and `timestamp` are always added to the response, on every call, success or not.
+- `chargeble` and `user_consent` are added only when the call was actually charged, which v1 decides by reading the provider's own `status` field on its raw reply. If that field says success, v1 stamps `chargeble: "true"` and `user_consent: "true"` and deducts credits; if not, neither key appears and nothing is charged.
+
+There is no `IDTO_*` error taxonomy in v1 and no fixed field set: two different v1 products can shape their success payload completely differently, because each one is just forwarding what its provider sent back. Consult that endpoint's own schema and examples rather than assuming any of the v2 conventions apply.
+
+## Which one to call
+
+IDTO currently has 17 products migrated onto v2: `aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `dl_ocr`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`, `pan_ocr`, and `pan_validation`.
+
+- **Use v2 for any of those 17 products.** It's the standard contract, the vendor-agnostic billing, and the one that will keep getting new products.
+- **Use v1 for everything else.** The remaining products, things like `esign`, `credit_report`, `gst_verification`, `mobile_to_pan`, and dozens more, have no v2 equivalent yet. v1 is the only way to reach them today.
+- **Fall back to v1 on purpose for the handful of products that exist in both.** 14 products (`aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`) are reachable on both versions. Use v1 there only when you specifically need the raw legacy shape for an existing integration you don't want to touch; otherwise v2 is the better default even when both exist.
+
+If you're unsure whether a product you need has a v2 endpoint, check that product's page directly, the path prefix (`/verify/` vs `/v2/verify/`) tells you which contract applies.
