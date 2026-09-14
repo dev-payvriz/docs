@@ -276,6 +276,12 @@
               "source": "openapi2.0.json",
               "directory": "api-reference-v2-preview"
             }
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/v2-error-codes"
+            ]
           }
         ]
       },
