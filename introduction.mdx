@@ -1,10 +1,10 @@
 ---
-title: "IDTO: Identity and KYC Verification API for India"
+title: "idto: Identity and KYC Verification API for India"
 sidebarTitle: "Introduction"
-description: "IDTO is a single REST API for verifying Indian identity documents, businesses, vehicles, credit history, and more, with a consistent request and response contract across every product."
+description: "idto is a single REST API for verifying Indian identity documents, businesses, vehicles, credit history, and more, with a consistent request and response contract across every product."
 ---
 
-IDTO gives you one API for the identity and business checks an Indian KYC or onboarding flow needs: PAN, Aadhaar, bank accounts, GST, vehicle records, credit bureaus, DigiLocker, face match, and document OCR, all behind the same authentication scheme and the same response shape. You integrate once against IDTO, and IDTO handles routing each check to whichever verification source produces the result, so a change in how a particular check is sourced never changes your integration.
+idto gives you one API for the identity and business checks an Indian KYC or onboarding flow needs: PAN, Aadhaar, bank accounts, GST, vehicle records, credit bureaus, DigiLocker, face match, and document OCR, all behind the same authentication scheme and the same response shape. You integrate once against idto, and idto handles routing each check to whichever verification source produces the result, so a change in how a particular check is sourced never changes your integration.
 
 ## Capability map
 
@@ -61,7 +61,7 @@ IDTO gives you one API for the identity and business checks an Indian KYC or onb
 
 ## v1 and v2
 
-IDTO exposes two API generations side by side: `/verify/*` (v1) and `/v2/verify/*` (v2). Both are live and both work. v2 is the current standard: a single response envelope across every product, standardized `IDTO_*` error codes, and idempotency support. Build new integrations against v2. See [API Versioning](/concepts/api-versioning) for the full comparison and for which endpoints are v2-only versus v1-only today.
+idto exposes two API generations side by side: `/verify/*` (v1) and `/v2/verify/*` (v2). Both are live and both work. v2 is the current standard: a single response envelope across every product, standardized `IDTO_*` error codes, and idempotency support. Build new integrations against v2. See [API Versioning](/concepts/api-versioning) for the full comparison and for which endpoints are v2-only versus v1-only today.
 
 ## Where to go next
 

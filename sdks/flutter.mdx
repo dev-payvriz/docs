@@ -1,13 +1,13 @@
 ---
 title: "Flutter SDK"
 sidebarTitle: "Flutter"
-description: "Add the IDTO verification flow to a Flutter app via pub.dev, backed by IDtoConfig and a small set of lifecycle callbacks."
+description: "Add the idto verification flow to a Flutter app via pub.dev, backed by IDtoConfig and a small set of lifecycle callbacks."
 ---
 
 The Flutter SDK targets Dart SDK `^3.10.0` and Flutter `>=3.38.0`.
 
 <Warning>
-  This SDK does not bundle `permission_handler`. Your host app must request camera and microphone permission before calling `IDto.open`, otherwise the underlying WebView shows a black screen with no prompt.
+  This SDK does not bundle `permission_handler`. Your host app must request camera and microphone permission before calling `idto.open`, otherwise the underlying WebView shows a black screen with no prompt.
 </Warning>
 
 ## Install
@@ -62,7 +62,7 @@ Configuration is supplied via `IDtoConfig`.
 | `allowedHosts` | Restrict which hosts the embedded flow may load. |
 
 <ParamField body="skippable" type="List<String>">
-  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, Flutter included.
+  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every idto SDK, Flutter included.
 </ParamField>
 
 ## Callbacks

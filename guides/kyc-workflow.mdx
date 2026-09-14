@@ -4,10 +4,10 @@ sidebarTitle: "KYC Workflow"
 description: "Run a multi-step KYC flow (PAN, Aadhaar, bank account, face match) for an end customer using a hosted Verification Link, with no orchestration UI of your own to build."
 ---
 
-A real onboarding check is rarely one call. You need mobile verification, a PAN check, a bank account check, a face match, maybe more, run in a fixed order for one person, with a single combined result at the end. Building that sequencing, state machine and UI yourself is real work. IDTO's **Verification Links** do it for you: you configure the sequence once, mint a link, hand it to the end customer, and get one result back when they finish.
+A real onboarding check is rarely one call. You need mobile verification, a PAN check, a bank account check, a face match, maybe more, run in a fixed order for one person, with a single combined result at the end. Building that sequencing, state machine and UI yourself is real work. idto's **Verification Links** do it for you: you configure the sequence once, mint a link, hand it to the end customer, and get one result back when they finish.
 
 <Note>
-  This guide covers what a developer can call directly. Creating and managing a workflow template and a verification link happens in the IDTO merchant dashboard, authenticated with your dashboard login, not with the `X-Client-ID` / `X-API-Key` pair used everywhere else in this API. The dashboard-issued session token is a separate credential (`DashboardSession` in the API reference) scoped only to link and webhook management, it is not something your backend mints with its API key. If you need links minted entirely from your own backend without a human in the loop, that isn't available today, talk to your IDTO contact.
+  This guide covers what a developer can call directly. Creating and managing a workflow template and a verification link happens in the idto merchant dashboard, authenticated with your dashboard login, not with the `X-Client-ID` / `X-API-Key` pair used everywhere else in this API. The dashboard-issued session token is a separate credential (`DashboardSession` in the API reference) scoped only to link and webhook management, it is not something your backend mints with its API key. If you need links minted entirely from your own backend without a human in the loop, that isn't available today, talk to your idto contact.
 </Note>
 
 ## How it fits together
@@ -69,7 +69,7 @@ curl https://prod.idto.ai/links/lnk_8f3a2b91c4d5e6f7
 }
 ```
 
-`POST /links/session` starts the actual verification session and returns a `client_token`, the short-lived token the IDTO SDK is initialized with client-side to run through `module_sequence` in order:
+`POST /links/session` starts the actual verification session and returns a `client_token`, the short-lived token the idto SDK is initialized with client-side to run through `module_sequence` in order:
 
 ```bash
 curl --request POST \
@@ -104,12 +104,12 @@ curl --request POST \
 ```
 
 <Note>
-  If you call these three endpoints from your own backend on the end customer's behalf, for example to embed the link inside your own app shell, set the `X-Idto-End-Customer-IP` header to the real end customer's IP. Otherwise every one of your customers is rate-limited as if they shared one IP address, your server's.
+  If you call these three endpoints from your own backend on the end customer's behalf, for example to embed the link inside your own app shell, set the `X-idto-End-Customer-IP` header to the real end customer's IP. Otherwise every one of your customers is rate-limited as if they shared one IP address, your server's.
 </Note>
 
 ### Get the combined result
 
-Configure a webhook URL and signing secret for your account in the dashboard (**Webhooks** section). When the session finishes, whatever the outcome, IDTO POSTs a signed payload to that URL:
+Configure a webhook URL and signing secret for your account in the dashboard (**Webhooks** section). When the session finishes, whatever the outcome, idto POSTs a signed payload to that URL:
 
 ```json
 {
@@ -135,9 +135,9 @@ Every webhook carries three headers you should verify before trusting the body:
 
 | Header | Meaning |
 | --- | --- |
-| `X-Idto-Event-Id` | Stable per-session-completion id, safe to use as an idempotency key on your side. |
-| `X-Idto-Timestamp` | Unix timestamp the signature was computed over. |
-| `X-Idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your signing secret. |
+| `X-idto-Event-Id` | Stable per-session-completion id, safe to use as an idempotency key on your side. |
+| `X-idto-Timestamp` | Unix timestamp the signature was computed over. |
+| `X-idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your signing secret. |
 
 ```python
 import hashlib
@@ -158,7 +158,7 @@ Retry your signing secret against both the current and, during a rotation window
 
 ## What this guide is not
 
-The `/sdk/v2/session/*` endpoints (session init, step start/complete, finalize, and so on) are the internal protocol IDTO's own SDKs (web, Android, iOS, Flutter, React Native) speak to the backend once a `client_token` is in hand. They are not part of this public API surface and aren't documented here, if you're embedding verification inside your own native or web app rather than sending customers to the hosted link, integrate the relevant [SDK](/sdks/web) instead of calling that protocol yourself.
+The `/sdk/v2/session/*` endpoints (session init, step start/complete, finalize, and so on) are the internal protocol idto's own SDKs (web, Android, iOS, Flutter, React Native) speak to the backend once a `client_token` is in hand. They are not part of this public API surface and aren't documented here, if you're embedding verification inside your own native or web app rather than sending customers to the hosted link, integrate the relevant [SDK](/sdks/web) instead of calling that protocol yourself.
 
 <Warning>
   `mobile_verification` can never be included in a link's `skippable` list, it's how the end customer is identified for the session. Any other module in the sequence can be marked skippable if your workflow allows completing it later.

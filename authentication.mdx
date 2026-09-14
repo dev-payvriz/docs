@@ -4,7 +4,7 @@ sidebarTitle: "Authentication"
 description: "How to authenticate server-to-server calls with API key headers, and how to mint short-lived tokens for browser and mobile SDKs."
 ---
 
-IDTO has two ways to authenticate, depending on where the call originates.
+idto has two ways to authenticate, depending on where the call originates.
 
 ## Server-to-server: API key headers
 
@@ -39,7 +39,7 @@ Dev and prod credentials are separate pairs. A dev `X-Client-ID` and `X-API-Key`
 
 ## Browser and mobile SDKs: token exchange
 
-The IDTO SDKs (web, Android, iOS, Flutter, React Native) run in an environment you don't control, a user's browser or device, so they can't hold your permanent `X-Client-ID` / `X-API-Key` pair. Instead, your backend exchanges that pair for a short-lived token and hands the token to the SDK.
+The idto SDKs (web, Android, iOS, Flutter, React Native) run in an environment you don't control, a user's browser or device, so they can't hold your permanent `X-Client-ID` / `X-API-Key` pair. Instead, your backend exchanges that pair for a short-lived token and hands the token to the SDK.
 
 <Steps>
 
@@ -57,7 +57,7 @@ curl --request POST \
 
 `client_id` and `client_secret` are the same values as your `X-Client-ID` and `X-API-Key`.
 
-### IDTO returns a bearer token
+### idto returns a bearer token
 
 ```json
 {

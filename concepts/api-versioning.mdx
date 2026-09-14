@@ -4,7 +4,7 @@ sidebarTitle: "API Versioning"
 description: "Why /verify/* and /v2/verify/* run side by side, what the v2 envelope actually guarantees, and which one to call for a given product."
 ---
 
-IDTO exposes two live API surfaces at the same time: `/verify/*` (v1) and `/v2/verify/*` (v2). Neither is deprecated on a fixed timeline. v2 is the current standard and the one you should reach for by default. v1 stays live because a large share of products have not been ported onto the v2 envelope yet, and because some integrations depend on the exact legacy response shape.
+idto exposes two live API surfaces at the same time: `/verify/*` (v1) and `/v2/verify/*` (v2). Neither is deprecated on a fixed timeline. v2 is the current standard and the one you should reach for by default. v1 stays live because a large share of products have not been ported onto the v2 envelope yet, and because some integrations depend on the exact legacy response shape.
 
 ## The v2 envelope
 
@@ -57,7 +57,7 @@ There is no `IDTO_*` error taxonomy in v1 and no fixed field set: two different 
 
 ## Which one to call
 
-IDTO currently has 17 products migrated onto v2: `aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `dl_ocr`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`, `pan_ocr`, and `pan_validation`.
+idto currently has 17 products migrated onto v2: `aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `dl_ocr`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`, `pan_ocr`, and `pan_validation`.
 
 - **Use v2 for any of those 17 products.** It's the standard contract, the vendor-agnostic billing, and the one that will keep getting new products.
 - **Use v1 for everything else.** The remaining products, things like `esign`, `credit_report`, `gst_verification`, `mobile_to_pan`, and dozens more, have no v2 equivalent yet. v1 is the only way to reach them today.
