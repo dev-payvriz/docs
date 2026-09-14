@@ -11226,6 +11226,2107 @@
           }
         }
       }
+    },
+    "/verify/pan_verification": {
+      "post": {
+        "tags": [
+          "PAN"
+        ],
+        "summary": "Verify a PAN (legacy, vendor-passthrough)",
+        "description": "Legacy PAN verification whose response shape is whatever the provider configured for your account returns. Malformed requests raise HTTP 422 with the raw validation exception text as the message, not a structured error envelope (this route only, not the others documented here). See `/v2/verify/pan_validation` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "pan_number": {
+                    "type": "string",
+                    "example": "ABCDE1234F"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "RAHUL SHARMA"
+                  },
+                  "name_match_method": {
+                    "type": "string"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pan_number"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PAN verification ran to completion; shape varies by configured provider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "pan_number": "ABCDE1234F",
+                      "full_name": "RAHUL SHARMA",
+                      "dob": "1990-01-01",
+                      "pan_status": "Active",
+                      "gender": "M",
+                      "category": "individual",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body failed validation. Unlike other routes in this file, the response here is the raw validation exception text as the message, not a structured envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "examples": {
+                  "raw_exception": {
+                    "summary": "Raw validation exception text",
+                    "value": {
+                      "message": "1 validation error for PanVerificationRequest\npan_number\n  field required"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify/bank_verification": {
+      "post": {
+        "tags": [
+          "Bank Account"
+        ],
+        "summary": "Verify a bank account (legacy, vendor-passthrough)",
+        "description": "Legacy bank account verification (penny-drop / name-match) whose response shape is whatever the provider configured for your account returns. Some providers return their own object promoted to the top level with their own status field overwritten to the literal string \"success\". See `/v2/verify/bank_verification` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "account_number": {
+                    "type": "string",
+                    "example": "000111222333"
+                  },
+                  "ifsc": {
+                    "type": "string",
+                    "example": "ABCD0123456"
+                  },
+                  "ifsc_code": {
+                    "type": "string",
+                    "description": "Alias for `ifsc`.",
+                    "example": "ABCD0123456"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "RAHUL SHARMA"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account_number",
+                  "ifsc"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bank verification ran to completion; shape varies by configured provider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "account_number": "000111222333",
+                      "ifsc": "ABCD0123456",
+                      "name_at_bank": "RAHUL SHARMA",
+                      "name_match_score": 100,
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/cin_mca_verification": {
+      "post": {
+        "tags": [
+          "Business & GST"
+        ],
+        "summary": "Verify a CIN/MCA company (legacy, vendor-passthrough)",
+        "description": "Legacy CIN/MCA verification whose response shape is whatever the provider configured for your account returns. Malformed requests raise HTTP 422 with the raw validation exception text as the message, not a structured error envelope (same pattern as `pan_verification` above). When called from the embedded SDK rather than a direct server-to-server call, certain internal fields are stripped from the response before it is returned; direct API callers receive the full response. See `/v2/verify/cin_mca_verification` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "id_number": {
+                    "type": "string",
+                    "example": "U12345KA2020PTC000001"
+                  }
+                },
+                "required": [
+                  "id_number"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CIN/MCA verification ran to completion; shape varies by configured provider. Direct API callers receive the full response shown below; the embedded SDK receives a version with certain internal fields stripped.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "company_id": "U12345KA2020PTC000001",
+                      "company_name": "SAMPLE VENDOR PRIVATE LIMITED",
+                      "company_type": "Private Limited",
+                      "result": {
+                        "note": "raw provider payload, fields vary by provider"
+                      },
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request body failed validation. Unlike most other routes in this file, the response here is the raw validation exception text as the message, not a structured envelope (same pattern as `pan_verification`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "examples": {
+                  "raw_exception": {
+                    "summary": "Raw validation exception text",
+                    "value": {
+                      "message": "1 validation error for CinMcaVerificationRequest\nid_number\n  field required"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify/gst_verification_basic": {
+      "post": {
+        "tags": [
+          "Business & GST"
+        ],
+        "summary": "Look up a GSTIN, no filing status (legacy, vendor-passthrough)",
+        "description": "Legacy plain GSTIN lookup whose response shape is whatever the provider configured for your account returns. This is a different product from the already-documented v1-only `/verify/gst_verification` (which has a `filing_status` field and different behavior): do not confuse the two. See `/v2/verify/gst_verification_basic` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "gst_number": {
+                    "type": "string",
+                    "example": "29ABCDE1234F1Z5"
+                  }
+                },
+                "required": [
+                  "gst_number"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "GST lookup ran to completion; shape varies by configured provider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "taxpayer_type": "Regular",
+                      "state_jurisdiction": "KARNATAKA",
+                      "legal_name_of_business": "SAMPLE VENDOR PRIVATE LIMITED",
+                      "nature_of_business": [
+                        "Supplier of Services"
+                      ],
+                      "gst_number": "29ABCDE1234F1Z5",
+                      "business_constitution": "Private Limited Company",
+                      "register_date": "2020-01-01",
+                      "primary_business_address": {
+                        "address": "12 SAMPLE STREET, SAMPLE AREA",
+                        "state": "KARNATAKA",
+                        "pincode": "560001"
+                      },
+                      "trade_name": "SAMPLE VENDOR",
+                      "current_registration_status": "Active",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/digilocker": {
+      "post": {
+        "tags": [
+          "DigiLocker"
+        ],
+        "summary": "Exchange a DigiLocker auth code for a profile (legacy)",
+        "description": "Exchanges a DigiLocker OAuth `code`/`code_verifier` pair for the user's government-issued profile. This route does not support `workflow_session_token` and cannot participate in workflow-based billing skip, unlike most other routes documented here. See `/v2/verify/digilocker` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "code_verifier": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "code_verifier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The code exchange succeeded. Fields on the profile below are government-defined, not IDTO's, so they are documented generically here.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "name": "RAHUL SHARMA",
+                      "dob": "1990-01-01",
+                      "gender": "M",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The code or code_verifier was rejected. This is a bare `message`, not the standard error envelope used elsewhere in this file.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                },
+                "examples": {
+                  "auth_failed": {
+                    "summary": "Authentication failed",
+                    "value": {
+                      "message": "Authentication failed"
+                    }
+                  },
+                  "token_auth_failed": {
+                    "summary": "Token authentication failed",
+                    "value": {
+                      "message": "Token Authentication failed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/pan_detailed": {
+      "post": {
+        "tags": [
+          "PAN"
+        ],
+        "summary": "Fetch full PAN KYC detail (legacy, vendor-passthrough)",
+        "description": "Legacy detailed PAN lookup (address, masked Aadhaar, bank details) whose response shape is whatever the provider configured for your account returns. This route has no `workflow_session_token` field at all (unlike most others documented here) and cannot participate in workflow billing-skip. See `/v2/verify/pan_detailed` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "pan_number": {
+                    "type": "string",
+                    "example": "ABCDE1234F"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "RAHUL SHARMA"
+                  }
+                },
+                "required": [
+                  "pan_number"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PAN detailed lookup ran to completion; shape varies by configured provider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "message": "PAN details fetched successfully",
+                      "pan": "ABCDE1234F",
+                      "pan_number": "ABCDE1234F",
+                      "registered_name": "RAHUL SHARMA",
+                      "full_name": "RAHUL SHARMA",
+                      "first_name": "RAHUL",
+                      "middle_name": "",
+                      "last_name": "SHARMA",
+                      "father_name": "SURESH SHARMA",
+                      "gender": "M",
+                      "dob": "1990-01-01",
+                      "email": "rahul.sharma@example.com",
+                      "mobile": "9999999999",
+                      "aadhaar_masked": "XXXXXXXX1234",
+                      "aadhaar_linked": true,
+                      "category": "individual",
+                      "pan_type": "Individual",
+                      "pan_active": true,
+                      "address": {
+                        "line1": "12 SAMPLE STREET",
+                        "line2": "SAMPLE AREA",
+                        "city": "BENGALURU",
+                        "state": "KARNATAKA",
+                        "pincode": "560001"
+                      },
+                      "bank_details": [
+                        {
+                          "account_number": "000111222333",
+                          "ifsc_code": "ABCD0123456",
+                          "bank_name": "SAMPLE BANK",
+                          "account_type": "Savings",
+                          "used_for_refund": true
+                        }
+                      ],
+                      "din_info": {},
+                      "client_ref_num": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/okyc_generate_otp": {
+      "post": {
+        "tags": [
+          "Aadhaar"
+        ],
+        "summary": "Generate an Aadhaar OKYC OTP (legacy)",
+        "description": "Sends an OTP to the mobile number linked to the given Aadhaar for the legacy Aadhaar OKYC flow. Both `uid` and `aadhaar_number` are optional; whichever is present is used, and `aadhaar_number` takes priority if both are sent. There is no route-level 400 if both are absent. Unlike most other v1 routes, this one has a fixed legacy response shape rather than a raw provider passthrough. See `/v2/verify/okyc_generate_otp` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "uid": {
+                    "type": "string"
+                  },
+                  "aadhaar_number": {
+                    "type": "string",
+                    "description": "Takes priority over `uid` if both are sent.",
+                    "example": "XXXXXXXX1234"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The OTP request ran to completion. Success is billed and carries `chargeble`/`user_consent`; failure is not billed and omits both.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1OkycGenerateOtpResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "OTP sent",
+                    "value": {
+                      "status": "success",
+                      "message": "OTP sent on linked mobile no",
+                      "sessionId": "b2f1e2c4-1a3d-4e5f-9a1b-2c3d4e5f6a7b",
+                      "valid_aadhaar": true,
+                      "sessionActive": true,
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "failure": {
+                    "summary": "Failed to send OTP",
+                    "value": {
+                      "status": "failed",
+                      "message": "Invalid Aadhaar number",
+                      "error_code": "IDTO_001",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/okyc_get_result": {
+      "post": {
+        "tags": [
+          "Aadhaar"
+        ],
+        "summary": "Fetch the Aadhaar OKYC profile with OTP (legacy)",
+        "description": "Submits the OTP for a session started with `okyc_generate_otp` and returns the Aadhaar OKYC profile. Either `sessionId` or `session_id` is accepted; both names resolve to the same session downstream. Unlike most other v1 routes, this one has a fixed legacy response shape rather than a raw provider passthrough. Gotcha: `result.dob` here is formatted `DD-MM-YYYY` (e.g. \"01-01-1990\"), unlike the v2 `okyc_get_result` counterpart which returns ISO `YYYY-MM-DD`; anyone migrating to v2 needs to reformat that field. See `/v2/verify/okyc_get_result` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "description": "Alias for `sessionId`."
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "otp"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result fetch ran to completion. Success is billed and carries `chargeble`/`user_consent`; failure is not billed, returns an empty `result` object, and omits both.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1OkycGetResultResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "OKYC profile fetched",
+                    "value": {
+                      "status": "success",
+                      "message": "KYC completed successfully",
+                      "result": {
+                        "bureauConsentId": "",
+                        "careof": "S/O SURESH SHARMA",
+                        "consent": true,
+                        "consentType": "explicit",
+                        "district": "BENGALURU",
+                        "dob": "01-01-1990",
+                        "gender": "M",
+                        "house": "12",
+                        "landmark": "",
+                        "locality": "SAMPLE AREA",
+                        "name": "RAHUL SHARMA",
+                        "photo": "",
+                        "pincode": "560001",
+                        "postOffice": "SAMPLE AREA S.O",
+                        "requestDate": null,
+                        "state": "KARNATAKA",
+                        "street": "SAMPLE STREET",
+                        "subDistrict": "BENGALURU",
+                        "xmlData": "",
+                        "address": {
+                          "house": "12",
+                          "street": "SAMPLE STREET",
+                          "landmark": "",
+                          "vtc": "BENGALURU",
+                          "dist": "BENGALURU",
+                          "subdist": "BENGALURU",
+                          "state": "KARNATAKA",
+                          "po": "SAMPLE AREA S.O",
+                          "zip": "560001"
+                        }
+                      },
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "failure": {
+                    "summary": "Invalid or expired OTP",
+                    "value": {
+                      "status": "failed",
+                      "message": "Invalid OTP",
+                      "result": {},
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/face_match": {
+      "post": {
+        "tags": [
+          "Face & Liveness"
+        ],
+        "summary": "Compare two face images (legacy, vendor-passthrough)",
+        "description": "Legacy face match whose response shape is whatever the provider configured for your account returns. Exactly one of `image2` or `image2_url` is expected, though this is not enforced at the route level. Gotcha: some providers return `match`/`match_score` on a 0-100 scale, others on a 0-1 scale; the scale is provider-specific. See `/v2/verify/face_match` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image1": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "image2": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "image2_url": {
+                    "type": "string"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "image1"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Face match ran to completion; shape varies by configured provider. Note the match/match_score scale gotcha above.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "match": 92.5,
+                      "message": "Faces matched",
+                      "is_match": true,
+                      "match_score": 0.925,
+                      "is_person_image_blurry": false,
+                      "is_card_image_blurry": false,
+                      "person_image_correctly_identified": true,
+                      "card_image_correctly_identified": true,
+                      "client_ref_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "request_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          },
+          "503": {
+            "description": "The internal processing pool is momentarily saturated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "type": "string",
+                      "enum": [
+                        "IDTO_008"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message",
+                    "error_code"
+                  ]
+                },
+                "examples": {
+                  "busy": {
+                    "summary": "Pool saturated",
+                    "value": {
+                      "status": "error",
+                      "message": "The verification service is momentarily busy. Please retry shortly.",
+                      "error_code": "IDTO_008"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify/driving_licence": {
+      "post": {
+        "tags": [
+          "Driving Licence"
+        ],
+        "summary": "Verify a driving licence (legacy, vendor-passthrough)",
+        "description": "Legacy driving licence verification whose response shape is whatever the provider configured for your account returns. The no-record example below (`status`:\"success\" with a truthy `error_code`) is an early precursor to the v2 \"status success but truthy error_code\" no-record convention, though the code used here (`IDTO_201`) differs from the v2 `IDTO_202` used for the same situation. See `/v2/verify/driving_licence` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "licence_number": {
+                    "type": "string",
+                    "example": "KA0120210012345"
+                  },
+                  "dob": {
+                    "type": "string",
+                    "example": "1990-01-01"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "licence_number",
+                  "dob"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Driving licence verification ran to completion; shape varies by configured provider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "message": "Driving licence fetched successfully",
+                      "data": {
+                        "name": "RAHUL SHARMA",
+                        "licence_number": "KA0120210012345",
+                        "dob": "1990-01-01"
+                      },
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "no_record": {
+                    "summary": "No record (status success, truthy error_code)",
+                    "value": {
+                      "status": "success",
+                      "error_code": "IDTO_201",
+                      "message": "Invalid driving licence number",
+                      "data": null,
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/liveness": {
+      "post": {
+        "tags": [
+          "Face & Liveness"
+        ],
+        "summary": "Run a liveness check (legacy, vendor-passthrough)",
+        "description": "Legacy liveness check whose response shape is whatever the provider configured for your account returns. See `/v2/verify/liveness` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "person": {
+                    "type": "string",
+                    "description": "Base64-encoded selfie image."
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "person"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Liveness check ran to completion; shape varies by configured provider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "result": {
+                        "note": "raw provider liveness payload, fields vary by provider",
+                        "is_live": true
+                      },
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          },
+          "503": {
+            "description": "The internal processing pool is momentarily saturated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "type": "string",
+                      "enum": [
+                        "IDTO_008"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message",
+                    "error_code"
+                  ]
+                },
+                "examples": {
+                  "busy": {
+                    "summary": "Pool saturated",
+                    "value": {
+                      "status": "error",
+                      "message": "The verification service is momentarily busy. Please retry shortly.",
+                      "error_code": "IDTO_008"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify/ocr": {
+      "post": {
+        "tags": [
+          "Document OCR"
+        ],
+        "summary": "OCR a document, any document type (legacy, vendor-passthrough)",
+        "description": "Legacy single-endpoint document OCR: the document type is selected by the `type` field (not `doc_type`) rather than by URL. Values include `pan`, and `dl`/`driving_licence`/`driving_license`/`drivinglicence`/`drivinglicense`, all of which normalize to driving-licence; other document types such as `aadhaar`/`voter`/`passport` are technically accepted by this endpoint without a 400, even though only PAN and driving-licence have a v2 counterpart. There is no route-level validation of `type` or file content, that happens per-provider. This one v1 route handles what v2 split into two separate endpoints: see `/v2/verify/pan_ocr` and `/v2/verify/dl_ocr` for the current vendor-agnostic versions of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Document type, e.g. pan, dl, driving_licence.",
+                    "example": "pan"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "type"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OCR ran to completion; shape varies by configured provider and by document type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "results": [
+                        {
+                          "note": "field-shaped items, structure differs by document type"
+                        }
+                      ],
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/invoice_ocr": {
+      "post": {
+        "tags": [
+          "Address & Invoice"
+        ],
+        "summary": "OCR an invoice for address verification (legacy)",
+        "description": "Legacy invoice OCR. Unlike most other multipart v1 routes documented here, this route DOES validate the upload: 400 for an empty file, a file over 6MB, or a content-type outside image/jpeg, image/jpg, image/png, application/pdf. When the in-house provider is configured for your account, the response is identical to the v2 `invoice_ocr` response shape below, plus the generic v1 wrapper fields (`tranx_id`, and `chargeble`/`user_consent` on success) layered on top. A different configured provider returns that provider's own response shape instead (`V1LegacyResponse`, general case). See `/v2/verify/invoice_ocr` for the current vendor-agnostic version of this product.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Invoice OCR ran to completion. In-house provider: the response is identical to the v2 invoice_ocr shape (see example `in_house_matches_v2` below) plus the v1 wrapper fields. Any other configured provider: falls back to `V1LegacyResponse` (see example `other_provider`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "success"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "error_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "null on a full match, an IDTO_2xx code on a definitive no-record result. Both are billed."
+                        },
+                        "data": {
+                          "oneOf": [
+                            {
+                              "$ref": "#/components/schemas/InvoiceOcrData"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "billed": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "tranx_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "timestamp": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "message",
+                        "error_code",
+                        "data",
+                        "billed"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/V1LegacyResponse"
+                    }
+                  ]
+                },
+                "examples": {
+                  "in_house_matches_v2": {
+                    "summary": "In-house provider: identical to v2 invoice_ocr, plus v1 wrapper fields",
+                    "value": {
+                      "status": "success",
+                      "message": "Invoice details extracted successfully.",
+                      "error_code": null,
+                      "data": {
+                        "document_type": "TAX_INVOICE",
+                        "buyer": {
+                          "address": "12 SAMPLE STREET, SAMPLE AREA, BENGALURU, KARNATAKA-560001",
+                          "contact": "9999999999",
+                          "email": "rahul.sharma@example.com",
+                          "gstin": "29ABCDE1234F1Z5",
+                          "pan": "ABCDE1234F",
+                          "state": "KARNATAKA",
+                          "state_code": "29",
+                          "name": "RAHUL SHARMA"
+                        },
+                        "vendor": {
+                          "address": "1 VENDOR STREET, SAMPLE AREA, BENGALURU, KARNATAKA-560002",
+                          "contact": "9999999999",
+                          "email": "billing@example.com",
+                          "gstin": "29ABCDE1234F1Z5",
+                          "pan": "ABCDE1234F",
+                          "state": "KARNATAKA",
+                          "state_code": "29",
+                          "name": "SAMPLE VENDOR PRIVATE LIMITED"
+                        },
+                        "invoice_details": {
+                          "invoice_number": "INV-2026-000123",
+                          "invoice_date": "2026-08-01",
+                          "order_reference": "PO-000456"
+                        },
+                        "line_items": [
+                          {
+                            "description": "SAMPLE SERVICE",
+                            "hsn_sac": "998314",
+                            "quantity": "1",
+                            "unit_rate": "1000.00",
+                            "total_amount": "1180.00"
+                          }
+                        ],
+                        "totals": {
+                          "cgst": "90.00",
+                          "sgst": "90.00",
+                          "igst": null,
+                          "grand_total": "1180.00",
+                          "amount_in_words": "ONE THOUSAND ONE HUNDRED EIGHTY RUPEES ONLY"
+                        },
+                        "bank_details": {
+                          "account_number": "XXXXXX2333",
+                          "ifsc": "ABCD0123456",
+                          "bank_name": "SAMPLE BANK"
+                        }
+                      },
+                      "billed": true,
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "other_provider": {
+                    "summary": "A different configured provider: that provider's own shape",
+                    "value": {
+                      "status": "success",
+                      "message": "Invoice details extracted successfully.",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The upload failed validation: empty file, over 6MB, or an unaccepted content-type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1ErrorResponse"
+                },
+                "examples": {
+                  "too_large": {
+                    "summary": "File over 6MB",
+                    "value": {
+                      "status": "error",
+                      "message": "File size exceeds the 6MB limit."
+                    }
+                  },
+                  "bad_content_type": {
+                    "summary": "Unaccepted content type",
+                    "value": {
+                      "status": "error",
+                      "message": "Unsupported file type. Please upload a JPEG, PNG or PDF."
+                    }
+                  },
+                  "empty_file": {
+                    "summary": "Empty file",
+                    "value": {
+                      "status": "error",
+                      "message": "Uploaded file is empty."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/aadhaar_ocr": {
+      "post": {
+        "tags": [
+          "Document OCR"
+        ],
+        "summary": "OCR an Aadhaar card, front or back (legacy, vendor-passthrough)",
+        "description": "Legacy Aadhaar OCR whose response shape is whatever the provider configured for your account returns. Unlike `invoice_ocr` above, this route has no route-level upload validation. See `/v2/verify/aadhaar_ocr` for the current vendor-agnostic version of this product with a consistent response contract across providers.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Aadhaar OCR ran to completion; shape varies by configured provider and by which side of the card was uploaded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1LegacyResponse"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Success",
+                    "value": {
+                      "status": "success",
+                      "data": [
+                        {
+                          "document_type": "aadhaar_front_top",
+                          "full_name": {
+                            "value": "RAHUL SHARMA",
+                            "confidence": 0.95
+                          },
+                          "gender": {
+                            "value": "M",
+                            "confidence": 0.9
+                          },
+                          "mother_name": {
+                            "value": "",
+                            "confidence": 0
+                          },
+                          "father_name": {
+                            "value": "",
+                            "confidence": 0
+                          },
+                          "dob": {
+                            "value": "1990-01-01",
+                            "confidence": 0.9,
+                            "yob": false
+                          },
+                          "aadhaar_number": {
+                            "value": "XXXXXXXX1234",
+                            "confidence": 0.95,
+                            "is_masked": true,
+                            "input_validation": true
+                          },
+                          "image_url": "https://example.com/img.jpg",
+                          "uniqueness_id": "a1b2c3d4e5f6"
+                        }
+                      ],
+                      "verification": {
+                        "qr_found": false,
+                        "name_match": null,
+                        "aadhaar_match": null
+                      },
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "back_side": {
+                    "summary": "Back side upload",
+                    "value": {
+                      "status": "success",
+                      "data": [
+                        {
+                          "document_type": "aadhaar_back",
+                          "address": {
+                            "value": "12 SAMPLE STREET, SAMPLE AREA, BENGALURU, KARNATAKA-560001",
+                            "confidence": 0.9
+                          },
+                          "zip": {
+                            "value": "560001",
+                            "confidence": 0.95
+                          },
+                          "care_of": {
+                            "value": "S/O SURESH SHARMA",
+                            "confidence": 0.9
+                          },
+                          "aadhaar_number": {
+                            "value": "XXXXXXXX1234",
+                            "confidence": 0.95,
+                            "is_masked": true,
+                            "input_validation": true
+                          },
+                          "image_url": "https://example.com/img_back.jpg",
+                          "uniqueness_id": "a1b2c3d4e5f7"
+                        }
+                      ],
+                      "verification": {
+                        "qr_found": false,
+                        "name_match": null,
+                        "aadhaar_match": null
+                      },
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/aadhaar_qr": {
+      "post": {
+        "tags": [
+          "Aadhaar"
+        ],
+        "summary": "Read and verify an Aadhaar secure QR (legacy)",
+        "description": "Legacy Aadhaar secure QR read/verify. Exactly one of `file` or `image_b64` is required; sending both or neither is a 400 with `IDTO_001`. When the in-house provider is configured for your account, the response is identical to the v2 `aadhaar_qr` response shape, plus the generic v1 wrapper fields layered on top; a different configured provider returns that provider's own shape instead. A deprecated alias of this route also exists at `POST /verify/aadhar_qr` (missing the second 'a'), which is the same live handler. See `/v2/verify/aadhaar_qr` for the current vendor-agnostic version of this product.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "An image of the Aadhaar QR code. Exactly one of file/image_b64 is required."
+                  },
+                  "image_b64": {
+                    "type": "string",
+                    "description": "Base64-encoded QR image. Exactly one of file/image_b64 is required."
+                  },
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The QR was read. When the in-house provider is configured for your account, the response is identical to the v2 `aadhaar_qr` response shape (see example `in_house_matches_v2` below) plus the generic v1 wrapper fields. Any other configured provider falls back to `V1LegacyResponse` (see example `other_provider`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "success"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "error_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "null on a full match, an IDTO_2xx code on a definitive no-record result. Both are billed."
+                        },
+                        "data": {
+                          "oneOf": [
+                            {
+                              "$ref": "#/components/schemas/AadhaarQrData"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "billed": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "tranx_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "timestamp": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "message",
+                        "error_code",
+                        "data",
+                        "billed"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/V1LegacyResponse"
+                    }
+                  ]
+                },
+                "examples": {
+                  "in_house_matches_v2": {
+                    "summary": "In-house provider: identical to v2 aadhaar_qr, plus v1 wrapper fields",
+                    "value": {
+                      "status": "success",
+                      "message": "Aadhaar QR verified successfully.",
+                      "error_code": null,
+                      "data": {
+                        "authentic": true,
+                        "is_signed": true,
+                        "reference_id": "1234567890123456789012",
+                        "name": "RAHUL SHARMA",
+                        "dob": "1990-01-01",
+                        "gender": "M",
+                        "address": "12 SAMPLE STREET, SAMPLE AREA, BENGALURU, KARNATAKA-560001",
+                        "pincode": "560001",
+                        "has_photo": true,
+                        "photo": null,
+                        "photo_mime": "image/jpeg",
+                        "extras": {
+                          "signature_verified": true,
+                          "format": "secure_qr",
+                          "care_of": "S/O SURESH SHARMA",
+                          "house": "12",
+                          "street": "SAMPLE STREET",
+                          "landmark": null,
+                          "location": "SAMPLE AREA",
+                          "vtc": "BENGALURU",
+                          "subdistrict": null,
+                          "post_office": "SAMPLE AREA S.O",
+                          "district": "BENGALURU",
+                          "state": "KARNATAKA",
+                          "mobile_registered": true,
+                          "email_registered": false
+                        }
+                      },
+                      "billed": true,
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "other_provider": {
+                    "summary": "A different configured provider: that provider's own shape",
+                    "value": {
+                      "status": "success",
+                      "message": "Aadhaar QR verified successfully.",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request guard was violated: neither or both of file/image_b64 given, or the file upload failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message",
+                    "error_code"
+                  ]
+                },
+                "examples": {
+                  "exactly_one_required": {
+                    "summary": "Neither or both of file/image_b64 given",
+                    "value": {
+                      "status": "failed",
+                      "message": "Send exactly one of file or image_b64",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "empty_file": {
+                    "summary": "Empty file",
+                    "value": {
+                      "status": "failed",
+                      "message": "Uploaded file is empty.",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "oversized_file": {
+                    "summary": "File over 11MB",
+                    "value": {
+                      "status": "failed",
+                      "message": "File size exceeds the 11MB limit.",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "bad_content_type": {
+                    "summary": "Unaccepted content type",
+                    "value": {
+                      "status": "failed",
+                      "message": "Unsupported file type. Please upload a JPEG, PNG, WEBP, BMP or TIFF image.",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "invalid_base64": {
+                    "summary": "Invalid base64 string",
+                    "value": {
+                      "status": "failed",
+                      "message": "image_b64 is not valid base64.",
+                      "error_code": "IDTO_001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The image_b64 string was oversized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "type": "string",
+                      "enum": [
+                        "IDTO_503"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message",
+                    "error_code"
+                  ]
+                },
+                "examples": {
+                  "oversized_b64": {
+                    "summary": "image_b64 too large",
+                    "value": {
+                      "status": "failed",
+                      "message": "image_b64 payload is too large.",
+                      "error_code": "IDTO_503"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
+    },
+    "/verify/aadhar_qr": {
+      "post": {
+        "tags": [
+          "Aadhaar"
+        ],
+        "summary": "[Deprecated] Read and verify an Aadhaar secure QR",
+        "deprecated": true,
+        "description": "Deprecated alias of `POST /verify/aadhaar_qr` (missing the second 'a' in \"aadhaar\"). This is a real, live handler kept for backward compatibility; use `/verify/aadhaar_qr` for new integrations.",
+        "security": [
+          {
+            "ClientIdAuth": [],
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "An image of the Aadhaar QR code. Exactly one of file/image_b64 is required."
+                  },
+                  "image_b64": {
+                    "type": "string",
+                    "description": "Base64-encoded QR image. Exactly one of file/image_b64 is required."
+                  },
+                  "user_id": {
+                    "type": "string"
+                  },
+                  "workflow_session_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The QR was read. When the in-house provider is configured for your account, the response is identical to the v2 `aadhaar_qr` response shape (see example `in_house_matches_v2` below) plus the generic v1 wrapper fields. Any other configured provider falls back to `V1LegacyResponse` (see example `other_provider`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "success"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "error_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "null on a full match, an IDTO_2xx code on a definitive no-record result. Both are billed."
+                        },
+                        "data": {
+                          "oneOf": [
+                            {
+                              "$ref": "#/components/schemas/AadhaarQrData"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "billed": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "tranx_id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "timestamp": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "message",
+                        "error_code",
+                        "data",
+                        "billed"
+                      ]
+                    },
+                    {
+                      "$ref": "#/components/schemas/V1LegacyResponse"
+                    }
+                  ]
+                },
+                "examples": {
+                  "in_house_matches_v2": {
+                    "summary": "In-house provider: identical to v2 aadhaar_qr, plus v1 wrapper fields",
+                    "value": {
+                      "status": "success",
+                      "message": "Aadhaar QR verified successfully.",
+                      "error_code": null,
+                      "data": {
+                        "authentic": true,
+                        "is_signed": true,
+                        "reference_id": "1234567890123456789012",
+                        "name": "RAHUL SHARMA",
+                        "dob": "1990-01-01",
+                        "gender": "M",
+                        "address": "12 SAMPLE STREET, SAMPLE AREA, BENGALURU, KARNATAKA-560001",
+                        "pincode": "560001",
+                        "has_photo": true,
+                        "photo": null,
+                        "photo_mime": "image/jpeg",
+                        "extras": {
+                          "signature_verified": true,
+                          "format": "secure_qr",
+                          "care_of": "S/O SURESH SHARMA",
+                          "house": "12",
+                          "street": "SAMPLE STREET",
+                          "landmark": null,
+                          "location": "SAMPLE AREA",
+                          "vtc": "BENGALURU",
+                          "subdistrict": null,
+                          "post_office": "SAMPLE AREA S.O",
+                          "district": "BENGALURU",
+                          "state": "KARNATAKA",
+                          "mobile_registered": true,
+                          "email_registered": false
+                        }
+                      },
+                      "billed": true,
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  },
+                  "other_provider": {
+                    "summary": "A different configured provider: that provider's own shape",
+                    "value": {
+                      "status": "success",
+                      "message": "Aadhaar QR verified successfully.",
+                      "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                      "timestamp": "2026-09-14T10:15:30Z",
+                      "chargeble": "true",
+                      "user_consent": "true"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request guard was violated: neither or both of file/image_b64 given, or the file upload failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message",
+                    "error_code"
+                  ]
+                },
+                "examples": {
+                  "exactly_one_required": {
+                    "summary": "Neither or both of file/image_b64 given",
+                    "value": {
+                      "status": "failed",
+                      "message": "Send exactly one of file or image_b64",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "empty_file": {
+                    "summary": "Empty file",
+                    "value": {
+                      "status": "failed",
+                      "message": "Uploaded file is empty.",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "oversized_file": {
+                    "summary": "File over 11MB",
+                    "value": {
+                      "status": "failed",
+                      "message": "File size exceeds the 11MB limit.",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "bad_content_type": {
+                    "summary": "Unaccepted content type",
+                    "value": {
+                      "status": "failed",
+                      "message": "Unsupported file type. Please upload a JPEG, PNG, WEBP, BMP or TIFF image.",
+                      "error_code": "IDTO_001"
+                    }
+                  },
+                  "invalid_base64": {
+                    "summary": "Invalid base64 string",
+                    "value": {
+                      "status": "failed",
+                      "message": "image_b64 is not valid base64.",
+                      "error_code": "IDTO_001"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The image_b64 string was oversized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "type": "string",
+                      "enum": [
+                        "IDTO_503"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "message",
+                    "error_code"
+                  ]
+                },
+                "examples": {
+                  "oversized_b64": {
+                    "summary": "image_b64 too large",
+                    "value": {
+                      "status": "failed",
+                      "message": "image_b64 payload is too large.",
+                      "error_code": "IDTO_503"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError422"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -13759,6 +15860,258 @@
           "access_token",
           "token_type",
           "expires_in"
+        ]
+      },
+      "V1LegacyResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "v1 has no canonical response shape for this product: the response is whatever dict the currently-configured provider module returns, passed through nearly as-is, so exact fields vary by provider. Two fields are always injected on top of the provider's own payload: `tranx_id` (string) and `timestamp` (ISO datetime string). Two more fields are injected only when the provider's own `status` field is exactly \"success\": `chargeble` and `user_consent`, both the literal string \"true\" (not booleans). There is no `billed` boolean on v1 responses, that field only exists on v2.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The configured provider's own status field, passed through as-is."
+          },
+          "tranx_id": {
+            "type": "string",
+            "description": "Always injected by IDTO."
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Always injected by IDTO, ISO datetime."
+          },
+          "chargeble": {
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "description": "Injected only when the provider's status was exactly \"success\"."
+          },
+          "user_consent": {
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "description": "Injected only when the provider's status was exactly \"success\"."
+          }
+        }
+      },
+      "V1OkycGenerateOtpResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Unlike most v1 routes, this one has a fixed legacy response shape, not a raw provider passthrough. On success (`status`:\"success\") the OTP was dispatched and the call is billed, carrying `chargeble` and `user_consent`. On failure (`status`:\"failed\") no OTP was sent, the call is not billed, and `chargeble`/`user_consent` are absent.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "Present on success. Pass to okyc_get_result as sessionId/session_id."
+          },
+          "valid_aadhaar": {
+            "type": "boolean",
+            "description": "Present on success."
+          },
+          "sessionActive": {
+            "type": "boolean",
+            "description": "Present on success."
+          },
+          "error_code": {
+            "type": "string",
+            "description": "Present on some failures."
+          },
+          "tranx_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "chargeble": {
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "description": "Present only on success."
+          },
+          "user_consent": {
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "description": "Present only on success."
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "tranx_id",
+          "timestamp"
+        ]
+      },
+      "V1OkycGetResultResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Unlike most v1 routes, this one has a fixed legacy response shape, not a raw provider passthrough. On success, `result` carries the OKYC profile fetched from the Aadhaar OTP flow; on failure `result` is an empty object and `chargeble`/`user_consent` are absent. Gotcha: `result.dob` here is formatted `DD-MM-YYYY` (e.g. \"01-01-1990\"), unlike the v2 `okyc_get_result` counterpart which returns ISO `YYYY-MM-DD`. Anyone migrating from this route to v2 needs to reformat that field.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Empty object ({}) on failure.",
+            "properties": {
+              "bureauConsentId": {
+                "type": "string"
+              },
+              "careof": {
+                "type": "string"
+              },
+              "consent": {
+                "type": "boolean"
+              },
+              "consentType": {
+                "type": "string"
+              },
+              "district": {
+                "type": "string"
+              },
+              "dob": {
+                "type": "string",
+                "description": "DD-MM-YYYY, not ISO. See route-level gotcha."
+              },
+              "gender": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "M",
+                  "F",
+                  "T",
+                  null
+                ]
+              },
+              "house": {
+                "type": "string"
+              },
+              "landmark": {
+                "type": "string"
+              },
+              "locality": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "photo": {
+                "type": "string",
+                "description": "Base64 image data, or an empty string."
+              },
+              "pincode": {
+                "type": "string"
+              },
+              "postOffice": {
+                "type": "string"
+              },
+              "requestDate": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "street": {
+                "type": "string"
+              },
+              "subDistrict": {
+                "type": "string"
+              },
+              "xmlData": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "house": {
+                    "type": "string"
+                  },
+                  "street": {
+                    "type": "string"
+                  },
+                  "landmark": {
+                    "type": "string"
+                  },
+                  "vtc": {
+                    "type": "string"
+                  },
+                  "dist": {
+                    "type": "string"
+                  },
+                  "subdist": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "po": {
+                    "type": "string"
+                  },
+                  "zip": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "tranx_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "chargeble": {
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "description": "Present only on success."
+          },
+          "user_consent": {
+            "type": "string",
+            "enum": [
+              "true"
+            ],
+            "description": "Present only on success."
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "result",
+          "tranx_id",
+          "timestamp"
         ]
       }
     },

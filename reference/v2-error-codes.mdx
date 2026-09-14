@@ -1,0 +1,48 @@
+---
+title: "v2 Error Codes"
+sidebarTitle: "Error Codes"
+description: "The complete IDTO_* error code taxonomy used across every /v2/verify/* endpoint, with HTTP status and billing behavior for each."
+---
+
+Every `/v2/verify/*` response carries a `status`, an `error_code`, and a `billed` flag. This page is the single reference for what each `error_code` means, which HTTP status it arrives with, and whether the call was billed.
+
+## The billing rule
+
+A 2xx response with `status: "success"` is always billed (`billed: true`), whether it's a full match (`error_code: null`) or a definitive no-record result (`error_code` set to one of the `IDTO_2xx` codes below). A raised, non-2xx response always carries `status: "error"` and `billed: false`. There is one exception: `IDTO_204` is a raised, non-2xx error that is also `billed: false` by design, since it costs nothing to detect. There is no `"failed"` status anywhere in the v2 API.
+
+## Full code table
+
+| Code | HTTP Status | Message | Billed |
+| --- | --- | --- | --- |
+| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
+| `IDTO_004` | 409 | Duplicate request. Verification ID already exists. | No |
+| `IDTO_005` | 400 | User consent is required to proceed. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_101` | 400 | A required parameter is missing from the request. | No |
+| `IDTO_102` | 400 | A required parameter is missing from the request. | No |
+| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly or contact support at tech@idto.ai. | No |
+| `IDTO_201` | 200 | Bank account is invalid or does not exist. | Yes |
+| `IDTO_202` | 200 | Record is invalid or does not exist. Per-product messages may override this text. | Yes |
+| `IDTO_203` | 202 | Verification is still in progress. Retrieve the result using reference_id. | No |
+| `IDTO_204` | 422 | No readable Aadhaar QR was found in the image. | **No** (the sole exception: a raised error that is still free) |
+| `IDTO_205` | 422 | Invalid OTP or session expired. Please request a new OTP. | No |
+| `IDTO_206` | 429 | Maximum OTP attempts exceeded. Please generate a new OTP. | No |
+| `IDTO_207` | 404 | No result found for this reference_id. | No |
+| `IDTO_401` | 400 | The account number provided is invalid. | No |
+| `IDTO_402` | 400 | The IFSC code provided is invalid. | No |
+| `IDTO_403` | 503 | This verification could not be completed. Please retry shortly or contact support at tech@idto.ai. | No |
+| `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
+| `IDTO_509` | 500 | Face match could not be completed. Please try again. | No |
+| `IDTO_609` | 500 | Liveness could not be determined. Please try again. | No |
+
+## Idempotency
+
+Send an `Idempotency-Key` header (max 255 characters) on any `/v2/verify/*` request to make retries safe. Replaying the same key with an identical body returns the original result without re-running the verification or billing again. Replaying the same key with a different body is rejected with `IDTO_010`.
+
+<Note>
+  This page documents the v2 error taxonomy only. `/verify/*` (v1) routes predate this shared envelope and each has its own response shape, documented on their individual pages.
+</Note>
