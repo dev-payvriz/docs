@@ -266,6 +266,18 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "API Reference (v2 Preview)",
+        "groups": [
+          {
+            "group": "All Endpoints",
+            "openapi": {
+              "source": "openapi2.0.json",
+              "directory": "api-reference-v2-preview"
+            }
+          }
+        ]
       }
     ]
   },
