@@ -1,0 +1,129 @@
+---
+title: "Web SDK"
+sidebarTitle: "Web (ReactJS)"
+description: "Embed the IDTO verification widget in any web app with a single script tag, no bundler or npm install required."
+---
+
+The Web SDK is a CDN-distributed widget that mounts inside a shadow root, so it never leaks host-page CSS and host-page CSS never leaks into it. It works with any modern browser and any frontend stack, React included, since it is a plain script tag rather than an npm package.
+
+<Note>
+  There is currently no published browser or OS support matrix for this SDK. If your users are on very old browsers, test the flow directly before relying on it in production.
+</Note>
+
+## Install
+
+Add the script tag once, anywhere on the page that will open the widget:
+
+```html
+<script src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/sdk/prod/idto.js"></script>
+```
+
+## Configuration
+
+### Required fields
+
+<ParamField body="client_token" type="string" required>
+  A short-lived token issued by your backend for this verification session.
+</ParamField>
+
+<ParamField body="workflow_template_id" type="string" required>
+  The workflow UUID configured for this product during onboarding.
+</ParamField>
+
+### Optional fields
+
+| Field | Purpose |
+| --- | --- |
+| `getToken` | Callback your backend supplies to refresh `client_token` if the session runs long. |
+| `businessName` | Display name shown in the widget header. |
+| `merchant_user_id` | Your own identifier for this end user, for correlating results with your records. |
+| `logo` | URL of a logo shown in the widget. |
+| `displayMode` | Layout mode for the widget (e.g. modal vs. full screen). |
+| `desktopModal` | Whether to render as a centered modal on desktop viewports. |
+| `bottomSheet` | Whether to render as a bottom sheet on mobile viewports. |
+| `theme` | Visual theme overrides for the widget UI. |
+| `language` | Locale for widget copy. |
+| `env` | Target environment (e.g. sandbox vs. production). |
+| `phone` | Pre-fill the user's mobile number. |
+| `session_token` | Resume a previously started verification session. |
+| `start_fresh` | Force a new session even if a prior one exists for this user. |
+| `pre_verified` | Mark specific modules as already verified, skipping them. |
+| `accumulated_data` | Seed the session with data already collected outside the widget. |
+| `reference_name` | A name to cross-check against document data via name matching. |
+| `nameMatchConfig` | Configuration for the name-match comparison. |
+| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
+| `faceMatchConfig` | Configuration for the face-match comparison. |
+| `panConfig` | Configuration for the PAN verification step. |
+| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
+| `colors` | Color token overrides for the widget theme. |
+| `baseUrl` | Override the API base URL the widget calls. |
+
+<ParamField body="skippable" type="string[]">
+  An array of module slugs (see [Modules](/sdks/modules)) that the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, web included.
+</ParamField>
+
+## Callbacks
+
+<ResponseField name="onStepComplete(data)" type="function">
+  Fires after each module in the workflow finishes.
+
+  <Expandable title="payload fields">
+    <ResponseField name="step" type="string">The module slug that just completed.</ResponseField>
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+    <ResponseField name="credits_deducted" type="number">Credits deducted for this step.</ResponseField>
+    <ResponseField name="balance_remaining" type="number">Your account's remaining credit balance after this step.</ResponseField>
+    <ResponseField name="result" type="object">The step's verification result.</ResponseField>
+    <ResponseField name="accumulated_data" type="object">All data collected across the session so far.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onWorkflowComplete(result)" type="function">
+  Fires when the whole workflow finishes.
+
+  <Expandable title="payload fields">
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+    <ResponseField name="outcome" type="string">
+      Overall workflow outcome. Documented here and returned at runtime, but not currently present in this SDK's published TypeScript types (`IDtoWorkflowCompleteData`). If you consume this in a strictly-typed TypeScript project, cast or widen the type rather than relying on it being inferred.
+    </ResponseField>
+    <ResponseField name="all_steps" type="array">Every module result from the session.</ResponseField>
+    <ResponseField name="accumulated_data" type="object">All data collected across the session.</ResponseField>
+  </Expandable>
+
+  <Note>
+    `credits_deducted` and `balance_remaining` are only available on `onStepComplete`, they are not repeated in this payload.
+  </Note>
+</ResponseField>
+
+<ResponseField name="onError(data)" type="function">
+  Fires on a recoverable or fatal error.
+
+  <Expandable title="payload fields">
+    <ResponseField name="step" type="string">The module slug active when the error occurred.</ResponseField>
+    <ResponseField name="error" type="string">One of 8 stable error strings, or free text when `step` is `"init"`.</ResponseField>
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onAbandon(data)" type="function">
+  Fires when the user leaves the flow before completion.
+
+  <Expandable title="payload fields">
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+    <ResponseField name="at_step" type="string">The module slug the user was on when they left.</ResponseField>
+    <ResponseField name="reason" type="string">Why the session ended, where known.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onClose()" type="function">
+  Fires when the widget closes. No payload.
+</ResponseField>
+
+## Integration notes
+
+<Warning>
+  Always provide at least a `console.error` stub for `onError` and `onAbandon` during development. Omitting either one silently swallows the corresponding failures.
+</Warning>
+
+<Note>
+  Do not call `IDtoSDK.open()` again while a widget instance is already mounted.
+</Note>

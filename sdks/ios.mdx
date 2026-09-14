@@ -1,0 +1,127 @@
+---
+title: "iOS SDK"
+sidebarTitle: "iOS (Swift)"
+description: "Add the IDTO verification flow to a native iOS app via Swift Package Manager or CocoaPods, backed by IDtoConfig and a small set of lifecycle callbacks."
+---
+
+The iOS SDK targets iOS 15.0+ with Swift 6.0 tools, and requires Xcode 16+. It enforces `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` at runtime, throwing `IDtoError.missingUsageDescription` if either is empty or missing from your app's Info.plist.
+
+<Warning>
+  A real device is required for camera, selfie, and liveness steps. The iOS Simulator has no camera.
+</Warning>
+
+## Install
+
+<CodeGroup>
+```swift Swift Package Manager
+.package(url: "https://github.com/idto-ai/swift-sdk.git", from: "0.1.0")
+```
+
+```ruby CocoaPods
+pod 'IDtoSwiftSDK'
+```
+</CodeGroup>
+
+## Configuration
+
+Configuration is supplied via `IDtoConfig`.
+
+### Required fields
+
+<ParamField body="clientToken" type="String" required>
+  Field on `IDtoConfig`.
+</ParamField>
+
+<ParamField body="workflowTemplateId" type="String" required>
+  Field on `IDtoConfig`.
+</ParamField>
+
+### Optional fields
+
+| Field | Purpose |
+| --- | --- |
+| `sessionToken` | Resume a previously started verification session. |
+| `merchantUserId` | Your own identifier for this end user. |
+| `phone` | Pre-fill the user's mobile number. |
+| `startFresh` | Force a new session even if a prior one exists for this user. |
+| `preVerified` | Mark specific modules as already verified, skipping them. |
+| `accumulatedData` | Seed the session with data already collected outside the SDK. |
+| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
+| `referenceName` | A name to cross-check against document data via name matching. |
+| `nameMatchConfig` | Configuration for the name-match comparison. |
+| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
+| `faceMatchConfig` | Configuration for the face-match comparison. |
+| `panConfig` | Configuration for the PAN verification step. |
+| `businessName` | Display name shown in the flow header. |
+| `logo` | Logo shown in the flow. |
+| `language` | Locale for flow copy. |
+| `theme` | Visual theme overrides. |
+| `displayMode` | Layout mode for the flow. |
+| `bottomSheet` | Whether to render as a bottom sheet. |
+| `desktopModal` | Whether to render as a centered modal on larger screens. |
+| `env` | Target environment (e.g. sandbox vs. production). |
+| `baseUrl` | Override the API base URL the SDK calls. |
+| `colors` | Color token overrides. |
+| `getToken` | Callback your app supplies to refresh `clientToken` if the session runs long. |
+| `debug` | Enable verbose SDK logging. |
+| `allowedHosts` | Restrict which hosts the embedded flow may load. |
+| `readyTimeout` | Time to wait for the flow to become ready before failing. |
+
+<ParamField body="skippable" type="[String]">
+  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, iOS included.
+</ParamField>
+
+## Callbacks
+
+<ResponseField name="onStepComplete" type="function">
+  Fires after each module finishes.
+
+  <Expandable title="IDtoStepData fields">
+    <ResponseField name="step" type="String">The module slug that just completed.</ResponseField>
+    <ResponseField name="result" type="Object">The step's verification result.</ResponseField>
+    <ResponseField name="accumulatedData" type="Object">All data collected across the session so far.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+    <ResponseField name="creditsDeducted" type="Number">Credits deducted for this step.</ResponseField>
+    <ResponseField name="balanceRemaining" type="Number">Your account's remaining credit balance after this step.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onWorkflowComplete" type="function">
+  Fires when the whole workflow finishes.
+
+  <Expandable title="IDtoWorkflowCompleteData fields">
+    <ResponseField name="allSteps" type="[Object]">Every module result from the session.</ResponseField>
+    <ResponseField name="accumulatedData" type="Object">All data collected across the session.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onError" type="function">
+  Fires on a recoverable or fatal error.
+
+  <Expandable title="IDtoErrorData fields">
+    <ResponseField name="step" type="String">The module slug active when the error occurred.</ResponseField>
+    <ResponseField name="error" type="String">Error detail.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onAbandon" type="function">
+  Fires when the user leaves the flow before completion.
+
+  <Expandable title="IDtoAbandonData fields">
+    <ResponseField name="atStep" type="String">The module slug the user was on when they left.</ResponseField>
+    <ResponseField name="reason" type="String">Why the session ended, where known.</ResponseField>
+    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Integration notes
+
+<Note>
+  Only one verification session can be active at a time. Starting a second one while the first is still open throws `sessionAlreadyActive`.
+</Note>
+
+<Tip>
+  On-device callbacks are for UX only, never treat them as authoritative. Confirm the final outcome from your backend using the session token before granting access.
+</Tip>

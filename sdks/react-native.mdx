@@ -1,0 +1,133 @@
+---
+title: "React Native SDK"
+sidebarTitle: "React Native"
+description: "Add the IDTO verification flow to a React Native app via npm, controlled by a mountable modal component with a small set of lifecycle callbacks."
+---
+
+The React Native SDK requires `react >=18.0.0`, `react-native >=0.71.0`, and `react-native-webview >=13.6.0`.
+
+<Tip>
+  Using Expo (managed workflow): add the SDK's own config plugin. It writes the camera and microphone permission strings into your app config for you.
+</Tip>
+
+## Install
+
+```bash
+npm install @idto/react-native-sdk react-native-webview react-native-safe-area-context
+cd ios && pod install
+```
+
+## Configuration
+
+Configuration is supplied as props on `IDtoVerificationProps`.
+
+### Required fields
+
+<ParamField body="visible" type="boolean" required>
+  Mounts the verification modal when `true`, unmounts it when `false`.
+</ParamField>
+
+<ParamField body="clientToken" type="string" required>
+  Field on `IDtoVerificationProps`.
+</ParamField>
+
+<ParamField body="workflowTemplateId" type="string" required>
+  Field on `IDtoVerificationProps`.
+</ParamField>
+
+### Optional fields
+
+| Field | Purpose |
+| --- | --- |
+| `sessionToken` | Resume a previously started verification session. |
+| `merchantUserId` | Your own identifier for this end user. |
+| `phone` | Pre-fill the user's mobile number. |
+| `startFresh` | Force a new session even if a prior one exists for this user. |
+| `preVerified` | Mark specific modules as already verified, skipping them. |
+| `accumulatedData` | Seed the session with data already collected outside the SDK. |
+| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
+| `referenceName` | A name to cross-check against document data via name matching. |
+| `nameMatchConfig` | Configuration for the name-match comparison. |
+| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
+| `faceMatchConfig` | Configuration for the face-match comparison. |
+| `panConfig` | Configuration for the PAN verification step. |
+| `businessName` | Display name shown in the flow header. |
+| `logo` | Logo shown in the flow. |
+| `language` | Locale for flow copy. |
+| `theme` | Visual theme overrides. |
+| `displayMode` | Layout mode for the flow. |
+| `bottomSheet` | Whether to render as a bottom sheet. |
+| `env` | Target environment (e.g. sandbox vs. production). |
+| `baseUrl` | Override the API base URL the SDK calls. |
+| `colors` | Color token overrides. |
+| `getToken` | Callback your app supplies to refresh `clientToken` if the session runs long. |
+| `debug` | Enable verbose SDK logging. |
+| `allowedHosts` | Restrict which hosts the embedded flow may load. |
+| `readyTimeout` | Time to wait for the flow to become ready before failing. |
+
+<ParamField body="skippable" type="string[]">
+  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every IDTO SDK, React Native included.
+</ParamField>
+
+<Warning>
+  Config props are read once per open and are immutable for that session. Close the modal and reopen it to apply changed config.
+</Warning>
+
+## Callbacks
+
+<ResponseField name="onStepComplete" type="function">
+  Fires after each module finishes.
+
+  <Expandable title="payload fields">
+    <ResponseField name="step" type="string">The module slug that just completed.</ResponseField>
+    <ResponseField name="result" type="object">The step's verification result.</ResponseField>
+    <ResponseField name="accumulated_data" type="object">All data collected across the session so far.</ResponseField>
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+    <ResponseField name="credits_deducted" type="number">Credits deducted for this step.</ResponseField>
+    <ResponseField name="balance_remaining" type="number">Your account's remaining credit balance after this step.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onWorkflowComplete" type="function">
+  Fires when the whole workflow finishes.
+
+  <Expandable title="payload fields">
+    <ResponseField name="all_steps" type="array">Every module result from the session.</ResponseField>
+    <ResponseField name="accumulated_data" type="object">All data collected across the session.</ResponseField>
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onError" type="function">
+  Fires on a recoverable or fatal error.
+
+  <Expandable title="payload fields">
+    <ResponseField name="step" type="string">The module slug active when the error occurred.</ResponseField>
+    <ResponseField name="error" type="string">One of 8 stable error enum strings.</ResponseField>
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onAbandon" type="function">
+  Fires when the user leaves the flow before completion.
+
+  <Expandable title="payload fields">
+    <ResponseField name="at_step" type="string">The module slug the user was on when they left.</ResponseField>
+    <ResponseField name="reason" type="string">Why the session ended, where known.</ResponseField>
+    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="onClose" type="function">
+  Fires when the modal closes. No payload.
+</ResponseField>
+
+## Integration notes
+
+<Warning>
+  Always provide at least a stub for `onError` and `onAbandon`. Omitting either one silently swallows the corresponding failures.
+</Warning>
+
+<Note>
+  Do not toggle `visible` from `false` back to `true` within about a second of closing it. Wait for `onClose` to fire before reopening.
+</Note>
