@@ -1,0 +1,61 @@
+---
+title: "Balance"
+sidebarTitle: "Balance"
+description: "Retrieve the current credit balance for your IDTO account using the bearer token from Login."
+api: "GET https://prod.idto.ai/me/balance"
+---
+
+Retrieve the current credit balance for your account. Requires the bearer token obtained from [Login](/api-reference/account/login).
+
+<Steps>
+  <Step title="Log in">
+    Call [Login](/api-reference/account/login) with your account email and password to obtain an `access_token`.
+  </Step>
+  <Step title="Check balance">
+    Call this endpoint with `Authorization: Bearer <access_token>` to retrieve your current credit balance.
+  </Step>
+</Steps>
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <access_token>` — the token returned by [Login](/api-reference/account/login).
+</ParamField>
+
+## Response Body
+
+<ResponseField name="balance" type="number">
+  Current account credit balance.
+</ResponseField>
+
+## Example Responses
+
+<AccordionGroup>
+  <Accordion title="200 — Success">
+    ```json
+    {
+      "balance": 1245.5
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="401 — Missing or Invalid Token">
+    ```json
+    {
+      "detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Example
+
+```bash cURL
+curl --request GET \
+  --url https://prod.idto.ai/me/balance \
+  --header 'Authorization: Bearer your_access_token'
+```
+
+<Tip>
+  Use the **Try it** panel on this page to call the live endpoint directly.
+</Tip>

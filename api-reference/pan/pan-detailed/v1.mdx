@@ -1,0 +1,97 @@
+---
+title: "PAN Detailed — v1 (Legacy)"
+sidebarTitle: "v1 (Legacy)"
+description: "Legacy PAN detailed verification endpoint, maintained for backward compatibility. New integrations should use v2."
+api: "POST https://prod.idto.ai/verify/pan_detailed"
+---
+
+Legacy PAN detailed verification endpoint. New integrations should use [PAN Detailed v2](/api-reference/pan/pan-detailed/v2) instead.
+
+## Authentication
+
+<ParamField header="X-Client-ID" type="string" required>Your IDTO client ID.</ParamField>
+<ParamField header="X-API-KEY" type="string" required>Your IDTO API key.</ParamField>
+
+## Request Body
+
+<ParamField body="pan_number" type="string" required>PAN (10-character alphanumeric).</ParamField>
+<ParamField body="name" type="string" default="null">Optional name to match against the PAN record.</ParamField>
+<ParamField body="user_id" type="string" default="null">Optional identifier of your own choosing for correlating this call with your records.</ParamField>
+
+## Response Body
+
+Same `data` shape as [PAN Detailed v2](/api-reference/pan/pan-detailed/v2#response-body), wrapped in the standard v1 envelope (`status`, `message`, `error_code`, `data`, `tranx_id`, `timestamp`).
+
+## Error Codes
+
+| Error Code | HTTP Status | Meaning |
+| --- | --- | --- |
+| `IDTO_001` | 400 or 422 | The request was invalid or missing a required field. |
+| `IDTO_006` | 429 | Too many requests. |
+| `IDTO_007` | 500 | Configuration issue. |
+| `IDTO_008` | 503 | Service temporarily unavailable. |
+
+See the full [Error Codes reference](/error-codes).
+
+## Example Responses
+
+<AccordionGroup>
+  <Accordion title="200 — Success">
+    ```json
+    {
+      "status": "success",
+      "message": "PAN details retrieved successfully",
+      "error_code": null,
+      "data": {
+        "pan_number": "ABCDE1234F",
+        "full_name": "RAHUL SHARMA",
+        "dob": "1990-01-01",
+        "gender": "M",
+        "pan_status": "VALID",
+        "category": "Individual",
+        "aadhaar_linked": true,
+        "masked_aadhaar": "XXXXXXXX9012",
+        "email": "r***l@example.com",
+        "mobile": "XXXXXX7890",
+        "address": {
+          "line1": "12 Sample Street",
+          "line2": "Sample Area",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "pincode": "560001"
+        },
+        "linked_bank_accounts": ["XXXXXXXX4321"]
+      },
+      "tranx_id": "ff1031cb-f24b-4fe5-a088-bc543e3aef43",
+      "timestamp": "2026-07-11T14:46:14.031342+05:30"
+    }
+    ```
+  </Accordion>
+  <Accordion title="401 — Missing or Invalid Credentials">
+    ```json
+    { "detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token." }
+    ```
+  </Accordion>
+  <Accordion title="500 — Internal Server Error">
+    ```json
+    { "detail": { "status": "error", "message": "Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai.", "error_code": "IDTO_007", "data": null, "tranx_id": "0d2a0f1a-3f8f-4f16-b0fa-7d0df6d4f123", "timestamp": "2026-07-11T10:20:30.123456" } }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Example
+
+```bash cURL
+curl --request POST \
+  --url https://prod.idto.ai/verify/pan_detailed \
+  --header 'X-Client-ID: your_client_id' \
+  --header 'X-API-KEY: your_api_key' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "pan_number": "ABCDE1234F"
+  }'
+```
+
+<Tip>
+  Use the **Try it** panel on this page to call the live endpoint directly.
+</Tip>

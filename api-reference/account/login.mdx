@@ -1,0 +1,84 @@
+---
+title: "Login"
+sidebarTitle: "Login"
+description: "Authenticate with your IDTO account email and password to receive a short-lived bearer access token."
+api: "POST https://prod.idto.ai/auth/login"
+---
+
+Authenticate with your account email and password to receive a short-lived bearer access token. Use this token in the `Authorization: Bearer <access_token>` header for the [Balance](/api-reference/account/balance) endpoint and any other account-management endpoint. Verification endpoints (PAN, Aadhaar, etc.) use your `X-Client-ID`/`X-API-KEY` headers instead — not this token.
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  Your IDTO account email address.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Your IDTO account password.
+</ParamField>
+
+## Response Body
+
+<ResponseField name="access_token" type="string">
+  Bearer token to send as `Authorization: Bearer <access_token>` on subsequent authenticated requests.
+</ResponseField>
+
+<ResponseField name="token_type" type="string">
+  Always `"bearer"`.
+</ResponseField>
+
+<ResponseField name="expires_in" type="integer">
+  Seconds until `access_token` expires.
+</ResponseField>
+
+## Example Responses
+
+<AccordionGroup>
+  <Accordion title="200 — Success">
+    ```json
+    {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "token_type": "bearer",
+      "expires_in": 43200
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="401 — Invalid Credentials">
+    ```json
+    {
+      "detail": "Incorrect email or password."
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Validation Error">
+    ```json
+    {
+      "detail": [
+        {
+          "loc": ["body", "email"],
+          "msg": "field required",
+          "type": "value_error.missing"
+        }
+      ]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Example
+
+```bash cURL
+curl --request POST \
+  --url https://prod.idto.ai/auth/login \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "email": "you@example.com",
+    "password": "your_password"
+  }'
+```
+
+<Tip>
+  Use the **Try it** panel on this page to call the live endpoint directly.
+</Tip>

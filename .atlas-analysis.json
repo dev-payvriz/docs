@@ -1,0 +1,278 @@
+{
+  "projectType": "api-service",
+  "projectName": "IDTO Verification API",
+  "projectDescription": "A comprehensive REST API platform for identity, document, business, and biometric verification services across Indian government-issued IDs, corporate records, and financial data.",
+  "theme": "sequoia",
+  "primaryColor": "#ef7025",
+  "lightColor": "#eec9bc",
+  "darkColor": "#4fa1ab",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication",
+              "error-codes"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/api-versioning",
+              "concepts/request-response",
+              "concepts/billing-consent",
+              "concepts/idempotency"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/kyc-workflow",
+              "guides/digilocker-integration",
+              "guides/async-polling",
+              "guides/esign-workflow"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Account",
+            "pages": [
+              "api-reference/account/login",
+              "api-reference/account/balance"
+            ]
+          },
+          {
+            "group": "PAN",
+            "pages": [
+              "api-reference/pan/pan-verification",
+              "api-reference/pan/pan-detailed",
+              "api-reference/pan/business-pan",
+              "api-reference/pan/pan-nsdl"
+            ]
+          },
+          {
+            "group": "Aadhaar",
+            "pages": [
+              "api-reference/aadhaar/okyc-generate-otp",
+              "api-reference/aadhaar/okyc-get-result",
+              "api-reference/aadhaar/aadhaar-qr-decode"
+            ]
+          },
+          {
+            "group": "Document Verification",
+            "pages": [
+              "api-reference/documents/driving-licence",
+              "api-reference/documents/passport",
+              "api-reference/documents/voter-id",
+              "api-reference/documents/name-match"
+            ]
+          },
+          {
+            "group": "Document OCR",
+            "pages": [
+              "api-reference/ocr/aadhaar-ocr",
+              "api-reference/ocr/pan-ocr",
+              "api-reference/ocr/dl-ocr",
+              "api-reference/ocr/invoice-ocr"
+            ]
+          },
+          {
+            "group": "Business & Corporate",
+            "pages": [
+              "api-reference/business/cin-mca",
+              "api-reference/business/gst-verification",
+              "api-reference/business/udyam",
+              "api-reference/business/company-name-to-cin",
+              "api-reference/business/shop-establishment",
+              "api-reference/business/coi-advance"
+            ]
+          },
+          {
+            "group": "Bank Account",
+            "pages": [
+              "api-reference/bank/bank-verification",
+              "api-reference/bank/pennyless",
+              "api-reference/bank/ifsc-lookup",
+              "api-reference/bank/bank-statement-pdf"
+            ]
+          },
+          {
+            "group": "Biometric",
+            "pages": [
+              "api-reference/biometric/face-match",
+              "api-reference/biometric/liveness"
+            ]
+          },
+          {
+            "group": "DigiLocker",
+            "pages": [
+              "api-reference/digilocker/digilocker-v2",
+              "api-reference/digilocker/digilocker-v1-session"
+            ]
+          },
+          {
+            "group": "Cross-Reference Lookups",
+            "pages": [
+              "api-reference/cross-reference/aadhaar-to-pan",
+              "api-reference/cross-reference/mobile-to-pan",
+              "api-reference/cross-reference/pan-to-uan",
+              "api-reference/cross-reference/pan-to-din",
+              "api-reference/cross-reference/mobile-to-uan",
+              "api-reference/cross-reference/mobile-to-vpa"
+            ]
+          },
+          {
+            "group": "Vehicle",
+            "pages": [
+              "api-reference/vehicle/rc-verification",
+              "api-reference/vehicle/challan-lookup",
+              "api-reference/vehicle/fastag-toll-history"
+            ]
+          },
+          {
+            "group": "Mobile Intelligence",
+            "pages": [
+              "api-reference/mobile/mobile-profile",
+              "api-reference/mobile/mobile-reachability"
+            ]
+          },
+          {
+            "group": "Payments & Finance",
+            "pages": [
+              "api-reference/payments/vpa-verification",
+              "api-reference/payments/credit-report"
+            ]
+          },
+          {
+            "group": "Employment & Background",
+            "pages": [
+              "api-reference/employment/court-check",
+              "api-reference/employment/employment-history",
+              "api-reference/employment/uan-passbook",
+              "api-reference/employment/async-result"
+            ]
+          },
+          {
+            "group": "eSign",
+            "pages": [
+              "api-reference/esign/initiate-signing",
+              "api-reference/esign/fetch-signed-document"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "PAN verification and detailed lookup (individual and business)",
+    "Aadhaar OKYC (OTP-based identity verification) and QR decode",
+    "Driving licence, passport, and voter ID verification",
+    "Document OCR for Aadhaar, PAN, driving licence, and invoices",
+    "Business verification: CIN/MCA, GST, Udyam (MSME), shop & establishment",
+    "Bank account verification (penny-drop and pennyless) with IFSC lookup",
+    "Bank statement PDF analysis (multi-step upload and reporting workflow)",
+    "Face match and liveness detection",
+    "DigiLocker integration for government-issued document fetching",
+    "Cross-reference lookups: Aadhaar-to-PAN, Mobile-to-PAN, PAN-to-UAN, and more",
+    "Vehicle RC verification, e-challan lookup, and FASTag toll history",
+    "Mobile network intelligence and reachability",
+    "UPI VPA verification and Experian credit report",
+    "Employment history and court record checks via UAN",
+    "Electronic signature (eSign) workflow with Aadhaar authentication",
+    "Idempotency-Key support on v2 endpoints for safe retries",
+    "Async verification polling for long-running checks"
+  ],
+  "publicApiSurface": [
+    "POST /verify/pan_verification",
+    "POST /v2/verify/pan_validation",
+    "POST /verify/pan_detailed",
+    "POST /v2/verify/pan_detailed",
+    "POST /verify/business_pan",
+    "POST /verify/pan_nsdl",
+    "POST /verify/okyc_generate_otp",
+    "POST /v2/verify/okyc_generate_otp",
+    "POST /verify/okyc_get_result",
+    "POST /v2/verify/okyc_get_result",
+    "POST /verify/aadhaar_qr",
+    "POST /v2/verify/aadhaar_qr",
+    "POST /verify/driving_licence",
+    "POST /v2/verify/driving_licence",
+    "POST /verify/passport",
+    "POST /verify/voter_verification",
+    "POST /verify/name_match",
+    "POST /verify/aadhaar_ocr",
+    "POST /v2/verify/aadhaar_ocr",
+    "POST /verify/ocr",
+    "POST /v2/verify/pan_ocr",
+    "POST /v2/verify/dl_ocr",
+    "POST /verify/invoice_ocr",
+    "POST /v2/verify/invoice_ocr",
+    "POST /verify/cin_mca_verification",
+    "POST /v2/verify/cin_mca_verification",
+    "POST /verify/gst_verification_basic",
+    "POST /v2/verify/gst_verification_basic",
+    "POST /verify/gst_verification",
+    "POST /verify/gst_advance",
+    "POST /verify/company_name_to_cin",
+    "POST /verify/shop_establishment_verification",
+    "POST /verify/verify_udyam",
+    "POST /verify/coi_advance",
+    "POST /verify/bank_verification",
+    "POST /v2/verify/bank_verification",
+    "POST /verify/bank_verification/pennyless",
+    "POST /verify/ifsc_verification",
+    "POST /verify/bank_statement_pdf/start_upload",
+    "POST /verify/bank_statement_pdf/upload",
+    "POST /verify/bank_statement_pdf/complete",
+    "POST /verify/bank_statement_pdf/status",
+    "POST /verify/bank_statement_pdf/report",
+    "POST /verify/bank_statement_pdf/cancel",
+    "GET  /verify/bank_statement_pdf/institutions",
+    "POST /verify/face_match",
+    "POST /v2/verify/face_match",
+    "POST /verify/liveness",
+    "POST /v2/verify/liveness",
+    "POST /verify/digilocker/initiate_session",
+    "POST /verify/digilocker",
+    "POST /verify/digilocker/get_reference",
+    "POST /verify/digilocker/verify_account",
+    "POST /verify/digilocker/user_details",
+    "POST /verify/digilocker/issued_docs",
+    "POST /verify/digilocker/get_issued_docs",
+    "POST /verify/digilocker/fetch_aadhaar",
+    "POST /verify/digilocker/fetch_pan",
+    "POST /v2/verify/digilocker",
+    "POST /verify/aadhar_to_pan",
+    "POST /verify/mobile_to_pan",
+    "POST /verify/pan_to_uan",
+    "POST /verify/pan_to_din",
+    "POST /verify/mobile_to_uan",
+    "POST /verify/mobile_to_vpa",
+    "POST /verify/vehicle_rc",
+    "POST /verify/vehicle_rc_plus",
+    "POST /verify/vehicle_challan",
+    "POST /verify/fastag_toll_history",
+    "POST /verify/mobile_profile",
+    "POST /verify/mobile_profile_advance",
+    "POST /verify/mobile_reachability",
+    "POST /verify/vpa_verification",
+    "POST /verify/credit_report",
+    "POST /verify/court_check",
+    "POST /verify/employment_history",
+    "POST /verify/uan_passbook/without_otp",
+    "GET  /verify/result/{reference_id}",
+    "POST /verify/esign",
+    "POST /verify/esign/document",
+    "POST /auth/login",
+    "GET  /me/balance"
+  ]
+}

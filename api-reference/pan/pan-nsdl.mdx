@@ -1,0 +1,119 @@
+---
+title: "PAN NSDL"
+sidebarTitle: "PAN NSDL"
+description: "Validate a PAN, name, and date of birth directly against the NSDL source of record."
+api: "POST https://prod.idto.ai/verify/pan_nsdl"
+---
+
+Validate a PAN together with the holder's name and date of birth directly against the NSDL (Protean) source of record. Unlike [PAN Verification](/api-reference/pan/pan-verification/v2), this endpoint requires and cross-checks `name` and `dob`.
+
+## Authentication
+
+<ParamField header="X-Client-ID" type="string" required>Your IDTO client ID.</ParamField>
+<ParamField header="X-API-KEY" type="string" required>Your IDTO API key.</ParamField>
+
+## Request Body
+
+<ParamField body="pan_number" type="string" required>PAN number (10 characters: 5 letters, 4 digits, 1 letter).</ParamField>
+<ParamField body="name" type="string" required>Name as provided by the user, matched against the NSDL record.</ParamField>
+<ParamField body="dob" type="string" required>Date of birth, e.g. `"1990-05-21"`.</ParamField>
+<ParamField body="user_id" type="string" default="null">Optional identifier of your own choosing for correlating this call with your records.</ParamField>
+
+## Response Body
+
+<ResponseField name="status" type="string">`"success"` or `"error"`.</ResponseField>
+<ResponseField name="message" type="string">Human-readable message.</ResponseField>
+<ResponseField name="error_code" type="string">Nullable.</ResponseField>
+<ResponseField name="data" type="object">
+  Nullable.
+  <Expandable title="data fields">
+    <ResponseField name="pan_number" type="string">Nullable.</ResponseField>
+    <ResponseField name="name_match" type="boolean">Nullable. Whether the supplied name matched the NSDL record.</ResponseField>
+    <ResponseField name="dob_match" type="boolean">Nullable. Whether the supplied date of birth matched the NSDL record.</ResponseField>
+    <ResponseField name="pan_status" type="string">Nullable.</ResponseField>
+    <ResponseField name="aadhaar_seeding_status" type="string">Nullable. e.g. `"LINKED"`, `"NOT LINKED"`.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="tranx_id" type="string">Nullable.</ResponseField>
+<ResponseField name="timestamp" type="string">Nullable.</ResponseField>
+
+## Error Codes
+
+| Error Code | HTTP Status | Meaning |
+| --- | --- | --- |
+| `IDTO_001` | 400 or 422 | The request was invalid or missing a required field. |
+| `IDTO_006` | 429 | Too many requests. |
+| `IDTO_007` | 500 | Configuration issue. |
+| `IDTO_008` | 503 | Service temporarily unavailable. |
+
+See the full [Error Codes reference](/error-codes).
+
+## Example Responses
+
+<AccordionGroup>
+  <Accordion title="200 — Success, Full Match">
+    ```json
+    {
+      "status": "success",
+      "message": "PAN validated successfully against NSDL",
+      "error_code": null,
+      "data": {
+        "pan_number": "ABCDE1234F",
+        "name_match": true,
+        "dob_match": true,
+        "pan_status": "VALID",
+        "aadhaar_seeding_status": "LINKED"
+      },
+      "tranx_id": "ff1031cb-f24b-4fe5-a088-bc543e3aef43",
+      "timestamp": "2026-07-11T14:46:14.031342+05:30"
+    }
+    ```
+  </Accordion>
+  <Accordion title="200 — Success, Name Mismatch">
+    ```json
+    {
+      "status": "success",
+      "message": "PAN validated against NSDL; supplied name did not match record",
+      "error_code": null,
+      "data": {
+        "pan_number": "ABCDE1234F",
+        "name_match": false,
+        "dob_match": true,
+        "pan_status": "VALID",
+        "aadhaar_seeding_status": "LINKED"
+      },
+      "tranx_id": "ff1031cb-f24b-4fe5-a088-bc543e3aef43",
+      "timestamp": "2026-07-11T14:46:14.031342+05:30"
+    }
+    ```
+  </Accordion>
+  <Accordion title="400 — Bad Request">
+    ```json
+    { "detail": { "status": "error", "message": "Missing required field: dob", "error_code": "IDTO_001", "data": null, "tranx_id": "0d2a0f1a-3f8f-4f16-b0fa-7d0df6d4f123", "timestamp": "2026-07-11T10:20:30.123456" } }
+    ```
+  </Accordion>
+  <Accordion title="401 — Missing or Invalid Credentials">
+    ```json
+    { "detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token." }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Example
+
+```bash cURL
+curl --request POST \
+  --url https://prod.idto.ai/verify/pan_nsdl \
+  --header 'X-Client-ID: your_client_id' \
+  --header 'X-API-KEY: your_api_key' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "pan_number": "ABCDE1234F",
+    "name": "Rahul Sharma",
+    "dob": "1990-05-21"
+  }'
+```
+
+<Tip>
+  Use the **Try it** panel on this page to call the live endpoint directly.
+</Tip>

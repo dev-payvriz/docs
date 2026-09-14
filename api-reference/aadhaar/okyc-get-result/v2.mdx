@@ -1,0 +1,135 @@
+---
+title: "OKYC Verify OTP & Get Result — v2 (Recommended)"
+sidebarTitle: "v2 (Recommended)"
+description: "Step 2 of the Aadhaar OKYC workflow. Submit the session_id and OTP to complete verification and retrieve Aadhaar identity data."
+api: "POST https://prod.idto.ai/v2/verify/okyc_get_result"
+---
+
+Step 2 of the Aadhaar OKYC flow. Submit the `session_id` from [Step 1](/api-reference/aadhaar/okyc-generate-otp/v2) along with the OTP the user received to complete verification and retrieve identity data.
+
+## Authentication
+
+<ParamField header="X-Client-ID" type="string" required>Your IDTO client ID.</ParamField>
+<ParamField header="X-API-KEY" type="string" required>Your IDTO API key.</ParamField>
+
+## Request Body
+
+<ParamField body="session_id" type="string" required>The `session_id` returned by [OKYC Generate OTP](/api-reference/aadhaar/okyc-generate-otp/v2).</ParamField>
+<ParamField body="otp" type="string" required>The OTP the user received on their Aadhaar-linked mobile.</ParamField>
+<ParamField body="user_id" type="string" default="null">Optional caller-supplied end-user identifier.</ParamField>
+<ParamField body="workflow_session_token" type="string" default="null">Optional Workflow V2 session token; when present, billing is attributed to the session instead of this call.</ParamField>
+
+## Response Body
+
+<ResponseField name="status" type="string">`"success"` for a 2xx response; `"error"` for a raised exception (non-2xx).</ResponseField>
+<ResponseField name="message" type="string">Human-readable message.</ResponseField>
+<ResponseField name="error_code" type="string">Nullable.</ResponseField>
+<ResponseField name="data" type="object">
+  Nullable — identity data on success; `null` on non-success.
+  <Expandable title="data fields">
+    <ResponseField name="name" type="string">Nullable. Full name on the Aadhaar record.</ResponseField>
+    <ResponseField name="dob" type="string">Nullable. Date of birth (ISO 8601 date).</ResponseField>
+    <ResponseField name="gender" type="string">Nullable. `male`, `female`, or `transgender`.</ResponseField>
+    <ResponseField name="care_of" type="string">Nullable. Care-of / guardian name.</ResponseField>
+    <ResponseField name="house" type="string">Nullable.</ResponseField>
+    <ResponseField name="street" type="string">Nullable.</ResponseField>
+    <ResponseField name="landmark" type="string">Nullable.</ResponseField>
+    <ResponseField name="locality" type="string">Nullable.</ResponseField>
+    <ResponseField name="district" type="string">Nullable.</ResponseField>
+    <ResponseField name="sub_district" type="string">Nullable.</ResponseField>
+    <ResponseField name="state" type="string">Nullable.</ResponseField>
+    <ResponseField name="pincode" type="string">Nullable.</ResponseField>
+    <ResponseField name="post_office" type="string">Nullable.</ResponseField>
+    <ResponseField name="has_photo" type="boolean">Nullable. Whether a photo was returned by the vendor.</ResponseField>
+    <ResponseField name="photo" type="string">Nullable. Base64-encoded photo, when `has_photo` is `true`.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="tranx_id" type="string">Nullable.</ResponseField>
+<ResponseField name="timestamp" type="string">Nullable.</ResponseField>
+<ResponseField name="billed" type="boolean">Whether this call was billed to the customer.</ResponseField>
+
+## Error Codes
+
+| Error Code | HTTP Status | Meaning |
+| --- | --- | --- |
+| `IDTO_001` | 400 or 422 | The request was invalid or missing a required field. |
+| `IDTO_205` | 422 | The OTP was incorrect or has expired. |
+| `IDTO_206` | 429 | Maximum OTP attempts exceeded for this session. |
+| `IDTO_006` | 429 | Too many requests. |
+| `IDTO_007` | 500 | Configuration issue. |
+| `IDTO_008` | 503 | Service temporarily unavailable. |
+| `IDTO_009` | 402 | Insufficient credit balance. |
+
+See the full [Error Codes reference](/error-codes).
+
+## Example Responses
+
+<AccordionGroup>
+  <Accordion title="200 — Verified">
+    ```json
+    {
+      "status": "success",
+      "message": "Aadhaar OKYC completed successfully.",
+      "error_code": null,
+      "data": {
+        "name": "Rahul Sharma",
+        "dob": "1990-01-01",
+        "gender": "male",
+        "care_of": "S/O Suresh Sharma",
+        "house": "12",
+        "street": "Sample Street",
+        "landmark": "Sample Landmark",
+        "locality": "Sample Area",
+        "district": "Bengaluru",
+        "sub_district": "Sample Taluk",
+        "state": "Karnataka",
+        "pincode": "560001",
+        "post_office": "Sample Post",
+        "has_photo": true,
+        "photo": "iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAIAAAA..."
+      },
+      "tranx_id": "0d2a0f1a-3f8f-4f16-b0fa-7d0df6d4f123",
+      "timestamp": "2026-07-11T10:20:30.123456",
+      "billed": true
+    }
+    ```
+  </Accordion>
+  <Accordion title="422 — Wrong or Expired OTP (IDTO_205)">
+    ```json
+    { "status": "error", "message": "The OTP is incorrect or has expired.", "error_code": "IDTO_205", "data": null, "billed": false }
+    ```
+  </Accordion>
+  <Accordion title="429 — Max OTP Attempts Exceeded (IDTO_206)">
+    ```json
+    { "status": "error", "message": "Maximum OTP attempts exceeded for this session. Please request a new OTP.", "error_code": "IDTO_206", "data": null, "billed": false }
+    ```
+  </Accordion>
+  <Accordion title="402 — Insufficient Credits (IDTO_009)">
+    ```json
+    { "status": "error", "message": "Your account does not have enough credit balance for this request.", "error_code": "IDTO_009", "data": null, "billed": false }
+    ```
+  </Accordion>
+  <Accordion title="503 — Service Unavailable (IDTO_008)">
+    ```json
+    { "status": "error", "message": "The verification service is momentarily busy. Please retry shortly.", "error_code": "IDTO_008", "data": null, "billed": false }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Example
+
+```bash cURL
+curl --request POST \
+  --url https://prod.idto.ai/v2/verify/okyc_get_result \
+  --header 'X-Client-ID: your_client_id' \
+  --header 'X-API-KEY: your_api_key' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "session_id": "87d02abb-ece3-4b76-a8fe-cd08292e1330",
+    "otp": "123456"
+  }'
+```
+
+<Tip>
+  Use the **Try it** panel on this page to call the live endpoint directly.
+</Tip>
