@@ -1,163 +1,61 @@
 ---
-title: "IDTO API Error Codes and HTTP Status Code Reference"
+title: "Error Codes"
 sidebarTitle: "Error Codes"
-description: "Complete reference for all IDTO error codes (IDTO_001–IDTO_207), HTTP status codes, and guidance on how to handle each failure mode."
+description: "How IDTO reports success, no-record, and failure outcomes across every v2 endpoint, and where to look up a specific error code."
 ---
 
-Every v2 response from IDTO includes an `error_code` field at the top level of the response envelope. When the call succeeds, `error_code` is `null`. When something goes wrong — or when a query returns no matching record — `error_code` contains an `IDTO_XXX` identifier that tells you exactly what happened and what to do next. Always branch your application logic on `error_code`, not on the HTTP status code or `message` text, because message text can change between API releases.
+Every `/v2/verify/*` response carries the same three fields for figuring out what happened: `status`, `error_code`, and `billed`. Branch your integration on `error_code`, not on `message` text, `message` is written for a human and can change wording between releases without notice.
 
-## v2 vs v1 Error Envelopes
+## The three fields
 
-The two API versions surface errors differently. Prefer v2 for new integrations.
+<ResponseField name="status" type="string">
+  `"success"` for any 2xx response, `"error"` for a raised, non-2xx response. There's no `"failed"` value in v2, a definitive no-match is still `"success"`, see below.
+</ResponseField>
 
-<Tabs>
-  <Tab title="v2 (Recommended)">
-    v2 returns a flat envelope. The `error_code` field is always present and is `null` on success:
+<ResponseField name="error_code" type="string | null">
+  `null` on a full match. Set to an `IDTO_*` code on a no-record result or on a raised error. The code, not the HTTP status or the message, is what identifies the exact outcome.
+</ResponseField>
 
-    ```json
-    {
-      "status": "error",
-      "message": "User consent not provided",
-      "error_code": "IDTO_005",
-      "data": null,
-      "billed": false,
-      "tranx_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "timestamp": "2026-07-11T10:20:30.123456"
-    }
-    ```
-  </Tab>
-  <Tab title="v1 (Legacy)">
-    v1 wraps error detail inside a `detail` object, making programmatic handling less predictable:
+<ResponseField name="billed" type="boolean">
+  Whether the call consumed a credit. Always matches whether the response is a 2xx `"success"`: `true` for a full match, `true` for a definitive no-record result, `false` for anything raised.
+</ResponseField>
 
-    ```json
-    {
-      "detail": {
-        "status": "error",
-        "message": "User consent not provided",
-        "error_code": "IDTO_005"
-      }
-    }
-    ```
-  </Tab>
-</Tabs>
+## No-record is still success
 
-## IDTO Error Code Reference
+The pattern most integrations trip on: a query that runs cleanly but finds nothing (an invalid PAN, a bank account that doesn't exist) is not an error. It's HTTP `200`, `status: "success"`, `data: null`, and an `IDTO_2xx` code in `error_code`. `billed` is `true`, the check still ran and still cost a credit.
 
-<Warning>
-  **`IDTO_202` is not a failure.** It means the request was processed successfully, a credit was consumed, but no matching government record was found for the input you provided. Do not treat it as a hard error — handle it as a valid "no record" outcome.
-</Warning>
-
-| Error Code | HTTP Status | Meaning | Recommended Action |
-|-----------|------------|---------|-------------------|
-| `IDTO_001` | 400 / 422 | Invalid or missing field in the request | Check the `message` field for the specific field name. Fix the request body and retry. |
-| `IDTO_004` | 409 | Duplicate idempotency key | You sent the same idempotency key for a different request. Use a new unique key for each distinct request. |
-| `IDTO_005` | 400 | User consent not provided | Add `"user_consent": true` to the request body. |
-| `IDTO_006` | 429 | Rate limit exceeded | Back off and retry after the interval indicated in the `Retry-After` response header. |
-| `IDTO_007` | 500 | Service configuration error | This is an IDTO-side issue. Retry once after a short delay; if it persists, contact [tech@idto.ai](mailto:tech@idto.ai) with the `tranx_id`. |
-| `IDTO_008` | 503 | Service temporarily unavailable | The upstream government data source is unreachable. Retry with exponential back-off. |
-| `IDTO_009` | 402 | Insufficient credits | Top up your IDTO account balance before retrying. |
-| `IDTO_202` | 200 | No matching record found — **billed** | The request was valid and processed. No government record matched the input. Handle as a "not found" result, not an error. |
-| `IDTO_203` | 202 | Verification in progress — use async polling | The result is not yet ready. Poll `GET /v2/verify/result/{reference_id}` until the status changes. |
-| `IDTO_204` | 422 | No readable QR found in the uploaded image | Ensure the Aadhaar QR code is clearly visible, well-lit, and unobstructed, then re-upload. |
-| `IDTO_205` | 422 | Wrong OTP or expired OTP session | The OTP entered is incorrect or the session has timed out. Restart the OTP flow from the initiation step. |
-| `IDTO_206` | 429 | Maximum OTP attempts exceeded | The user has exhausted all OTP attempts for this session. Start a new session. |
-| `IDTO_207` | 404 | Async result not found | The `reference_id` does not match any pending or completed async job. Verify the ID and retry, or re-submit the original request. |
-
-<Note>
-  **Async flows and `IDTO_203`:** When you receive `IDTO_203`, the `data` object in the response contains a `reference_id`. Poll `GET /v2/verify/result/{reference_id}` at a reasonable interval (e.g., every 2–5 seconds) until `error_code` is no longer `IDTO_203`.
-</Note>
-
-## HTTP Status Code Reference
-
-| HTTP Status | Typical Meaning | Common IDTO Error Codes |
-|------------|----------------|------------------------|
-| `200 OK` | Request processed successfully | `null` (success), `IDTO_202` (no record, billed) |
-| `202 Accepted` | Request accepted, result pending | `IDTO_203` |
-| `400 Bad Request` | Malformed request or business rule violation | `IDTO_001`, `IDTO_005` |
-| `401 Unauthorized` | Missing or invalid authentication credentials | — (auth error, no IDTO code) |
-| `402 Payment Required` | Insufficient account credits | `IDTO_009` |
-| `404 Not Found` | Resource or async result does not exist | `IDTO_207` |
-| `409 Conflict` | Duplicate idempotency key | `IDTO_004` |
-| `413 Payload Too Large` | Uploaded file or request body exceeds size limit | — |
-| `422 Unprocessable Entity` | Validation error or unprocessable input | `IDTO_001`, `IDTO_204`, `IDTO_205` |
-| `429 Too Many Requests` | Rate limit or OTP attempt limit exceeded | `IDTO_006`, `IDTO_206` |
-| `500 Internal Server Error` | Unexpected server-side error | `IDTO_007` |
-| `503 Service Unavailable` | Upstream government service is unreachable | `IDTO_008` |
-
-## Handling Error Codes in Code
-
-The example below shows a complete error-handling pattern in Python. Notice that the branching is entirely on `error_code` — not on `response.status_code` or `body["message"]`.
-
-```python Python
-import os
-import time
-import requests
-
-def verify_pan(pan_number: str) -> dict:
-    url = "https://prod.idto.ai/v2/verify/pan_validation"
-    headers = {
-        "X-Client-ID": os.environ["IDTO_CLIENT_ID"],
-        "X-API-KEY":   os.environ["IDTO_API_KEY"],
-    }
-    payload = {"pan_number": pan_number, "user_consent": True}
-
-    response = requests.post(url, json=payload, headers=headers)
-    body = response.json()
-    error_code = body.get("error_code")
-
-    # --- Success ---
-    if error_code is None:
-        return body["data"]
-
-    # --- No record found (still billed) ---
-    if error_code == "IDTO_202":
-        print(f"No government record found for PAN: {pan_number}")
-        return {}
-
-    # --- Async result not yet ready ---
-    if error_code == "IDTO_203":
-        reference_id = body["data"]["reference_id"]
-        return poll_async_result(reference_id, headers)
-
-    # --- User consent missing ---
-    if error_code == "IDTO_005":
-        raise ValueError("Set user_consent=True before calling this endpoint.")
-
-    # --- Insufficient credits ---
-    if error_code == "IDTO_009":
-        raise RuntimeError("Insufficient IDTO credits. Please top up your account.")
-
-    # --- Rate limit ---
-    if error_code == "IDTO_006":
-        retry_after = int(response.headers.get("Retry-After", 5))
-        print(f"Rate limited. Retrying in {retry_after}s …")
-        time.sleep(retry_after)
-        return verify_pan(pan_number)  # single retry
-
-    # --- Transient server errors ---
-    if error_code in ("IDTO_007", "IDTO_008"):
-        print(f"Transient error ({error_code}). Retrying in 5s …")
-        time.sleep(5)
-        return verify_pan(pan_number)  # single retry
-
-    # --- Unhandled error code ---
-    raise RuntimeError(
-        f"Verification failed [{error_code}]: {body.get('message')} "
-        f"(tranx_id={body.get('tranx_id')})"
-    )
-
-
-def poll_async_result(reference_id: str, headers: dict, max_attempts: int = 10) -> dict:
-    url = f"https://prod.idto.ai/v2/verify/result/{reference_id}"
-    for attempt in range(max_attempts):
-        time.sleep(3)
-        response = requests.get(url, headers=headers)
-        body = response.json()
-        if body.get("error_code") != "IDTO_203":
-            return body.get("data", {})
-    raise TimeoutError(f"Async result not ready after {max_attempts} attempts.")
+```json
+{
+  "status": "success",
+  "message": "Record is invalid or does not exist.",
+  "error_code": "IDTO_202",
+  "data": null,
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
 ```
 
-<Note>
-  Always log the `tranx_id` returned in every response — even failures. It is the primary identifier the IDTO support team uses to investigate issues. Never rely on `message` text for branching: it is human-readable and subject to change without notice.
-</Note>
+Treat this as a distinct, expected outcome in your application, alongside "matched" and "raised error", not as a failure to catch and retry.
+
+## Raised errors
+
+Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status on a raised error tells you the category (`400`/`422` for a bad request, `402` for insufficient credits, `429` for rate limiting, `500`/`503` for an IDTO-side or upstream issue), and `error_code` tells you exactly which one.
+
+```json
+{
+  "status": "error",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
+  "data": null,
+  "billed": false
+}
+```
+
+## Idempotent retries
+
+Send an `Idempotency-Key` header on a `/v2/verify/*` request to make retrying that exact call safe. Replaying the same key with the same body returns the original result rather than running (and billing) the check again. Replaying the same key with a different body is rejected.
+
+## Full code reference
+
+The complete `IDTO_*` table, every code, its HTTP status, its default message, and whether it's billed, lives on one page: [v2 Error Codes](/reference/v2-error-codes). This page explains the pattern; that page is the lookup table.

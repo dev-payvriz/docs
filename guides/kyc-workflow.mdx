@@ -1,259 +1,165 @@
 ---
-title: "Build a Complete KYC Workflow with PAN and Aadhaar"
+title: "KYC Workflow"
 sidebarTitle: "KYC Workflow"
-description: "Learn how to build a complete KYC pipeline by combining PAN validation and Aadhaar OKYC to verify identity and cross-match names reliably."
+description: "Run a multi-step KYC flow (PAN, Aadhaar, bank account, face match) for an end customer using a hosted Verification Link, with no orchestration UI of your own to build."
 ---
 
-A complete Know Your Customer (KYC) flow typically combines two checks: PAN validation to confirm the taxpayer identity, and Aadhaar OKYC to verify residential address and demographics via OTP. Together, they give you a government-backed identity proof and a current address — the two pillars of most onboarding requirements. This guide walks you through each step in sequence, shows you how to cross-match names across both documents, and covers the errors you are most likely to encounter.
+A real onboarding check is rarely one call. You need mobile verification, a PAN check, a bank account check, a face match, maybe more, run in a fixed order for one person, with a single combined result at the end. Building that sequencing, state machine and UI yourself is real work. IDTO's **Verification Links** do it for you: you configure the sequence once, mint a link, hand it to the end customer, and get one result back when they finish.
 
 <Note>
-  Every v2 request body must include `"user_consent": true`. Omitting this field returns a `400` with error code `IDTO_005`. Always obtain explicit user consent before calling any verification endpoint.
+  This guide covers what a developer can call directly. Creating and managing a workflow template and a verification link happens in the IDTO merchant dashboard, authenticated with your dashboard login, not with the `X-Client-ID` / `X-API-Key` pair used everywhere else in this API. The dashboard-issued session token is a separate credential (`DashboardSession` in the API reference) scoped only to link and webhook management, it is not something your backend mints with its API key. If you need links minted entirely from your own backend without a human in the loop, that isn't available today, talk to your IDTO contact.
 </Note>
 
-## Prerequisites
-
-- A valid `X-Client-ID` and `X-API-KEY` for your account.
-- Sufficient credits — PAN and Aadhaar OKYC are billed separately.
-- The user's PAN number and Aadhaar-linked mobile number.
-
----
-
-## Full KYC Flow
+## How it fits together
 
 <Steps>
-  <Step title="Verify PAN">
-    Call `POST /v2/verify/pan_validation` with the user's PAN number. On success you receive the name on the PAN card, the PAN category, and the PAN status.
 
-    ```python Python
-    import requests
+### Build the workflow and mint a link (dashboard)
 
-    BASE_URL = "https://prod.idto.ai"
-    HEADERS = {
-        "X-Client-ID": "<your_client_id>",
-        "X-API-KEY":   "<your_api_key>",
-        "Content-Type": "application/json",
-    }
+In the dashboard's workflow builder, pick the modules that should run, in order, for example `mobile_verification`, `pan_validation`, `aadhaar_verification`, `bank_verification`, `face_match`. This becomes a workflow template. From there, mint a **verification link** against that template: give it a label, a run budget (`max_runs`), and an expiry (`expires_in_days`, capped per your account). The dashboard returns a shareable URL:
 
-    def verify_pan(pan_number: str) -> dict:
-        payload = {
-            "pan_number": pan_number,
-            "user_consent": True,
-        }
-        response = requests.post(
-            f"{BASE_URL}/v2/verify/pan_validation",
-            json=payload,
-            headers=HEADERS,
-        )
-        response.raise_for_status()
-        return response.json()
+```json
+{
+  "id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "token": "lnk_8f3a2b91c4d5e6f7",
+  "url": "https://link.idto.ai/v/lnk_8f3a2b91c4d5e6f7",
+  "label": "Vendor onboarding KYC",
+  "workflow_template_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "max_runs": 100,
+  "runs_used": 0,
+  "runs_left": 100,
+  "expires_at": "2026-10-14T10:15:30Z",
+  "revoked_at": null,
+  "status": "active"
+}
+```
 
-    result = verify_pan("ABCDE1234F")
-    pan_data = result["data"]
+A link is `active` until it turns `expired` (past `expires_at`), `spent` (`runs_used` reaches `max_runs`), or `revoked`. Revoking is immediate and permanent, even a session already in progress is cut off. Letting a link expire or run out of runs only blocks *new* sessions, one already under way can still finish.
 
-    print(pan_data["pan_name"])    # "RAVI KUMAR SHARMA"
-    print(pan_data["category"])    # "Individual"
-    print(pan_data["pan_status"])  # "VALID"
-    ```
+### Send the link to your end customer
 
-    **Example response:**
+Send the `url` to whoever needs to complete the check, by SMS, email, WhatsApp, wherever makes sense for your product. Opening it runs the hosted flow in their browser, no SDK integration required on your side for this path.
 
-    ```json
-    {
-      "status": "success",
-      "message": "PAN validation successful",
-      "error_code": null,
-      "data": {
-        "pan": "ABCDE1234F",
-        "pan_name": "RAVI KUMAR SHARMA",
-        "category": "Individual",
-        "pan_status": "VALID"
-      },
-      "billed": true,
-      "tranx_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "timestamp": "2026-07-11T10:20:30.123456"
-    }
-    ```
+### The end customer's browser drives the flow
 
-    Save `pan_data["pan_name"]` — you will use it in the name-match step later.
-  </Step>
+These three endpoints have no dashboard-session or API-key auth. They are called directly by the end customer's browser using the opaque link token as the credential, and are rate-limited per IP address instead.
 
-  <Step title="Generate Aadhaar OKYC OTP">
-    Call `POST /v2/verify/okyc_generate_otp` with the user's Aadhaar number. The API triggers an OTP to the Aadhaar-linked mobile and returns a `session_id` that ties together this OTP session.
+`GET /links/{token}` resolves the link before starting, so the page can show what's coming and whether the link still works:
 
-    ```python Python
-    def generate_okyc_otp(aadhaar_number: str) -> str:
-        payload = {
-            "aadhaar_number": aadhaar_number,
-            "user_consent": True,
-        }
-        response = requests.post(
-            f"{BASE_URL}/v2/verify/okyc_generate_otp",
-            json=payload,
-            headers=HEADERS,
-        )
-        response.raise_for_status()
-        data = response.json()
-        session_id = data["data"]["session_id"]
-        print(f"OTP sent. Session ID: {session_id}")
-        return session_id
+```bash
+curl https://prod.idto.ai/links/lnk_8f3a2b91c4d5e6f7
+```
 
-    session_id = generate_okyc_otp("123456789012")
-    ```
+```json
+{
+  "label": "Vendor onboarding KYC",
+  "brand": {
+    "businessName": "Acme Retail",
+    "brandColor": "#111111",
+    "theme": "light",
+    "blurb": "Quick identity check before we onboard you as a vendor.",
+    "site_url": "https://acme.example.com"
+  },
+  "presentation": { "displayMode": "full_screen" },
+  "options": { "skippable": ["pan_validation"] },
+  "module_sequence": ["mobile_verification", "pan_validation", "face_match"],
+  "workflow_template_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "usable": true,
+  "runs_left": 100
+}
+```
 
-    **Example response:**
+`POST /links/session` starts the actual verification session and returns a `client_token`, the short-lived token the IDTO SDK is initialized with client-side to run through `module_sequence` in order:
 
-    ```json
-    {
-      "status": "success",
-      "message": "OTP sent successfully",
-      "error_code": null,
-      "data": {
-        "session_id": "sess_a1b2c3d4e5f6"
-      },
-      "billed": false,
-      "tranx_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-      "timestamp": "2026-07-11T10:20:35.654321"
-    }
-    ```
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/links/session \
+  --header "Content-Type: application/json" \
+  --data '{"token": "lnk_8f3a2b91c4d5e6f7"}'
+```
 
-    Present the OTP input field to your user. You have a limited window and a limited number of attempts before the session expires.
-  </Step>
+```json
+{
+  "client_token": "eyJhbGciOiJIUzI1NiJ9.example.client-token",
+  "session_token": "sess_3c9a1e2b7d4f5061",
+  "workflow_template_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "module_sequence": ["mobile_verification", "pan_validation", "face_match"],
+  "expires_in": 900
+}
+```
 
-  <Step title="Submit OTP and Fetch Aadhaar Data">
-    Call `POST /v2/verify/okyc_get_result` with the `session_id` from the previous step and the OTP entered by the user. On success, the API returns the user's name, date of birth, gender, and masked address as stored in the Aadhaar database.
+Starting fresh spends one run against the link's budget. If the page reloads mid-flow, pass the `session_token` you already have back into the same call to resume without spending another run:
 
-    ```python Python
-    def submit_okyc_otp(session_id: str, otp: str) -> dict:
-        payload = {
-            "session_id": session_id,
-            "otp": otp,
-            "user_consent": True,
-        }
-        response = requests.post(
-            f"{BASE_URL}/v2/verify/okyc_get_result",
-            json=payload,
-            headers=HEADERS,
-        )
-        response.raise_for_status()
-        return response.json()
+```json
+{ "token": "lnk_8f3a2b91c4d5e6f7", "session_token": "sess_3c9a1e2b7d4f5061" }
+```
 
-    # otp collected from your user's input
-    kyc_result = submit_okyc_otp(session_id, otp="723841")
-    aadhaar_data = kyc_result["data"]
+`POST /links/token` re-mints just the `client_token` for an existing session, useful when only the token expired (`expires_in` seconds, 900 in the examples above) but the flow itself is still live:
 
-    print(aadhaar_data["name"])     # "Ravi Kumar Sharma"
-    print(aadhaar_data["dob"])      # "1990-05-15"
-    print(aadhaar_data["address"])  # { "house": "...", "street": "...", ... }
-    ```
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/links/token \
+  --header "Content-Type: application/json" \
+  --data '{"token": "lnk_8f3a2b91c4d5e6f7", "session_token": "sess_3c9a1e2b7d4f5061"}'
+```
 
-    **Example response:**
+<Note>
+  If you call these three endpoints from your own backend on the end customer's behalf, for example to embed the link inside your own app shell, set the `X-Idto-End-Customer-IP` header to the real end customer's IP. Otherwise every one of your customers is rate-limited as if they shared one IP address, your server's.
+</Note>
 
-    ```json
-    {
-      "status": "success",
-      "message": "OKYC verification successful",
-      "error_code": null,
-      "data": {
-        "name": "Ravi Kumar Sharma",
-        "dob": "1990-05-15",
-        "gender": "M",
-        "address": {
-          "house": "12, Green Avenue",
-          "street": "MG Road",
-          "landmark": "Near City Mall",
-          "locality": "Koramangala",
-          "district": "Bengaluru Urban",
-          "state": "Karnataka",
-          "pincode": "560034",
-          "country": "India"
-        },
-        "masked_aadhaar": "XXXX-XXXX-3456"
-      },
-      "billed": true,
-      "tranx_id": "550e8400-e29b-41d4-a716-446655440000",
-      "timestamp": "2026-07-11T10:21:02.987654"
-    }
-    ```
-  </Step>
+### Get the combined result
 
-  <Step title="Cross-Match Names Across Documents">
-    You now have a name from PAN (`pan_name`) and a name from Aadhaar (`name`). Names from different government databases often differ in spacing, initials, or transliteration. Use the Name Match API to run a fuzzy comparison instead of a strict string equality check.
+Configure a webhook URL and signing secret for your account in the dashboard (**Webhooks** section). When the session finishes, whatever the outcome, IDTO POSTs a signed payload to that URL:
 
-    ```python Python
-    def match_names(name_1: str, name_2: str) -> dict:
-        payload = {
-            "name1": name_1,
-            "name2": name_2,
-        }
-        response = requests.post(
-            f"{BASE_URL}/verify/name_match",
-            json=payload,
-            headers=HEADERS,
-        )
-        response.raise_for_status()
-        return response.json()
+```json
+{
+  "session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "session_token": "sess_3c9a1e2b7d4f5061",
+  "status": "completed",
+  "outcome": "verified",
+  "partial": false,
+  "completed_steps": ["mobile_verification", "pan_validation", "face_match"],
+  "skipped_steps": [],
+  "fallback_steps": [],
+  "branch_excluded_steps": [],
+  "consents": [
+    { "consent_type": "dpdp_processing", "consent_version": "v1", "consented_at": "2026-09-14T10:22:11Z" }
+  ],
+  "event_id": "evt_b6e1f2a0-1234-4abc-9def-0123456789ab_completed"
+}
+```
 
-    pan_name     = pan_data["pan_name"]       # "RAVI KUMAR SHARMA"
-    aadhaar_name = aadhaar_data["name"]       # "Ravi Kumar Sharma"
+`outcome` is the verdict once `status` reaches `completed`: `verified`, `needs_review`, or `not_verified`. If your webhook is configured to include the report, a `report` object is added once it's ready, with a short-lived presigned `url`, `expires_at`, `content_type` and `filename`, minted fresh on every delivery attempt so it never arrives already expired.
 
-    match_result = match_names(pan_name, aadhaar_name)
+Every webhook carries three headers you should verify before trusting the body:
 
-    print(match_result["data"]["match_score"])   # 98
-    print(match_result["data"]["match_result"])  # "match"
-    ```
+| Header | Meaning |
+| --- | --- |
+| `X-Idto-Event-Id` | Stable per-session-completion id, safe to use as an idempotency key on your side. |
+| `X-Idto-Timestamp` | Unix timestamp the signature was computed over. |
+| `X-Idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your signing secret. |
 
-    **Example response:**
+```python
+import hashlib
+import hmac
 
-    ```json
-    {
-      "status": "success",
-      "message": "Name match completed",
-      "error_code": null,
-      "data": {
-        "name1": "RAVI KUMAR SHARMA",
-        "name2": "Ravi Kumar Sharma",
-        "match_score": 98,
-        "match_result": "match"
-      },
-      "billed": true,
-      "tranx_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "timestamp": "2026-07-11T10:21:10.112233"
-    }
-    ```
+def verify_idto_webhook(secret, raw_body, timestamp, signature_header):
+    expected = hmac.new(
+        secret.encode(),
+        (timestamp + ".").encode() + raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest("sha256=" + expected, signature_header)
+```
 
-    Treat a `match_result` of `"match"` as identity confirmed. A `"no_match"` result means the names diverge significantly — flag the application for manual review rather than automatically rejecting it.
-  </Step>
+Retry your signing secret against both the current and, during a rotation window, the previous secret, since a rotation does not invalidate deliveries already in flight.
+
 </Steps>
 
-<Tip>
-  Use `POST /verify/name_match` any time you compare names across two different documents. It handles case differences, abbreviated middle names, and common transliteration variants — all of which are frequent in Indian government records.
-</Tip>
+## What this guide is not
 
----
-
-## Enhanced KYC
-
-For higher-assurance onboarding (RBI-regulated products, securities accounts, etc.), extend the flow with two additional checks:
-
-- **PAN Detailed** (`POST /v2/verify/pan_detailed`) — returns Aadhaar seeding status, TAN linkage, and additional taxpayer flags beyond basic PAN validation.
-- **Face Match** — submit a selfie alongside the Aadhaar photo to biometrically confirm the applicant is the document owner.
-
-Add these calls after Step 3 and before the name-match step to keep the flow linear.
-
----
-
-## Error Handling
-
-The table below covers the errors most commonly encountered during a PAN + Aadhaar OKYC flow and the recommended action for each.
-
-| Error Code   | HTTP Status | Meaning                                     | Recommended Action                                                                 |
-|--------------|-------------|---------------------------------------------|------------------------------------------------------------------------------------|
-| `IDTO_001`   | 400 / 422   | Invalid or missing field                    | Check that `pan`, `aadhaar_number`, `session_id`, and `otp` are correctly formatted and present. |
-| `IDTO_005`   | 400         | User consent not provided                   | Ensure `"user_consent": true` is in every request body before retrying.            |
-| `IDTO_202`   | 200         | No matching record found — billed           | The ID number is correctly formatted but not present in the government database. Prompt the user to re-check their document. |
-| `IDTO_205`   | 422         | Wrong OTP or expired session                | Ask the user to re-enter the OTP. If the session has expired, restart from Step 2. |
-| `IDTO_206`   | 429         | Maximum OTP attempts exceeded               | Start a fresh OKYC session (new OTP generation). Inform the user that the previous session is now locked. |
+The `/sdk/v2/session/*` endpoints (session init, step start/complete, finalize, and so on) are the internal protocol IDTO's own SDKs (web, Android, iOS, Flutter, React Native) speak to the backend once a `client_token` is in hand. They are not part of this public API surface and aren't documented here, if you're embedding verification inside your own native or web app rather than sending customers to the hosted link, integrate the relevant [SDK](/sdks/web) instead of calling that protocol yourself.
 
 <Warning>
-  Do not retry `IDTO_206` against the same `session_id`. The session is permanently locked after the maximum attempts are exceeded. Generate a new OTP to create a fresh session.
+  `mobile_verification` can never be included in a link's `skippable` list, it's how the end customer is identified for the session. Any other module in the sequence can be marked skippable if your workflow allows completing it later.
 </Warning>

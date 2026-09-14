@@ -1,81 +1,68 @@
 ---
-title: "IDTO Verification API — Indian Identity & Document Checks"
+title: "IDTO: Identity and KYC Verification API for India"
 sidebarTitle: "Introduction"
-description: "IDTO is a unified REST API for verifying Indian identities, documents, and businesses — PAN, Aadhaar, GST, biometrics, DigiLocker, and more."
+description: "IDTO is a single REST API for verifying Indian identity documents, businesses, vehicles, credit history, and more, with a consistent request and response contract across every product."
 ---
 
-IDTO is a comprehensive REST API platform that gives you a single integration point for every identity, document, and business verification workflow used in India. From instant PAN validation and Aadhaar OTP-based KYC to GST lookups, face-match biometrics, and DigiLocker document retrieval, IDTO abstracts the complexity of dealing with multiple government data sources behind a consistent, well-documented interface — so your engineering team can ship compliant verification flows in days, not months.
+IDTO gives you one API for the identity and business checks an Indian KYC or onboarding flow needs: PAN, Aadhaar, bank accounts, GST, vehicle records, credit bureaus, DigiLocker, face match, and document OCR, all behind the same authentication scheme and the same response shape. You integrate once against IDTO, and IDTO handles routing each check to whichever verification source produces the result, so a change in how a particular check is sourced never changes your integration.
 
-## Key Capabilities
+## Capability map
 
 <CardGroup cols={2}>
-  <Card title="PAN Verification" icon="id-card">
-    Validate PAN numbers, retrieve holder names, check PAN status, verify PAN-to-Aadhaar linking, and perform 206 and 206A checks for high-value transaction compliance.
+  <Card title="PAN" icon="id-card">
+    Validate a PAN, pull the full KYC field set (name, address, masked Aadhaar), OCR a PAN card image, and resolve PAN from related identifiers like a director ID or CIN.
   </Card>
-  <Card title="Aadhaar KYC" icon="fingerprint">
-    Perform OTP-based Aadhaar Offline KYC (OKYC) to retrieve full demographic data — name, DOB, address, gender, and photo — with citizen consent.
+  <Card title="Aadhaar" icon="fingerprint">
+    OTP-based Aadhaar Offline KYC (OKYC), Aadhaar QR decode, and Aadhaar card OCR.
   </Card>
-  <Card title="Document OCR" icon="file-magnifying-glass">
-    Extract structured data from scanned or photographed documents: Aadhaar cards, PAN cards, passports, driving licences, voter IDs, and more. Supports both front and back sides.
+  <Card title="Bank Account" icon="building-columns">
+    Verify account number and IFSC combinations, resolve UPI VPAs, and parse bank statement PDFs.
   </Card>
-  <Card title="Business & Corporate" icon="building">
-    Look up live GST registrations, MCA company details, CIN records, FSSAI licences, and Udyam (MSME) registrations to power B2B due-diligence and onboarding workflows.
+  <Card title="Business & GST" icon="building">
+    GST registration lookups, MCA and CIN company records, FSSAI licences, Udyam (MSME) registration, and shop and establishment checks.
   </Card>
-  <Card title="Bank Account Verification" icon="building-columns">
-    Verify bank account numbers and IFSC codes for validity, retrieve account holder names, and confirm account status without a penny drop.
+  <Card title="Vehicle & RC" icon="car">
+    Registration certificate (RC) lookups, challan history, and FASTag verification from the Vahan database.
   </Card>
-  <Card title="Biometric & Face Match" icon="face-viewfinder">
-    Compare a selfie against a document photo or Aadhaar record using our liveness-aware face-match engine. Supports base64-encoded JPEG and PNG images.
+  <Card title="Mobile & UPI" icon="mobile">
+    Mobile number OTP, mobile-to-identity lookups (PAN, GST, UAN), reachability checks, and UPI VPA resolution.
   </Card>
-  <Card title="DigiLocker Integration" icon="vault">
-    Initiate a citizen-consent DigiLocker session to pull government-issued documents — Aadhaar XML, driving licence, degree certificates, and more — directly into your application.
+  <Card title="Employment, EPFO & UAN" icon="briefcase">
+    UAN verification, EPFO passbook and employment history retrieval.
   </Card>
-  <Card title="Vehicle & RC Lookup" icon="car">
-    Retrieve registration certificate (RC) data for any vehicle, including owner name, chassis number, fuel type, and insurance validity, from the Vahan database.
+  <Card title="Credit Bureau" icon="chart-line">
+    Credit reports and scores across bureau sources, plus OTP-gated consent flows where the bureau requires one.
   </Card>
-  <Card title="Mobile & Telecom" icon="mobile">
-    Run mobile number intelligence checks: verify operator, circle, porting history, and whether a number is active.
+  <Card title="DigiLocker" icon="vault">
+    Citizen-consent DigiLocker sessions to fetch government-issued documents: Aadhaar, PAN, driving licence, marksheets, and more, as structured data or the original XML.
+  </Card>
+  <Card title="Driving Licence" icon="id-badge">
+    Driving licence verification and driving licence OCR.
+  </Card>
+  <Card title="Face & Liveness" icon="camera">
+    Face match between two images and liveness detection from a selfie or short video.
+  </Card>
+  <Card title="Document OCR" icon="file-lines">
+    General-purpose OCR for identity and business documents beyond the product-specific OCR endpoints.
+  </Card>
+  <Card title="Address & Invoice" icon="map-pin">
+    Invoice OCR and address intelligence derived from a mobile profile.
+  </Card>
+  <Card title="Voter & Passport" icon="flag">
+    Voter ID verification and passport verification.
   </Card>
   <Card title="eSign" icon="pen-nib">
-    Collect Aadhaar-based electronic signatures on documents with full audit trail, compliant with the IT Act.
+    Aadhaar-based electronic signature collection on a document, plus retrieval of the signed PDF once execution completes.
+  </Card>
+  <Card title="Verification Links" icon="link">
+    Hosted, no-code verification sessions you can send a user as a link instead of building the flow yourself.
   </Card>
 </CardGroup>
 
-## Base URL
+## v1 and v2
 
-All API requests are made over HTTPS to the production server:
+IDTO exposes two API generations side by side: `/verify/*` (v1) and `/v2/verify/*` (v2). Both are live and both work. v2 is the current standard: a single response envelope across every product, standardized `IDTO_*` error codes, and idempotency support. Build new integrations against v2. See [API Versioning](/concepts/api-versioning) for the full comparison and for which endpoints are v2-only versus v1-only today.
 
-```
-https://prod.idto.ai
-```
+## Where to go next
 
-There are no separate staging or sandbox hostnames. Use test credentials provided by the IDTO team during development to avoid consuming production credits.
-
-## API Versioning
-
-IDTO exposes two API versions that co-exist on the same host:
-
-| Version | Path prefix | Status | Notes |
-|---------|-------------|--------|-------|
-| v1 | `/verify/...` | Legacy | Supported, but no new features added |
-| v2 | `/v2/verify/...` | **Recommended** | Flat response envelope, richer error codes, idempotency support |
-
-Use **v2 for all new integrations**. The v2 response envelope looks like this:
-
-```json
-{
-  "status": "success",
-  "message": "PAN details fetched successfully",
-  "error_code": null,
-  "data": { ... },
-  "billed": true,
-  "tranx_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "timestamp": "2026-07-11T10:20:30.123456"
-}
-```
-
-The v1 envelope wraps errors differently (inside a `detail` object), which makes consistent error handling harder. Migrate existing v1 integrations to v2 when possible.
-
-## Support
-
-For credentials, billing questions, or technical issues, contact the IDTO engineering team at [tech@idto.ai](mailto:tech@idto.ai).
+Head to the [Quickstart](/quickstart) to get credentials and make your first call. From there, [Authentication](/authentication) covers both auth methods in depth, and [Error Codes](/error-codes) explains how to handle every outcome a verification call can return.

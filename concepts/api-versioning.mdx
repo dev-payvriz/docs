@@ -1,154 +1,66 @@
 ---
-title: "API Versioning: v1 vs v2 Differences and Migration Guide"
+title: "API Versioning"
 sidebarTitle: "API Versioning"
-description: "Understand how IDTO v1 and v2 co-exist, the key differences in response envelopes and error handling, and how to migrate an existing integration."
+description: "Why /verify/* and /v2/verify/* run side by side, what the v2 envelope actually guarantees, and which one to call for a given product."
 ---
 
-IDTO runs two API versions concurrently. Version 1 (v1) was the original release and remains available for endpoints that have not yet been migrated. Version 2 (v2) is the current standard and introduces a consistent response envelope, structured error codes, mandatory user consent, and idempotency support. For all new integrations, use v2 wherever it is available.
+IDTO exposes two live API surfaces at the same time: `/verify/*` (v1) and `/v2/verify/*` (v2). Neither is deprecated on a fixed timeline. v2 is the current standard and the one you should reach for by default. v1 stays live because a large share of products have not been ported onto the v2 envelope yet, and because some integrations depend on the exact legacy response shape.
 
-## Path Prefixes
+## The v2 envelope
 
-Every endpoint belongs to exactly one version based on its URL prefix:
+Every `/v2/verify/*` product returns one of two shapes, regardless of which underlying provider served the request.
 
-- **v1** endpoints live under `/verify/*` — for example, `/verify/pan`
-- **v2** endpoints live under `/v2/verify/*` — for example, `/v2/verify/pan`
+A success (any 2xx status) always looks like this:
 
-Both versions share the same production base URL: `https://prod.idto.ai`
-
-## What Changed in v2
-
-The table below summarises the most important differences between the two versions.
-
-| Feature | v1 | v2 |
-|---|---|---|
-| **Response envelope** | `{ ..., chargeble, user_consent }` (flat, inconsistent) | `{ status, message, error_code, data, billed, tranx_id, timestamp }` |
-| **Error shape** | `{ "detail": { "status": "...", "message": "..." } }` | Same flat envelope as success responses |
-| **User consent** | Optional — not enforced | Required — `user_consent: true` must be present in every request body |
-| **Idempotency** | Not supported | Supported via optional `Idempotency-Key` request header |
-| **Error codes** | None / ad-hoc strings | Standardised `IDTO_*` codes in `error_code` field |
-| **Transaction ID** | Not present | Every response includes a `tranx_id` UUID for support correlation |
-
-## Which Version Should You Use?
-
-<Note>
-Use v2 for all new integrations. It provides predictable error handling, structured billing signals, and safe retry semantics through idempotency keys.
-</Note>
-
-A small number of endpoints do not yet have a v2 equivalent. For those, continue using v1:
-
-- `business_pan` — `/verify/business_pan`
-- `pan_nsdl` — `/verify/pan_nsdl`
-- `passport` — `/verify/passport`
-- `voter_id` — `/verify/voter_id`
-
-Check the individual endpoint reference pages for the canonical version label and path.
-
-## Side-by-Side Comparison: PAN Verification
-
-The following example shows the same PAN verification request made in both versions so you can see exactly what differs in the request body and the response structure.
-
-<CodeGroup>
-
-```bash v1 – POST /verify/pan
-curl --request POST \
-  --url https://prod.idto.ai/verify/pan \
-  --header 'Content-Type: application/json' \
-  --header 'X-Client-ID: <your_client_id>' \
-  --header 'X-API-KEY: <your_api_key>' \
-  --data '{
-    "pan": "ABCDE1234F",
-    "name": "Ravi Kumar"
-  }'
-```
-
-```bash v2 – POST /v2/verify/pan
-curl --request POST \
-  --url https://prod.idto.ai/v2/verify/pan \
-  --header 'Content-Type: application/json' \
-  --header 'X-Client-ID: <your_client_id>' \
-  --header 'X-API-KEY: <your_api_key>' \
-  --data '{
-    "pan": "ABCDE1234F",
-    "name": "Ravi Kumar",
-    "user_consent": true
-  }'
-```
-
-</CodeGroup>
-
-<CodeGroup>
-
-```json v1 – Success Response
-{
-  "pan": "ABCDE1234F",
-  "name": "Ravi Kumar",
-  "status": "VALID",
-  "chargeble": true,
-  "user_consent": null
-}
-```
-
-```json v2 – Success Response
+```json
 {
   "status": "success",
   "message": "PAN verified successfully.",
   "error_code": null,
-  "data": {
-    "pan": "ABCDE1234F",
-    "name": "Ravi Kumar",
-    "status": "VALID"
-  },
+  "data": { "...": "..." },
   "billed": true,
-  "tranx_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "timestamp": "2026-07-11T10:20:30.123456"
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
 }
 ```
 
-</CodeGroup>
+`error_code` stays `null` on a full match and carries an `IDTO_2xx` code on a definitive no-record result (`data` is `null` in that case). Both are still `status: "success"` and both are billed: v2 has no `"failed"` status anywhere in its contract, so never branch your integration on `status`, branch on `error_code`.
 
-<CodeGroup>
+A raised error (any non-2xx status) always looks like this instead:
 
-```json v1 – Error Response
-{
-  "detail": {
-    "status": "error",
-    "message": "Invalid PAN format."
-  }
-}
-```
-
-```json v2 – Error Response
+```json
 {
   "status": "error",
-  "message": "Invalid or missing field: pan.",
-  "error_code": "IDTO_001",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
   "data": null,
   "billed": false,
-  "tranx_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-  "timestamp": "2026-07-11T10:20:31.456789"
+  "chargeble": "false",
+  "user_consent": "false"
 }
 ```
 
-</CodeGroup>
+`chargeble` and `user_consent` are legacy string flags carried over from v1 for contract uniformity across the stack. On every v2 error they are hardcoded to `"false"`; they are not a second consent signal, ignore them and read `billed` instead. Unlike the success shape, an error response never carries `tranx_id` or `timestamp`, since no verification ran to produce a transaction record.
 
-## Migration Checklist
+## Vendor-agnostic by construction
 
-When upgrading an existing v1 integration to v2, work through this checklist:
+For a given v2 product, the request contract, the canonical response keys, the `IDTO_*` error codes, and the billing outcome are identical no matter which provider actually served the call. A no-record PAN lookup returns `error_code: "IDTO_202"` and `billed: true` whether it was served by one underlying provider or another; a rate limit returns `IDTO_006` either way. Provider-specific translation lives entirely inside each product's internal vendor adapter and never leaks into the response you see. See [Error Codes](/reference/v2-error-codes) for the full `IDTO_*` table.
 
-<Steps>
-  <Step title="Update the endpoint path">
-    Change `/verify/<endpoint>` to `/v2/verify/<endpoint>` in every API call.
-  </Step>
-  <Step title="Add user_consent to every request body">
-    Append `"user_consent": true` to all request payloads. Without it, every call returns `IDTO_005`.
-  </Step>
-  <Step title="Update your response parser">
-    Read `status`, `error_code`, and `data` from the new envelope instead of the v1 flat structure. Replace checks on `chargeble` with checks on `billed`.
-  </Step>
-  <Step title="Adopt IDTO_* error handling">
-    Map each `IDTO_*` error code to your application's retry or alert logic. See the [error codes reference](/error-codes) for the full list.
-  </Step>
-  <Step title="Optionally add Idempotency-Key">
-    Generate a UUID v4 per request and pass it as the `Idempotency-Key` header to enable safe retries without duplicate billing.
-  </Step>
-</Steps>
+## v1: raw pass-through, no shared envelope
+
+v1 predates the shared envelope. A v1 response is close to whatever the underlying verification provider returned, reshaped only in two ways:
+
+- `tranx_id` and `timestamp` are always added to the response, on every call, success or not.
+- `chargeble` and `user_consent` are added only when the call was actually charged, which v1 decides by reading the provider's own `status` field on its raw reply. If that field says success, v1 stamps `chargeble: "true"` and `user_consent: "true"` and deducts credits; if not, neither key appears and nothing is charged.
+
+There is no `IDTO_*` error taxonomy in v1 and no fixed field set: two different v1 products can shape their success payload completely differently, because each one is just forwarding what its provider sent back. Consult that endpoint's own schema and examples rather than assuming any of the v2 conventions apply.
+
+## Which one to call
+
+IDTO currently has 17 products migrated onto v2: `aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `dl_ocr`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`, `pan_ocr`, and `pan_validation`.
+
+- **Use v2 for any of those 17 products.** It's the standard contract, the vendor-agnostic billing, and the one that will keep getting new products.
+- **Use v1 for everything else.** The remaining products, things like `esign`, `credit_report`, `gst_verification`, `mobile_to_pan`, and dozens more, have no v2 equivalent yet. v1 is the only way to reach them today.
+- **Fall back to v1 on purpose for the handful of products that exist in both.** 14 products (`aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`) are reachable on both versions. Use v1 there only when you specifically need the raw legacy shape for an existing integration you don't want to touch; otherwise v2 is the better default even when both exist.
+
+If you're unsure whether a product you need has a v2 endpoint, check that product's page directly, the path prefix (`/verify/` vs `/v2/verify/`) tells you which contract applies.

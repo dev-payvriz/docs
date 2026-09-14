@@ -1,144 +1,88 @@
 ---
-title: "Authentication: API Keys and Bearer Tokens for IDTO"
+title: "Authentication"
 sidebarTitle: "Authentication"
-description: "Learn how to authenticate IDTO API calls using API Key headers for verification endpoints and Bearer JWT tokens for account management."
+description: "How to authenticate server-to-server calls with API key headers, and how to mint short-lived tokens for browser and mobile SDKs."
 ---
 
-IDTO uses two authentication schemes depending on the endpoint you are calling. Verification endpoints (anything under `/verify/` or `/v2/verify/`) use a static API Key pair passed as request headers. Account management endpoints (balance, profile) use a short-lived Bearer JWT that you obtain by logging in. This page explains both methods and shows you exactly which headers to send.
+IDTO has two ways to authenticate, depending on where the call originates.
 
-## Method 1 — API Key Authentication
+## Server-to-server: API key headers
 
-Use this method for all verification and lookup endpoints.
-
-Pass both headers on **every request**:
+Every call to `/verify/*` (v1) or `/v2/verify/*` (v2) is authenticated with a static header pair:
 
 | Header | Value |
-|--------|-------|
-| `X-Client-ID` | Your unique client identifier |
-| `X-API-KEY` | Your secret API key |
+| --- | --- |
+| `X-Client-ID` | Your client identifier |
+| `X-API-Key` | Your secret API key |
 
-### Example
+Send both on every request. There's no separate login step for this method, the headers are the credential.
 
-<CodeGroup>
-
-```bash cURL
+```bash
 curl --request POST \
-  --url https://prod.idto.ai/v2/verify/pan_validation \
-  --header "X-Client-ID: your_client_id" \
-  --header "X-API-KEY: your_api_key" \
+  --url https://dev.idto.ai/v2/verify/pan_validation \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
   --header "Content-Type: application/json" \
   --data '{"pan_number": "ABCDE1234F", "user_consent": true}'
 ```
 
-```python Python
-import os, requests
+Because these headers work in any request, this method is for calls your own backend makes. Never embed a client ID and API key in a mobile app or a web page, anyone who reads the app bundle or the network tab gets your permanent credential.
 
-headers = {
-    "X-Client-ID": os.environ["IDTO_CLIENT_ID"],
-    "X-API-KEY":   os.environ["IDTO_API_KEY"],
-}
+### Hosts
 
-response = requests.post(
-    "https://prod.idto.ai/v2/verify/pan_validation",
-    json={"pan_number": "ABCDE1234F", "user_consent": True},
-    headers=headers,
-)
-```
+| Host | Purpose |
+| --- | --- |
+| `https://dev.idto.ai` | Sandbox. Use your dev credentials here while building and testing. |
+| `https://prod.idto.ai` | Production. Billable, and every call reaches a real verification source. Use only once you're ready to go live. |
 
-</CodeGroup>
+Dev and prod credentials are separate pairs. A dev `X-Client-ID` and `X-API-Key` won't authenticate against `prod.idto.ai`, and vice versa.
 
-<Tip>
-  Store your `X-Client-ID` and `X-API-KEY` in environment variables or a secrets manager — never hard-code them in source files or commit them to version control.
-</Tip>
+## Browser and mobile SDKs: token exchange
 
-## Method 2 — Bearer Token Authentication
+The IDTO SDKs (web, Android, iOS, Flutter, React Native) run in an environment you don't control, a user's browser or device, so they can't hold your permanent `X-Client-ID` / `X-API-Key` pair. Instead, your backend exchanges that pair for a short-lived token and hands the token to the SDK.
 
-Use this method for account management endpoints such as `GET /me/balance`.
+<Steps>
 
-### Step 1 — Obtain an Access Token
-
-Send your credentials to the login endpoint:
+### Your backend requests a token
 
 ```bash
 curl --request POST \
-  --url https://prod.idto.ai/auth/login \
+  --url https://dev.idto.ai/auth/sdk/token \
   --header "Content-Type: application/json" \
   --data '{
     "client_id": "your_client_id",
-    "api_key": "your_api_key"
+    "client_secret": "your_api_key"
   }'
 ```
 
-A successful login returns a JWT access token:
+`client_id` and `client_secret` are the same values as your `X-Client-ID` and `X-API-Key`.
+
+### IDTO returns a bearer token
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.example.sdk-token",
   "token_type": "bearer",
-  "expires_in": 3600
+  "expires_in": 900
 }
 ```
 
-### Step 2 — Pass the Token as a Header
+The token is valid for 900 seconds (15 minutes) and only permits running the verification flows exposed by the SDK. It can't call server-to-server verification endpoints, merchant-management endpoints, or webhook configuration.
 
-Include the token in subsequent account endpoint requests using the `Authorization` header:
+### Your backend passes the token to the SDK
 
-| Header | Value |
-|--------|-------|
-| `Authorization` | `Bearer <access_token>` |
+Hand `access_token` to the SDK at init time as its client token. If a session runs longer than 15 minutes, the SDK calls back to your backend to request a fresh token the same way, rather than re-exchanging your permanent credentials from the client side.
 
-```bash
-curl --request GET \
-  --url https://prod.idto.ai/me/balance \
-  --header "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
+</Steps>
 
-<Note>
-  Access tokens expire after **3600 seconds (1 hour)**. Re-authenticate by calling `/auth/login` again when you receive a `401 Unauthorized` response on an account endpoint.
-</Note>
+<Warning>
+  `POST /auth/sdk/token` is meant to be called from your backend, not from the browser or app itself. If the client-side code called it directly, it would need your permanent `X-API-Key` to do so, which defeats the purpose of the exchange.
+</Warning>
 
-## Authentication Errors
+## Which method to use
 
-If authentication fails, the API returns HTTP `401` with a descriptive message. Common causes:
-
-<Accordion title="Missing or malformed X-Client-ID / X-API-KEY headers">
-  Both headers must be present on every verification request. A missing header or a header name with incorrect capitalisation will result in a `401` response.
-
-  ```json
-  {
-    "status": "error",
-    "message": "Invalid or missing authentication credentials",
-    "error_code": "IDTO_001",
-    "data": null,
-    "billed": false
-  }
-  ```
-</Accordion>
-
-<Accordion title="Expired or invalid Bearer token">
-  If the JWT has expired or been tampered with, the account endpoint returns `401`. Obtain a fresh token via `POST /auth/login`.
-
-  ```json
-  {
-    "detail": "Token has expired or is invalid."
-  }
-  ```
-</Accordion>
-
-<Accordion title="Incorrect credentials">
-  Using a `client_id` or `api_key` that does not match any active account returns `401`. Double-check the values in your environment and ensure there are no leading/trailing whitespace characters.
-</Accordion>
-
-## Which Auth Method to Use?
-
-| Endpoint type | Auth method | Headers required |
-|---------------|------------|-----------------|
-| `/verify/*` | API Key | `X-Client-ID`, `X-API-KEY` |
-| `/v2/verify/*` | API Key | `X-Client-ID`, `X-API-KEY` |
-| `/auth/login` | None (public) | — |
-| `/me/balance` | Bearer JWT | `Authorization: Bearer <token>` |
-| All other `/me/*` | Bearer JWT | `Authorization: Bearer <token>` |
-
-<Note>
-  Don't have credentials yet? Contact [tech@idto.ai](mailto:tech@idto.ai) to get your `X-Client-ID` and `X-API-KEY`.
-</Note>
+| Where the call originates | Method |
+| --- | --- |
+| Your backend, calling `/verify/*` or `/v2/verify/*` directly | `X-Client-ID` + `X-API-Key` headers |
+| Your backend, provisioning a session for a web or mobile SDK | `POST /auth/sdk/token`, then hand the returned token to the SDK |
+| The SDK itself, running in a user's browser or app | The short-lived token from `/auth/sdk/token`, never your permanent key pair |

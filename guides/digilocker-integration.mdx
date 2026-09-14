@@ -1,212 +1,152 @@
 ---
-title: "Integrate DigiLocker for Government Document Fetching"
+title: "DigiLocker Integration"
 sidebarTitle: "DigiLocker"
-description: "Connect your app to DigiLocker via OAuth to let users share verified government documents — Aadhaar, PAN, DL, and more — with a single consent flow."
+description: "Connect an end customer's DigiLocker account, pull their linked identity, and fetch specific issued documents (Aadhaar, PAN, driving licence, marksheets) afterward."
 ---
 
-DigiLocker is India's official digital document wallet, operated by the Ministry of Electronics and Information Technology (MeitY). It allows users to share government-issued documents — Aadhaar, PAN card, driving licence, vehicle RC, degree certificates, and more — with your application through a secure OAuth consent flow. Because the documents come directly from the issuing authority, they carry the same legal validity as physical originals. This guide shows you how to integrate DigiLocker using the recommended v2 consolidated flow, and explains the legacy v1 multi-step option for reference.
+DigiLocker is an OAuth 2.0 + PKCE flow: your end customer authorizes access on DigiLocker's own consent screen, DigiLocker redirects back to you with a one-time authorization code, and you exchange that code for their linked identity and documents. IDTO handles the exchange and the document retrieval so you never touch DigiLocker's token endpoints directly.
 
----
+## Step 1: Send the user to DigiLocker's consent screen
 
-## Choose Your Integration Path
+You need a PKCE `code_verifier` and its `code_challenge` for this authorization request, standard OAuth PKCE (RFC 7636), generated on your side. IDTO also offers a convenience endpoint that builds the redirect URL for you:
 
-<CardGroup cols={2}>
-  <Card title="v2 Consolidated (Recommended)" icon="bolt">
-    A single API call after the OAuth redirect. Use PKCE for security. Fewer round trips, simpler error handling, and the most up-to-date document data.
-  </Card>
-  <Card title="v1 Multi-Step (Legacy)" icon="arrow-right-arrow-left">
-    Separate calls to initiate, fetch reference, and retrieve each document. Retained for backwards compatibility. Use v2 for all new integrations.
-  </Card>
-</CardGroup>
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/digilocker/initiate_session \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "consent": true,
+    "consent_purpose": "Identity verification for onboarding",
+    "redirect_url": "https://acme.example.com/kyc/digilocker/callback",
+    "documents_for_consent": ["AADHAAR", "PANCR"]
+  }'
+```
 
----
+```json
+{
+  "status": "success",
+  "code": 1000,
+  "url": "https://digilocker.idto.ai/digilocker?client_id=...&redirect_uri=...&response_type=code&code_challenge=...&code_challenge_method=S256&redirect_to_signup=false&req_docs=AADHAAR%2CPANCR&state="
+}
+```
 
-## v2 Consolidated Flow
+Redirect the user's browser to the `url` returned here.
 
-<Steps>
-  <Step title="Initiate the OAuth Session">
-    Call `POST /verify/digilocker/initiate_session` to create a PKCE-protected authorization URL. Your app generates a `code_verifier`, stores it server-side, and sends the session request with the required consent fields and your callback URL. The response contains a `redirect_url` that you direct the user to. Store the `code_verifier` — you will need it in Step 3.
+<Warning>
+  Verified against the current implementation: `initiate_session` generates its own PKCE `code_verifier`/`code_challenge` pair internally to build this URL, and only returns the `url`, the `code_verifier` it used is not given back to you. If your integration plans to complete the token exchange itself, generate and hold your own PKCE pair and build the consent URL's `code_challenge` from it directly, rather than relying on the pair `initiate_session` used internally. If you're unsure which path fits your integration, confirm with your IDTO contact before depending on this endpoint for a production PKCE round-trip.
+</Warning>
 
-    ```python Python
-    import requests
-    import secrets
-    import hashlib
-    import base64
+## Step 2: Handle the redirect back
 
-    BASE_URL = "https://prod.idto.ai"
-    HEADERS = {
-        "X-Client-ID": "<your_client_id>",
-        "X-API-KEY":   "<your_api_key>",
-        "Content-Type": "application/json",
+Once the user consents, DigiLocker redirects their browser to your `redirect_url` with a `code` query parameter, for example:
+
+```
+https://acme.example.com/kyc/digilocker/callback?code=AbCdEf123456
+```
+
+Capture that `code` server-side. You'll exchange it, together with the `code_verifier` from step 1, in the next call. The code is single-use and short-lived, exchange it promptly.
+
+## Step 3: Exchange the code for the linked identity
+
+`POST /v2/verify/digilocker` is the recommended, vendor-agnostic way to complete the exchange and get the customer's identity in one call:
+
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/v2/verify/digilocker \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "code": "AbCdEf123456",
+    "code_verifier": "your-pkce-code-verifier"
+  }'
+```
+
+```json
+{
+  "status": "success",
+  "message": "DigiLocker identity verification successful.",
+  "error_code": null,
+  "data": {
+    "digilocker_id": "1234567890123456",
+    "name": "RAHUL SHARMA",
+    "dob": "1990-01-01",
+    "gender": "M",
+    "extras": {
+      "mobile": "9999999999",
+      "email": "rahul.sharma@example.com",
+      "eaadhaar_linked": true
     }
+  },
+  "billed": true,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
 
-    def generate_code_verifier() -> str:
-        """Generate a cryptographically random PKCE code_verifier."""
-        return secrets.token_urlsafe(64)
+This product has no no-record outcome, `error_code` is always `null` on a 2xx. An invalid, expired, or already-used authorization code is always a raised 400:
 
-    def initiate_digilocker_session(redirect_url: str) -> dict:
-        code_verifier = generate_code_verifier()
+```json
+{
+  "status": "error",
+  "message": "The authorization code is invalid, expired, or already used. Please obtain a new authorization code and try again.",
+  "error_code": "IDTO_001",
+  "data": null,
+  "billed": false
+}
+```
 
-        payload = {
-            "consent":         "Y",
-            "consent_purpose": "For KYC verification and identity confirmation",
-            "redirect_url":    redirect_url,
-        }
-        response = requests.post(
-            f"{BASE_URL}/verify/digilocker/initiate_session",
-            json=payload,
-            headers=HEADERS,
-        )
-        response.raise_for_status()
-        data = response.json()
+Billing follows the general v2 rule: you're charged only on the successful 200, a rejected code is never billed. Send an `Idempotency-Key` header if you need to safely retry this call.
 
-        # Persist code_verifier in your session store — needed in Step 3
-        return {
-            "redirect_url":  data["data"]["redirect_url"],
-            "code_verifier": code_verifier,
-        }
+## Step 4: Fetch specific documents (legacy v1 surface)
 
-    session = initiate_digilocker_session("https://yourapp.com/digilocker/callback")
-    print(session["redirect_url"])
-    # Store session["code_verifier"] in your server-side session / cache
-    ```
+`POST /v2/verify/digilocker` gets you identity fields only. Pulling specific issued documents, the eAadhaar XML, a PAN PDF, a driving licence, marksheets, is a separate v1 surface under `/verify/digilocker/*` that reuses the same `code` and `code_verifier` from step 2, it does not require repeating the OAuth redirect.
 
-    **Example response:**
+First, exchange the code for a `reference_key`, which every fetch call below uses instead of the raw code:
 
-    ```json
-    {
-      "status": "success",
-      "message": "Session initiated",
-      "error_code": null,
-      "data": {
-        "redirect_url": "https://digilocker.gov.in/oauth/authorize?client_id=...&state=..."
-      },
-      "billed": false,
-      "tranx_id": "1a2b3c4d-5e6f-7890-abcd-ef1234567890",
-      "timestamp": "2026-07-11T10:20:30.123456"
-    }
-    ```
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/digilocker/get_reference \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"code": "AbCdEf123456", "code_verifier": "your-pkce-code-verifier"}'
+```
 
-    <Note>
-      Store `code_verifier` on your server (e.g., in the user's session or a short-lived cache). Never send it to the browser — it must remain server-side until you exchange the code in Step 3.
-    </Note>
-  </Step>
+```json
+{ "status": "success", "reference_key": "1731500000000_a1b2c3d4e5f6", "expires_at": "2026-09-14T11:15:30Z" }
+```
 
-  <Step title="User Authorizes on DigiLocker">
-    Redirect your user to the `redirect_url` from Step 1. DigiLocker presents a login screen where the user authenticates with their Aadhaar-linked mobile number and approves the document-sharing consent.
+`reference_key` is valid for **1 hour** from issuance (verified in source), after that you need a fresh authorization code and a fresh exchange. Use it on every subsequent fetch:
 
-    After successful authorization, DigiLocker redirects the user back to your `redirect_uri` with an authorization `code` appended as a query parameter:
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/digilocker/fetch_aadhaar \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"reference_key": "1731500000000_a1b2c3d4e5f6"}'
+```
 
-    ```
-    https://yourapp.com/digilocker/callback?code=AUTH_CODE_HERE&state=...
-    ```
+`fetch_aadhaar` returns the eAadhaar document itself as the response body (`Content-Type: application/xml`, downloadable as an attachment), not a JSON envelope. If the user didn't consent to share Aadhaar, or it isn't present in their DigiLocker, you get a 403 with a specific message rather than an empty document.
 
-    Extract the `code` from the query string in your callback handler. You now have everything you need for Step 3.
+The other fetch endpoints follow the same `{"reference_key": "..."}` request shape and the same "raw document back" pattern, returning the file DigiLocker itself issued:
 
-    <Warning>
-      Authorization codes are single-use and expire within seconds of issuance. Exchange the code for identity data immediately in your callback handler — do not store it or defer the exchange.
-    </Warning>
-  </Step>
+| Endpoint | Returns |
+| --- | --- |
+| `/verify/digilocker/fetch_pan` | PAN verification record, PDF |
+| `/verify/digilocker/fetch_dl` | Driving licence, PDF |
+| `/verify/digilocker/fetch_10thmarksheet`, `fetch_12thmarksheet`, `fetch_degree` | Marksheet / degree, PDF |
+| `/verify/digilocker/fetch_uan`, `fetch_rc`, `fetch_healthid` | UAN, RC, or Health ID document, PDF |
 
-  <Step title="Exchange Code for Identity Data">
-    Call `POST /v2/verify/digilocker` with the `code` from the callback and the `code_verifier` you stored in Step 1. The API validates the PKCE pair, exchanges the code with DigiLocker, and returns the user's verified identity data and linked documents.
-
-    ```python Python
-    def exchange_digilocker_code(code: str, code_verifier: str) -> dict:
-        payload = {
-            "code":          code,
-            "code_verifier": code_verifier,
-        }
-        response = requests.post(
-            f"{BASE_URL}/v2/verify/digilocker",
-            json=payload,
-            headers=HEADERS,
-        )
-        response.raise_for_status()
-        return response.json()
-
-    # code comes from the callback query param
-    # code_verifier was stored during Step 1
-    result = exchange_digilocker_code(
-        code="<auth_code_from_callback>",
-        code_verifier="<stored_code_verifier>",
-    )
-
-    identity = result["data"]
-    print(identity["name"])      # "Ravi Kumar Sharma"
-    print(identity["dob"])       # "1990-05-15"
-    print(identity["aadhaar"])   # "XXXX-XXXX-3456"
-    ```
-
-    **Example response:**
-
-    ```json
-    {
-      "status": "success",
-      "message": "DigiLocker verification successful",
-      "error_code": null,
-      "data": {
-        "name": "Ravi Kumar Sharma",
-        "dob": "1990-05-15",
-        "gender": "M",
-        "aadhaar": "XXXX-XXXX-3456",
-        "mobile": "XXXXXX7890",
-        "email": "r***@example.com",
-        "documents": [
-          { "type": "AADHAAR",  "issuer": "UIDAI",  "status": "valid" },
-          { "type": "PAN",      "issuer": "ITDEP",  "status": "valid" },
-          { "type": "DL",       "issuer": "TRANSPORT", "status": "valid" }
-        ]
-      },
-      "billed": true,
-      "tranx_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-      "timestamp": "2026-07-11T10:21:15.654321"
-    }
-    ```
-  </Step>
-</Steps>
-
----
-
-## Available Documents (v1 Multi-Step Sessions)
-
-If you use the legacy v1 flow, the following document types are available to fetch individually after establishing a session:
-
-<Accordion title="View all supported document types">
-
-| Document | Issuing Authority |
-|---|---|
-| Aadhaar Card | UIDAI |
-| PAN Card | Income Tax Department |
-| Driving Licence | State Transport Authority |
-| Vehicle Registration Certificate (RC) | State Transport Authority |
-| UAN Card | EPFO |
-| Degree Certificate | University / Board |
-| Class 10 Marksheet | CBSE / State Board |
-| Class 12 Marksheet | CBSE / State Board |
-| Ayushman Bharat Health ID | NHA |
-
-</Accordion>
+Every one of these has an `/xml` sibling (for example `/verify/digilocker/fetch_pan/xml`) that returns the same document as XML instead of PDF. `/verify/digilocker/user_details` returns the linked account's profile as JSON instead of a file, useful if you only need identity fields via this surface rather than `/v2/verify/digilocker`.
 
 <Note>
-  The v1 flow requires separate API calls to fetch each document type after obtaining a session reference. The v2 consolidated endpoint returns all available identity data in a single response, which is why it is the preferred choice for new integrations.
+  The full field-level JSON schema for `get_reference` and `user_details` isn't pinned down in the OpenAPI reference beyond the request shape, this legacy surface passes through fields close to DigiLocker's own API rather than a standardized IDTO shape. If you need identity fields in a stable, documented shape, use `/v2/verify/digilocker` from step 3 instead, and reserve this surface for pulling the actual issued documents.
 </Note>
 
----
+## Optional: pass `workflow_session_token`
 
-## PKCE Security Notes
-
-<CardGroup cols={2}>
-  <Card title="Generate per-session" icon="key">
-    Create a new `code_verifier` for every DigiLocker session. Never reuse verifiers across users or requests.
-  </Card>
-  <Card title="Server-side only" icon="server">
-    Keep `code_verifier` on your backend. If it reaches the client browser, an attacker could intercept the auth code and impersonate your user.
-  </Card>
-  <Card title="Short-lived storage" icon="clock">
-    Store the verifier in a cache or session with a TTL of 5–10 minutes. Clear it immediately after a successful exchange.
-  </Card>
-  <Card title="Verify state parameter" icon="shield-check">
-    Always validate the `state` parameter in your callback against the value you sent in Step 1 to prevent CSRF attacks.
-  </Card>
-</CardGroup>
+`user_details` and every `fetch_*` call accept an optional `workflow_session_token`. Pass it when this DigiLocker step is running inside a [KYC workflow](/guides/kyc-workflow) session, it prevents the step from being billed twice, once by the workflow and once by the direct call.

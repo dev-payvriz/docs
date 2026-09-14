@@ -1,267 +1,189 @@
 ---
-title: "Handle Asynchronous Verification Results with Polling"
+title: "Async Polling"
 sidebarTitle: "Async Polling"
-description: "Learn how to handle HTTP 202 responses from async APIs like Employment History and UAN Passbook using polling with exponential backoff."
+description: "How to handle verifications that don't finish inline: the 202 pending pattern, and the bank-statement multi-step session flow."
 ---
 
-Some verification checks — particularly those that depend on external registries that process requests asynchronously — cannot return a result immediately. Instead of making you wait on an open HTTP connection, these APIs return an HTTP `202 Accepted` response with a `reference_id` and a suggested wait time. You poll a separate result endpoint until the job completes. This guide explains which APIs are async, how the polling pattern works, and includes ready-to-run code in Python and Node.js.
+Most IDTO endpoints respond inline, you send a request, you get a result. A few can't: the underlying check takes longer than a single HTTP request should reasonably block for, or it's inherently multi-step (upload a document, wait for it to process, fetch the result). Both cases use the same building block: a pending state you poll until it resolves.
 
----
+## The pending envelope: `IDTO_203`
 
-## Which APIs Are Asynchronous
+`IDTO_203` is the shared taxonomy code for "this isn't done yet" (`kernel/errors.py`): HTTP 202, message "Verification is still in progress. Retrieve the result using reference_id.", and it is never billed. Any endpoint across the API can in principle hand back a `202` with this code instead of a final result.
 
-Two endpoints follow the async pattern:
+The concrete, implemented version of this today lives on a specific set of v1 endpoints: `POST /verify/employment_history`, `POST /verify/uan_passbook/without_otp`, and `POST /verify/pf_employee_passbook`. Each of these tries to complete synchronously for up to 20 seconds. If the underlying job hasn't finished by then, you get:
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/verify/employment_history` | `POST` | Fetches an individual's EPFO employment history |
-| `/verify/uan_passbook/without_otp` | `POST` | Fetches UAN passbook entries without requiring an OTP |
-
-Both endpoints initiate a background job and respond immediately with `202` while the lookup is in progress.
-
----
-
-## The 202 Response
-
-When a job is still processing, the API returns HTTP `202` with a body structured like this:
+```http
+HTTP/1.1 202 Accepted
+Retry-After: 5
+Content-Type: application/json
+```
 
 ```json
 {
   "status": "pending",
+  "message": "Verification is still in progress. Retrieve the result using reference_id.",
   "error_code": "IDTO_203",
-  "data": {
-    "reference_id": "avj_7f3d9c1e2b4a",
-    "retry_after_seconds": 5
-  },
-  "billed": false,
-  "tranx_id": "c56a4180-65aa-42ec-a945-5fd21dec0538",
-  "timestamp": "2026-07-11T10:20:30.123456"
+  "reference_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "retry_after_seconds": 5,
+  "data": null
 }
 ```
 
-Key fields:
+Poll for the result with:
 
-- **`reference_id`** — A unique identifier for your async job. Use it to poll for the result.
-- **`retry_after_seconds`** — The minimum number of seconds to wait before your first poll. Also returned in the `Retry-After` HTTP response header.
-- **`error_code: "IDTO_203"`** — Indicates the job is in progress, not an error condition.
-
-<Tip>
-  Read the `Retry-After` header from the `202` response and use its value as your initial wait duration. This value is tuned to the actual processing time of the upstream registry, so respecting it reduces unnecessary polling.
-</Tip>
-
----
-
-## Polling with GET /verify/result/{reference_id}
-
-Poll the result endpoint using:
-
-```
-GET /verify/result/{reference_id}
+```bash
+curl --request GET \
+  --url https://prod.idto.ai/verify/result/b6e1f2a0-1234-4abc-9def-0123456789ab \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY"
 ```
 
-The endpoint returns one of three outcomes:
+While the job is still running, you get the same `202` / `IDTO_203` envelope back, with the same `reference_id`. Once it finishes, `GET /verify/result/{reference_id}` returns the completed result in the exact shape the original endpoint would have returned it inline:
 
-| HTTP Status | Meaning |
-|---|---|
-| `202` | Job is still processing — wait and retry |
-| `200` | Job is complete — response body contains the full result |
-| `404` with `IDTO_207` | Result has expired or `reference_id` is invalid |
+```json
+{
+  "status": "success",
+  "message": "Request completed successfully.",
+  "data": {
+    "uan_number": "123456789012",
+    "employment_history": []
+  }
+}
+```
+
+If `reference_id` is unknown, mistyped, or has expired, you get a 404 instead:
+
+```json
+{
+  "status": "error",
+  "message": "No result found for this reference_id.",
+  "error_code": "IDTO_207"
+}
+```
+
+### Polling guidance
+
+These numbers are taken directly from the current implementation, not estimated:
+
+- **Interval:** poll every 5 seconds. That's the exact value the API sends back in both `retry_after_seconds` and the `Retry-After` header, don't poll faster than that.
+- **When to stop, success path:** stop as soon as you get back `status: "success"` or a definitive `status: "error"` with a code other than `IDTO_203` from `GET /verify/result/{reference_id}`.
+- **When to give up:** a `reference_id` is only kept for **24 hours** after the job started. Once it expires, the same call returns `404` / `IDTO_207` even if you never got a completed result. Treat that as a hard ceiling, most real integrations should apply a much tighter business timeout (minutes, not hours) and treat a stalled job as failed well before the 24-hour mark.
 
 <Warning>
-  A `404` with error code `IDTO_207` means the result expired before you retrieved it, or the `reference_id` does not exist. It does **not** mean the person has no employment record. If you hit this state, re-submit the original POST request to start a new job.
+  A `202` / `IDTO_203` response is never billed. If you stop polling before the job resolves, you were not charged for it. If you want to know the outcome, poll `GET /verify/result/{reference_id}` again later, within the 24-hour window, rather than resubmitting the original request (which starts a new job and could be billed again once it completes).
 </Warning>
 
----
+## Multi-step sessions: bank statement uploads
 
-## Polling Loop — Python
+The bank-statement flow (`/verify/bank_statement_pdf/*`) is async for a different reason: it's an inherently multi-step process (create a session, upload one or more statement files into it, mark it complete, wait for processing, then fetch the report), not one call that's merely slow.
 
-```python Python
-import time
-import requests
+<Steps>
 
-BASE_URL = "https://prod.idto.ai"
-HEADERS = {
-    "X-Client-ID": "<your_client_id>",
-    "X-API-KEY":   "<your_api_key>",
-}
+### Start a session
 
-def submit_employment_history(uan: str) -> dict:
-    """Submit the async job and return the initial response."""
-    payload = {"uan": uan, "user_consent": True}
-    response = requests.post(
-        f"{BASE_URL}/verify/employment_history",
-        json=payload,
-        headers={**HEADERS, "Content-Type": "application/json"},
-    )
-    response.raise_for_status()
-    return response.json(), response
-
-def poll_result(reference_id: str, initial_wait: int = 5, max_attempts: int = 10) -> dict:
-    """
-    Poll GET /verify/result/{reference_id} with exponential backoff.
-    Returns the completed result dict, or raises after max_attempts.
-    """
-    wait = initial_wait
-
-    for attempt in range(1, max_attempts + 1):
-        print(f"Attempt {attempt}: waiting {wait}s before polling...")
-        time.sleep(wait)
-
-        response = requests.get(
-            f"{BASE_URL}/verify/result/{reference_id}",
-            headers=HEADERS,
-        )
-
-        if response.status_code == 200:
-            print("Job complete.")
-            return response.json()
-
-        if response.status_code == 404:
-            data = response.json()
-            if data.get("error_code") == "IDTO_207":
-                raise RuntimeError(
-                    f"Result expired or reference_id invalid: {reference_id}. "
-                    "Re-submit the original request to start a new job."
-                )
-
-        if response.status_code == 202:
-            # Still processing — apply exponential backoff, cap at 60s
-            wait = min(wait * 2, 60)
-            continue
-
-        # Surface any other unexpected error
-        response.raise_for_status()
-
-    raise TimeoutError(f"Job {reference_id} did not complete after {max_attempts} attempts.")
-
-
-# --- Main flow ---
-
-initial_response, http_response = submit_employment_history("100123456789")
-
-if http_response.status_code == 202:
-    ref_id       = initial_response["data"]["reference_id"]
-    initial_wait = int(http_response.headers.get("Retry-After", 5))
-    result       = poll_result(ref_id, initial_wait=initial_wait)
-    print(result["data"])
-elif http_response.status_code == 200:
-    # Immediate result (rare but possible)
-    print(initial_response["data"])
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/bank_statement_pdf/start_upload \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"start_month": "2026-01", "end_month": "2026-06"}'
 ```
 
----
-
-## Polling Loop — Node.js
-
-```javascript Node.js
-const https = require("https");
-
-const BASE_URL  = "https://prod.idto.ai";
-const CLIENT_ID = "<your_client_id>";
-const API_KEY   = "<your_api_key>";
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function fetchJSON(method, path, body = null) {
-  const url = new URL(path, BASE_URL);
-  const options = {
-    method,
-    headers: {
-      "X-Client-ID":  CLIENT_ID,
-      "X-API-KEY":    API_KEY,
-      "Content-Type": "application/json",
-    },
-  };
-
-  return new Promise((resolve, reject) => {
-    const req = https.request(url, options, (res) => {
-      let raw = "";
-      res.on("data", (chunk) => (raw += chunk));
-      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: JSON.parse(raw) }));
-    });
-    req.on("error", reject);
-    if (body) req.write(JSON.stringify(body));
-    req.end();
-  });
-}
-
-async function pollResult(referenceId, initialWait = 5, maxAttempts = 10) {
-  let wait = initialWait;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    console.log(`Attempt ${attempt}: waiting ${wait}s before polling...`);
-    await sleep(wait * 1000);
-
-    const { status, body } = await fetchJSON("GET", `/verify/result/${referenceId}`);
-
-    if (status === 200) {
-      console.log("Job complete.");
-      return body;
-    }
-
-    if (status === 404 && body.error_code === "IDTO_207") {
-      throw new Error(
-        `Result expired or reference_id invalid: ${referenceId}. ` +
-        "Re-submit the original request to start a new job."
-      );
-    }
-
-    if (status === 202) {
-      wait = Math.min(wait * 2, 60); // exponential backoff, cap at 60s
-      continue;
-    }
-
-    throw new Error(`Unexpected status ${status}: ${JSON.stringify(body)}`);
+```json
+{
+  "status": "success",
+  "message": "Session created.",
+  "data": {
+    "session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+    "status": "created",
+    "expires_at": "2026-09-15T10:15:30Z"
   }
-
-  throw new Error(`Job ${referenceId} did not complete after ${maxAttempts} attempts.`);
 }
+```
 
-// --- Main flow ---
+`expires_at` is set per session by the upload backend, check it on every response rather than assuming a fixed window, it can vary.
 
-(async () => {
-  const { status, headers, body } = await fetchJSON("POST", "/verify/employment_history", {
-    uan: "100123456789",
-    user_consent: true,
-  });
+### Upload the statement
 
-  if (status === 202) {
-    const referenceId  = body.data.reference_id;
-    const initialWait  = parseInt(headers["retry-after"] ?? "5", 10);
-    const result = await pollResult(referenceId, initialWait);
-    console.log(result.data);
-  } else if (status === 200) {
-    // Immediate result
-    console.log(body.data);
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/bank_statement_pdf/upload \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --form "session_id=b6e1f2a0-1234-4abc-9def-0123456789ab" \
+  --form "file=@statement.pdf" \
+  --form "file_password=1234"
+```
+
+You can upload by file, or by `file_url` instead of a multipart file, and you can call this more than once per session if the customer has statements from more than one account.
+
+### Mark the session complete
+
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/bank_statement_pdf/complete \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab"}'
+```
+
+This is what actually kicks off processing. Nothing is analyzed before this call.
+
+### Poll status
+
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/bank_statement_pdf/status \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab"}'
+```
+
+```json
+{
+  "status": "success",
+  "message": "Status fetched.",
+  "data": {
+    "session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+    "status": "processing",
+    "txn_status": [
+      { "status": "completed", "code": "200", "message": "Upload accepted" }
+    ]
   }
-})();
+}
 ```
 
----
+There's no fixed processing SLA published for this flow, poll every 5 to 10 seconds, back off if it runs long, and apply your own reasonable timeout rather than polling indefinitely.
 
-## Idempotency on Re-submission
+### Fetch the report
 
-<Note>
-  If you call the original `POST` endpoint again while a job for the same request is already in flight, the API returns the **same `reference_id`** without creating a new job and without billing you a second time. This means you can safely retry the initial POST if you lose the `reference_id` before the job completes.
-</Note>
+Once status shows processing is done, fetch the parsed result:
 
----
-
-## Polling State Machine
-
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/bank_statement_pdf/report \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab", "report_type": "json"}'
 ```
-POST /verify/employment_history
-         │
-         ▼
-    HTTP 202 ──────────────────────────────────────────┐
-    reference_id + Retry-After                         │
-         │                                             │
-         ▼  (wait Retry-After seconds)                 │
-GET /verify/result/{reference_id}                      │
-         │                                             │
-    ┌────┴─────┐                                       │
-    │          │                                       │
-   200        202 ── still pending ── backoff ─────────┘
-    │
-  Done ✓        404 + IDTO_207 → expired → re-submit POST
+
+Set `"report_type": "json"` (the default) for a structured `{summary, transactions}` payload, or a different `report_type` to get a binary file (for example a PDF) back instead, with the appropriate `Content-Type`.
+
+### Cancel if needed
+
+```bash
+curl --request POST \
+  --url https://prod.idto.ai/verify/bank_statement_pdf/cancel \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"session_id": "b6e1f2a0-1234-4abc-9def-0123456789ab"}'
 ```
+
+Cancel an open session you no longer need rather than letting it sit unresolved.
+
+</Steps>

@@ -1,233 +1,106 @@
 ---
-title: "Request and Response Format for the IDTO Verification API"
+title: "Request & Response"
 sidebarTitle: "Request & Response"
-description: "Learn the base URL, content types, and the standard v2 response envelope that every IDTO verification endpoint returns on success and error."
+description: "The mechanics of a single call: base URLs, required headers, request and response bodies, and what each HTTP status means."
 ---
 
-Every request you send to the IDTO API follows a consistent pattern: a JSON or multipart body posted to a versioned path under the production base URL, authenticated with your client credentials, and answered with a predictable envelope. Understanding this envelope — especially how billing signals and error codes appear together — is the foundation for building a reliable integration.
+## Base URLs
 
-## Base URL
+IDTO runs two separate origins:
 
-All endpoints are hosted at a single production origin:
+| Host | Purpose |
+| --- | --- |
+| `https://dev.idto.ai` | Sandbox. Use your development credentials here while building and testing. |
+| `https://prod.idto.ai` | Production. Billable, and every call reaches a real verification source. |
 
-```
-https://prod.idto.ai
-```
+Dev and prod credentials are separate pairs and are not interchangeable.
 
-There is no separate staging origin. Use your sandbox credentials during development and switch to production credentials when you go live.
+## Required headers
 
-## Content Types
+Every call to `/verify/*` (v1) or `/v2/verify/*` (v2) needs both of these on every request:
 
-<Tabs>
-  <Tab title="JSON (most endpoints)">
-    Send `Content-Type: application/json` for all identity, document number, and business verification endpoints. The request body must be a valid JSON object.
+| Header | Value |
+| --- | --- |
+| `X-Client-ID` | Your client identifier |
+| `X-API-Key` | Your secret API key |
+| `Content-Type` | `application/json` for JSON-bodied endpoints |
 
-    ```bash
-    --header 'Content-Type: application/json' \
-    --data '{ "pan": "ABCDE1234F", "user_consent": true }'
-    ```
-  </Tab>
-  <Tab title="Multipart (image & file uploads)">
-    Send `Content-Type: multipart/form-data` whenever the endpoint accepts a file or image. Affected endpoint categories include:
+## Request and response bodies
 
-    - **OCR** — Aadhaar card, PAN card, driving licence, passport image extraction
-    - **Face Match** — comparing two face images
-    - **Liveness** — selfie/video liveness check
-    - **Aadhaar QR** — parsing a QR code from an Aadhaar image file
+Most v2 endpoints take a JSON body and return a JSON body. Here is a complete example against `/v2/verify/pan_validation`.
 
-    ```bash
-    --header 'Content-Type: multipart/form-data' \
-    --form 'image=@/path/to/aadhaar_front.jpg' \
-    --form 'user_consent=true'
-    ```
-  </Tab>
-</Tabs>
+**Request**
 
-## Authentication Headers
-
-<Note>
-Every verification endpoint (`/verify/*` and `/v2/verify/*`) requires both headers below. Account-management endpoints (`/me/balance`, `/auth/login`) use `Authorization: Bearer <access_token>` instead.
-</Note>
-
-```http
-X-Client-ID: <your_client_id>
-X-API-KEY:   <your_api_key>
+```bash
+curl --request POST \
+  --url https://dev.idto.ai/v2/verify/pan_validation \
+  --header "X-Client-ID: $IDTO_CLIENT_ID" \
+  --header "X-API-Key: $IDTO_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "pan_number": "ABCDE1234F",
+    "user_consent": true
+  }'
 ```
 
-## The v2 Response Envelope
+**Response, full match (HTTP 200)**
 
-Every v2 response — whether a success, a validation error, or a downstream service failure — returns the same top-level JSON object. This consistency means you can always parse the same structure regardless of HTTP status code.
-
-<ResponseField name="status" type="string" required>
-  Either `"success"` or `"error"`. Use this field for your primary branch — it is never absent.
-</ResponseField>
-
-<ResponseField name="message" type="string" required>
-  A human-readable description of the outcome. Suitable for logging; do not display raw to end users in production.
-</ResponseField>
-
-<ResponseField name="error_code" type="string | null" required>
-  `null` on a fully successful response. On any failure, contains a standardised `IDTO_*` code you can map to application logic. See the error codes table below.
-</ResponseField>
-
-<ResponseField name="data" type="object | null" required>
-  The verification result payload. Its schema varies by endpoint. `null` when `status` is `"error"`.
-</ResponseField>
-
-<ResponseField name="billed" type="boolean" required>
-  `true` when a credit was consumed for this request; `false` when no charge was applied (for example, on input validation failures, authentication rejections, or rate-limit responses).
-</ResponseField>
-
-<ResponseField name="tranx_id" type="string (UUID)" required>
-  A unique identifier for this API call. Include this value in any support request so the IDTO team can locate the exact transaction in their logs.
-</ResponseField>
-
-<ResponseField name="timestamp" type="string (ISO 8601)" required>
-  The server-side timestamp at which the response was generated, in UTC. Format: `YYYY-MM-DDTHH:MM:SS.ffffff`.
-</ResponseField>
-
-## Standard Error Codes
-
-| Code | HTTP Status | Meaning |
-|---|---|---|
-| `IDTO_001` | 400 / 422 | Invalid or missing field in the request body |
-| `IDTO_004` | 409 | Duplicate idempotency key — a request with this key is already in flight |
-| `IDTO_005` | 400 | User consent not provided (`user_consent: true` missing) |
-| `IDTO_006` | 429 | Rate limit exceeded — slow down and retry |
-| `IDTO_007` | 500 | Service configuration error — contact support |
-| `IDTO_008` | 503 | Service temporarily unavailable — retry with back-off |
-| `IDTO_009` | 402 | Insufficient credits — recharge your account |
-| `IDTO_202` | 200 | No matching record found — verification ran, credit consumed |
-| `IDTO_203` | 202 | Verification in progress — use the async polling endpoint |
-| `IDTO_204` | 422 | No readable QR code found in the uploaded image |
-| `IDTO_205` | 422 | Wrong OTP or expired OTP session |
-| `IDTO_206` | 429 | Maximum OTP attempts exceeded for this session |
-| `IDTO_207` | 404 | Async result not yet available or key not found |
-
-## IDTO_202: Billed Even With No Record
-
-<Warning>
-`IDTO_202` is a special case: the HTTP status is `200` and `billed` is `true`, but `data` is `null` and `error_code` is `"IDTO_202"`. This means the request was valid and a complete lookup was performed against the upstream registry — no record existed, but the check itself consumed a credit.
-
-Always inspect `error_code` in addition to `status` to distinguish a genuine match from a no-record result.
-</Warning>
-
-## Response Examples
-
-<CodeGroup>
-
-```json Success (record found)
+```json
 {
   "status": "success",
   "message": "PAN verified successfully.",
   "error_code": null,
   "data": {
-    "pan": "ABCDE1234F",
-    "name": "Ravi Kumar",
-    "status": "VALID",
-    "pan_type": "Individual"
+    "pan_name": "RAHUL SHARMA",
+    "pan_number": "ABCDE1234F",
+    "pan_status": "Active",
+    "category": "individual"
   },
   "billed": true,
-  "tranx_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "timestamp": "2026-07-11T10:20:30.123456"
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
 }
 ```
 
-```json IDTO_202 (no record found — billed)
+**Response, no matching record (still HTTP 200)**
+
+```json
 {
-  "status": "error",
-  "message": "No record found for the provided details.",
+  "status": "success",
+  "message": "Record is invalid or does not exist.",
   "error_code": "IDTO_202",
   "data": null,
   "billed": true,
-  "tranx_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-  "timestamp": "2026-07-11T10:21:14.654321"
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
 }
 ```
 
-```json IDTO_001 (validation error — not billed)
+**Response, raised error (HTTP 400)**
+
+```json
 {
   "status": "error",
-  "message": "Invalid or missing field: pan.",
-  "error_code": "IDTO_001",
+  "message": "User consent is required to proceed.",
+  "error_code": "IDTO_005",
   "data": null,
   "billed": false,
-  "tranx_id": "d4e5f6a7-b8c9-0123-defa-234567890123",
-  "timestamp": "2026-07-11T10:21:55.987654"
+  "chargeble": "false",
+  "user_consent": "false"
 }
 ```
 
-```json IDTO_009 (insufficient credits — not billed)
-{
-  "status": "error",
-  "message": "Insufficient credits. Please recharge your account.",
-  "error_code": "IDTO_009",
-  "data": null,
-  "billed": false,
-  "tranx_id": "e5f6a7b8-c9d0-1234-efab-345678901234",
-  "timestamp": "2026-07-11T10:22:30.111222"
-}
-```
+The full request and response schema for every v2 endpoint, including every field on `data`, lives under the API Reference tab, generated directly from the OpenAPI spec.
 
-</CodeGroup>
+## What the HTTP status tells you (v2)
 
-## Handling Responses in Code
+For every `/v2/verify/*` endpoint, the HTTP status is the first thing to branch on:
 
-<Tabs>
-  <Tab title="Python">
-    ```python
-    import requests
+- **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code` set to an `IDTO_2xx` code). Both are `status: "success"` and both are billed. Never treat `error_code` being non-null as a failure by itself, check whether the code falls in the `IDTO_2xx` range.
+- **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"`, `data` is `null`, and `billed` is `false` in every case except `IDTO_204`, which is the one raised error that is also unbilled by design rather than an exception to the unbilled rule.
 
-    response = requests.post(
-        "https://prod.idto.ai/v2/verify/pan",
-        headers={
-            "X-Client-ID": "<your_client_id>",
-            "X-API-KEY": "<your_api_key>",
-            "Content-Type": "application/json",
-        },
-        json={
-            "pan": "ABCDE1234F",
-            "name": "Ravi Kumar",
-            "user_consent": True,
-        },
-    )
+The exact status code for each `IDTO_*` code is fixed and documented in the [Error Codes reference](/reference/v2-error-codes), for example `IDTO_001` is always 400, `IDTO_009` is always 402, `IDTO_006` is always 429.
 
-    body = response.json()
+## v1 responses look different
 
-    if body["status"] == "success":
-        print("Verified:", body["data"])
-    elif body["error_code"] == "IDTO_202":
-        # Billed but no record — treat as an unmatched identity
-        print("No record found. Transaction:", body["tranx_id"])
-    else:
-        print(f"Error {body['error_code']}: {body['message']}")
-    ```
-  </Tab>
-  <Tab title="Node.js">
-    ```javascript
-    const response = await fetch("https://prod.idto.ai/v2/verify/pan", {
-      method: "POST",
-      headers: {
-        "X-Client-ID": "<your_client_id>",
-        "X-API-KEY": "<your_api_key>",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        pan: "ABCDE1234F",
-        name: "Ravi Kumar",
-        user_consent: true,
-      }),
-    });
-
-    const body = await response.json();
-
-    if (body.status === "success") {
-      console.log("Verified:", body.data);
-    } else if (body.error_code === "IDTO_202") {
-      console.log("No record found. Transaction:", body.tranx_id);
-    } else {
-      console.error(`Error ${body.error_code}: ${body.message}`);
-    }
-    ```
-  </Tab>
-</Tabs>
+v1 endpoints (`/verify/*`) do not use this envelope. A v1 response is close to the raw reply from whichever verification source served it, with only `tranx_id` and `timestamp` always added. There is no `error_code` field and no fixed shape across products. See [API Versioning](/concepts/api-versioning) for the full comparison.
