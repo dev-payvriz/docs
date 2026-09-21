@@ -4,3 +4,21 @@ sidebarTitle: "Aadhaar OCR"
 description: "Run OCR on an Aadhaar card image (front) and extract the Aadhaar number, name, and address fields for downstream verification."
 openapi: "openapi2.0.json POST /v2/verify/aadhaar_ocr"
 ---
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+| --- | --- | --- | --- |
+| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |
+| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
+| `IDTO_005` | 400 | User consent is required to proceed. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_101` | 400 | A required parameter is missing from the request. | No |
+| `IDTO_102` | 400 | A required parameter is missing from the request. | No |
+| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |
+
+See the full taxonomy at [v2 Error Codes](/reference/v2-error-codes).

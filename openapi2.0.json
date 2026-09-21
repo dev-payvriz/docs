@@ -3676,7 +3676,7 @@
           "Document OCR"
         ],
         "summary": "Extract PAN card fields from an image",
-        "description": "Runs OCR on an uploaded PAN card image and extracts the PAN number, name, father's name and DOB. Does not check the PAN against any registry; pair with `pan_validation` for that.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
+        "description": "Runs OCR on an uploaded PAN card image and extracts the PAN number, name, father's name and DOB. Does not check the PAN against any registry; pair with `pan_validation` for that.",
         "security": [
           {
             "ClientIdAuth": [],
@@ -3861,7 +3861,7 @@
           "PAN"
         ],
         "summary": "Validate a PAN",
-        "description": "Checks whether a PAN exists and is active, and returns the name and holder category on file. This is the lightweight PAN product: for the full KYC field set (address, masked Aadhaar, bank details) use `pan_detailed` instead.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
+        "description": "Checks whether a PAN exists and is active, and returns the name and holder category on file. This is the lightweight PAN product: for the full KYC field set (address, masked Aadhaar, bank details) use `pan_detailed` instead.",
         "security": [
           {
             "ClientIdAuth": [],
