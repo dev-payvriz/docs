@@ -100,7 +100,7 @@
           "Document OCR"
         ],
         "summary": "Extract Aadhaar card fields from an image",
-        "description": "Runs OCR on an uploaded Aadhaar card image (front side) and extracts the Aadhaar number, name and address fields. Unmasked by design; mask the returned `aadhaar_number` before displaying or storing it downstream.",
+        "description": "Runs OCR on an uploaded Aadhaar card image (front side) and extracts the Aadhaar number, name and address fields. Unmasked by design; mask the returned `aadhaar_number` before displaying or storing it downstream.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -288,7 +288,7 @@
           "Aadhaar"
         ],
         "summary": "Read and verify an Aadhaar secure QR",
-        "description": "Decodes an Aadhaar secure QR (from an uploaded image or pre-decoded `qr_data`) and, where possible, verifies its UIDAI digital signature. Accepts either multipart/form-data (image upload) or a JSON body (`qr_data`) as shown by the two request examples below.",
+        "description": "Decodes an Aadhaar secure QR (from an uploaded image or pre-decoded `qr_data`) and, where possible, verifies its UIDAI digital signature. Accepts either multipart/form-data (image upload) or a JSON body (`qr_data`) as shown by the two request examples below.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_204` | 400 | No QR could be detected in the image. | No |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -707,7 +707,7 @@
           "Bank Account"
         ],
         "summary": "Verify a bank account (penny drop)",
-        "description": "Confirms a bank account exists and returns the registered account-holder name. A definitively invalid account is a billed IDTO_202 result, not a raised error, even though its message text reads like the generic \"bank account invalid\" wording used elsewhere in the error table.",
+        "description": "Confirms a bank account exists and returns the registered account-holder name. A definitively invalid account is a billed IDTO_202 result, not a raised error, even though its message text reads like the generic \"bank account invalid\" wording used elsewhere in the error table.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_201` | 200 | Bank account is invalid. | Yes |\n| `IDTO_401` | 400 | Invalid IFSC code. | No |\n| `IDTO_402` | 400 | Invalid account number. | No |\n| `IDTO_403` | 400 | Invalid reference_id. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -947,7 +947,7 @@
           "Business & GST"
         ],
         "summary": "Verify a company CIN (MCA)",
-        "description": "Looks up a company's Corporate Identification Number against MCA records and returns incorporation, status and director details.",
+        "description": "Looks up a company's Corporate Identification Number against MCA records and returns incorporation, status and director details.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -1162,7 +1162,7 @@
           "DigiLocker"
         ],
         "summary": "Connect a DigiLocker account",
-        "description": "Exchanges a DigiLocker OAuth authorization code and PKCE verifier for the user's linked DigiLocker profile. Document-specific fetches (Aadhaar, PAN, DL, marksheets, etc.) are a separate v1 surface under `/verify/digilocker/*` that reuses the same authorization code.",
+        "description": "Exchanges a DigiLocker OAuth authorization code and PKCE verifier for the user's linked DigiLocker profile. Document-specific fetches (Aadhaar, PAN, DL, marksheets, etc.) are a separate v1 surface under `/verify/digilocker/*` that reuses the same authorization code.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -1359,7 +1359,7 @@
           "Document OCR"
         ],
         "summary": "Extract driving licence fields from an image",
-        "description": "Runs OCR on an uploaded driving licence image and extracts the DL number, holder details, dates and blood group.",
+        "description": "Runs OCR on an uploaded driving licence image and extracts the DL number, holder details, dates and blood group.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -1549,7 +1549,7 @@
           "Driving Licence"
         ],
         "summary": "Verify a driving licence",
-        "description": "Looks up a driving licence by number and date of birth and returns holder, validity and vehicle-class details.",
+        "description": "Looks up a driving licence by number and date of birth and returns holder, validity and vehicle-class details.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -1779,7 +1779,7 @@
           "Employment (EPFO/UAN)"
         ],
         "summary": "Fetch EPFO employment history",
-        "description": "Returns the EPFO member profile and the establishment-by-establishment employment history for a UAN, newest first. A v1 product of the same name exists at `/verify/employment_history` with an async job-handoff response pattern; this v2 product always resolves synchronously.",
+        "description": "Returns the EPFO member profile and the establishment-by-establishment employment history for a UAN, newest first. A v1 product of the same name exists at `/verify/employment_history` with an async job-handoff response pattern; this v2 product always resolves synchronously.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -2002,7 +2002,7 @@
           "Face & Liveness"
         ],
         "summary": "Compare two face images",
-        "description": "Compares a live capture against a reference photo (upload or URL) and returns a match score and confidence band.",
+        "description": "Compares a live capture against a reference photo (upload or URL) and returns a match score and confidence band.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_509` | 400 | Face match failed. | No |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -2257,7 +2257,7 @@
           "Business & GST"
         ],
         "summary": "Verify a GSTIN (basic)",
-        "description": "Looks up a GST registration and returns legal/trade name, status and jurisdiction. For the richer v1 product that also accepts a filing-status hint, see `gst_verification`; this is the newer vendor-agnostic option for a plain GSTIN lookup.",
+        "description": "Looks up a GST registration and returns legal/trade name, status and jurisdiction. For the richer v1 product that also accepts a filing-status hint, see `gst_verification`; this is the newer vendor-agnostic option for a plain GSTIN lookup.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -2483,7 +2483,7 @@
           "Address & Invoice"
         ],
         "summary": "Extract address details from an invoice or utility bill",
-        "description": "Runs OCR on an uploaded tax invoice or utility bill and extracts buyer/vendor address and identity fields for address verification. A document with no identifiable anchor field, or a document of a type not accepted for this purpose, both return a billed IDTO_202 with an explanatory message rather than a raised error.",
+        "description": "Runs OCR on an uploaded tax invoice or utility bill and extracts buyer/vendor address and identity fields for address verification. A document with no identifiable anchor field, or a document of a type not accepted for this purpose, both return a billed IDTO_202 with an explanatory message rather than a raised error.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -2723,7 +2723,7 @@
           "Face & Liveness"
         ],
         "summary": "Check liveness of a face image",
-        "description": "Runs anti-spoofing checks on a single face capture and returns a liveness score.",
+        "description": "Runs anti-spoofing checks on a single face capture and returns a liveness score.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_609` | 400 | Liveness check failed. | No |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -2962,7 +2962,7 @@
           "Aadhaar"
         ],
         "summary": "Generate Aadhaar OKYC OTP",
-        "description": "First step of the Aadhaar OKYC flow: sends an OTP to the mobile number linked to the given Aadhaar and returns a `session_id` for `okyc_get_result`.",
+        "description": "First step of the Aadhaar OKYC flow: sends an OTP to the mobile number linked to the given Aadhaar and returns a `session_id` for `okyc_get_result`.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -3167,7 +3167,7 @@
           "Aadhaar"
         ],
         "summary": "Submit Aadhaar OKYC OTP",
-        "description": "Second step of the Aadhaar OKYC flow: submits the OTP for a `session_id` from `okyc_generate_otp` and returns the full demographic record. Wrong or expired OTPs return IDTO_205; too many attempts return IDTO_206.",
+        "description": "Second step of the Aadhaar OKYC flow: submits the OTP for a `session_id` from `okyc_generate_otp` and returns the full demographic record. Wrong or expired OTPs return IDTO_205; too many attempts return IDTO_206.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_205` | 400 | OTP is invalid or has expired. | No |\n| `IDTO_206` | 429 | Too many OTP attempts. Please start a new session. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -3427,7 +3427,7 @@
           "PAN"
         ],
         "summary": "Detailed PAN lookup",
-        "description": "Returns the full KYC record on file for a PAN: name, address, masked Aadhaar and phone/email, gender, DOB, Aadhaar-seeding status and linked bank accounts.",
+        "description": "Returns the full KYC record on file for a PAN: name, address, masked Aadhaar and phone/email, gender, DOB, Aadhaar-seeding status and linked bank accounts.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -3676,7 +3676,7 @@
           "Document OCR"
         ],
         "summary": "Extract PAN card fields from an image",
-        "description": "Runs OCR on an uploaded PAN card image and extracts the PAN number, name, father's name and DOB. Does not check the PAN against any registry; pair with `pan_validation` for that.",
+        "description": "Runs OCR on an uploaded PAN card image and extracts the PAN number, name, father's name and DOB. Does not check the PAN against any registry; pair with `pan_validation` for that.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_503` | 400 | Image could not be read. Please try a clearer image. | No |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
@@ -3861,7 +3861,7 @@
           "PAN"
         ],
         "summary": "Validate a PAN",
-        "description": "Checks whether a PAN exists and is active, and returns the name and holder category on file. This is the lightweight PAN product: for the full KYC field set (address, masked Aadhaar, bank details) use `pan_detailed` instead.",
+        "description": "Checks whether a PAN exists and is active, and returns the name and holder category on file. This is the lightweight PAN product: for the full KYC field set (address, masked Aadhaar, bank details) use `pan_detailed` instead.\n\n## Errors\n\n| Code | HTTP | Message | Billed |\n| --- | --- | --- | --- |\n| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |\n| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |\n| `IDTO_005` | 400 | User consent is required to proceed. | No |\n| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |\n| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. | No |\n| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |\n| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |\n| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |\n| `IDTO_101` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_102` | 400 | A required parameter is missing from the request. | No |\n| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly. | No |\n\nSee [v2 Error Codes](/reference/v2-error-codes).",
         "security": [
           {
             "ClientIdAuth": [],
