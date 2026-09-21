@@ -53,15 +53,57 @@
         "tab": "API Reference",
         "groups": [
           {
-            "group": "All Endpoints",
-            "openapi": {
-              "source": "openapi2.0.json",
-              "directory": "api-reference-v2-preview"
-            }
+            "group": "Aadhaar",
+            "pages": [
+              "api-reference/v2/aadhaar-ocr",
+              "api-reference/v2/aadhaar-qr",
+              "api-reference/v2/okyc-generate-otp",
+              "api-reference/v2/okyc-get-result"
+            ]
+          },
+          {
+            "group": "PAN",
+            "pages": [
+              "api-reference/v2/pan-validation",
+              "api-reference/v2/pan-detailed",
+              "api-reference/v2/pan-ocr"
+            ]
+          },
+          {
+            "group": "Business",
+            "pages": [
+              "api-reference/v2/gst-verification-basic",
+              "api-reference/v2/cin-mca-verification",
+              "api-reference/v2/employment-history"
+            ]
+          },
+          {
+            "group": "Bank & Documents",
+            "pages": [
+              "api-reference/v2/bank-verification",
+              "api-reference/v2/digilocker",
+              "api-reference/v2/invoice-ocr"
+            ]
+          },
+          {
+            "group": "Driving Licence",
+            "pages": [
+              "api-reference/v2/driving-licence",
+              "api-reference/v2/dl-ocr"
+            ]
+          },
+          {
+            "group": "Face & Liveness",
+            "pages": [
+              "api-reference/v2/face-match",
+              "api-reference/v2/liveness"
+            ]
           },
           {
             "group": "Reference",
-            "pages": []
+            "pages": [
+              "reference/v2-error-codes"
+            ]
           }
         ]
       },
