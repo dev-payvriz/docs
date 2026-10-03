@@ -104,6 +104,13 @@
             "pages": [
               "reference/v2-error-codes"
             ]
+          },
+          {
+            "group": "Spike Group",
+            "pages": [
+              "spike/spike-page",
+              "spike/spike-snippet"
+            ]
           }
         ]
       },
