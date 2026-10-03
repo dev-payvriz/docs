@@ -1,0 +1,110 @@
+---
+title: "Verify a PAN and branch on error_code"
+description: "Call PAN validation and route each outcome by error_code, never by status alone."
+---
+
+Every v2 verification returns the same envelope. A `2xx` response always has `status: "success"`, and `error_code` tells you which outcome you got: `null` for a verified result, `IDTO_202` when the source has no record. Anything else is an error response with a non-`2xx` status and `billed: false`.
+
+| HTTP | `status` | `error_code` | Meaning | Billed |
+|---|---|---|---|---|
+| 200 | `success` | `null` | PAN verified, `data` filled | Yes |
+| 200 | `success` | `IDTO_202` | No record for this PAN, `data` is `null` | Yes |
+| 400 | `error` | `IDTO_001` | Input failed validation, for example a malformed PAN | No |
+| 400 | `error` | `IDTO_005` | `user_consent` was not `true` | No |
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Call PAN validation and branch">
+<CodeGroup>
+
+```bash curl
+curl -sS -X POST "$IDTO_BASE_URL/v2/verify/pan_validation" \
+  -H "X-Client-ID: $IDTO_CLIENT_ID" \
+  -H "X-API-Key: $IDTO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"pan_number": "ABCDE1234F", "user_consent": true}'
+```
+
+```python verify_pan.py
+import os
+
+import requests
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+HEADERS = {"X-Client-ID": os.environ["IDTO_CLIENT_ID"], "X-API-Key": os.environ["IDTO_API_KEY"]}
+
+
+def verify_pan(pan_number):
+    response = requests.post(
+        f"{BASE_URL}/v2/verify/pan_validation",
+        headers=HEADERS,
+        json={"pan_number": pan_number, "user_consent": True},
+        timeout=(5, 30),
+    )
+    body = response.json()
+    if body["status"] == "success" and body["error_code"] is None:
+        return "verified", body["data"]
+    if body["status"] == "success" and body["error_code"] == "IDTO_202":
+        return "no_record", None
+    return "error", {"http": response.status_code, "error_code": body["error_code"], "message": body["message"]}
+
+
+if __name__ == "__main__":
+    print(verify_pan("ABCDE1234F"))
+```
+
+```javascript verify_pan.mjs
+const BASE_URL = process.env.IDTO_BASE_URL ?? "https://prod.idto.ai";
+
+export async function verifyPan(panNumber) {
+  const response = await fetch(`${BASE_URL}/v2/verify/pan_validation`, {
+    method: "POST",
+    headers: {
+      "X-Client-ID": process.env.IDTO_CLIENT_ID,
+      "X-API-Key": process.env.IDTO_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ pan_number: panNumber, user_consent: true }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const body = await response.json();
+  if (body.status === "success" && body.error_code === null) return { outcome: "verified", data: body.data };
+  if (body.status === "success" && body.error_code === "IDTO_202") return { outcome: "no_record" };
+  return { outcome: "error", http: response.status, errorCode: body.error_code, message: body.message };
+}
+
+console.log(await verifyPan("ABCDE1234F"));
+```
+
+</CodeGroup>
+</Step>
+<Step title="Read the result">
+The sample PAN `ABCDE1234F` is a format placeholder, so it fails validation before any source is called:
+
+```json 400
+{"status": "error", "message": "Invalid PAN format. Please check and retry.", "error_code": "IDTO_001", "billed": false}
+```
+
+With a real PAN you are authorised to verify, the same code returns `verified` with the card details, or `no_record`.
+</Step>
+</Steps>
+
+## Good to know
+
+- Never treat `status: "success"` alone as "verified". Check `error_code` too.
+- Both `2xx` outcomes are billed, so store `billed` with the result for reconciliation.
+- See [Error codes](/error-codes) for every code and the HTTP status it comes with.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fverify-pan-branch-on-error-code) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fverify-pan-branch-on-error-code)

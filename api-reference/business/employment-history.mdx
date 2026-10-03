@@ -1,0 +1,56 @@
+---
+title: "Employment history by UAN"
+sidebarTitle: "Employment history"
+description: "Fetch the EPFO member profile and every establishment a person has worked at, from their UAN."
+openapi: "openapi2.0.json POST /v2/verify/employment_history"
+---
+
+Fetch a person's EPFO member profile (name, gender, date of birth) and their employment history: one record per establishment, with member id, establishment id and name, joining date and exit date, newest first. Use it to confirm a borrower's current employer or a candidate's past employers.
+
+The only input is the 12-digit UAN. Anything else is rejected with `IDTO_001` before any lookup and is not billed. Dates are returned as `YYYY-MM-DD`, or `null` when the source has no usable date. `is_current_employment` is `true` when the record has no exit date; it reflects the EPF record, not proof of active payroll.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | No EPFO employment record found for the provided UAN. | Yes |
+| `IDTO_001` | 400 | Invalid UAN. Please provide a valid 12-digit UAN. | No |
+| `IDTO_001` | 422 | Invalid request. The body is missing `uan`, or `uan` is longer than 12 characters. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+Branch on `error_code`, not on `status`: a no-record result is `status: "success"` with an `error_code`. Full list in [v2 error codes](/reference/v2-error-codes).
+
+## Retries
+
+Send an `Idempotency-Key` header (up to 255 characters) to make retries safe. Replaying the same key with the same body returns the stored result without running or billing the verification again. The same key with a different body returns `IDTO_010`; a replay while the first call is still running returns `IDTO_004`. If the first call returned an error, nothing is stored and a retry runs the verification again.
+
+## Test scenarios
+
+Use these input classes in staging to exercise each outcome.
+
+| Input | Expected result | Billed |
+|---|---|---|
+| UAN with EPF contributions | `error_code: null`, `data` filled | Yes |
+| 12-digit UAN with no EPFO record | `IDTO_202`, `data: null` | Yes |
+| `uan` empty or blank | `IDTO_001` (400) | No |
+| `uan` with letters or fewer than 12 digits | `IDTO_001` (400) | No |
+| `uan` longer than 12 characters, or missing | `IDTO_001` (422) | No |
+| Same `Idempotency-Key`, different body | `IDTO_010` (422) | No |
+
+Questions about employment lookups are answered in the [Business FAQ](/products/business/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fbusiness%2Femployment-history) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fbusiness%2Femployment-history)

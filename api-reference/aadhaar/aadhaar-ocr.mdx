@@ -1,0 +1,58 @@
+---
+title: "Aadhaar OCR"
+sidebarTitle: "Aadhaar OCR"
+description: "Read the Aadhaar number, name, date of birth, gender, care-of, address and pincode from a photo of an Aadhaar card."
+openapi: "openapi2.0.json POST /v2/verify/aadhaar_ocr"
+---
+
+Aadhaar OCR reads the printed fields from a photo or scan of an Aadhaar card. The front gives the number, name, date of birth and gender; the back gives care-of, address and pincode. OCR reads what is printed: it does not check the card against the Aadhaar database. To confirm the person, follow up with [OKYC](/api-reference/aadhaar/okyc-generate-otp) or [DigiLocker](/api-reference/aadhaar/digilocker).
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+- Send the file as `multipart/form-data` in the field `file`, at most 12 MB.
+- `error_code: null` with `data`: the card was read. Fields that could not be read are `null`.
+- `error_code: "IDTO_202"` with `data: null`: no Aadhaar number could be read, even if other text was (for example a back side with no number on it). Ask for a clearer image of the front. This is billed.
+- `data.aadhaar_number` is returned in full, 12 digits. Mask it before you show or store it, and keep only what you need.
+- `dob` is `YYYY-MM-DD`. `gender` is `male`, `female` or `transgender`.
+
+<Tip>
+Send an `Idempotency-Key` header. A retry with the same key and the same file returns the first response without a second charge. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | No Aadhaar could be read from the document. Please upload a clear Aadhaar image. | Yes |
+| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A clear photo of an Aadhaar front | 200, `error_code: null`, `data.aadhaar_number` filled | Yes |
+| A photo of something that is not an Aadhaar | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| A file larger than 12 MB | 413, `IDTO_503` | No |
+| A request without the `file` field | 422, `IDTO_001` | No |
+| Same `Idempotency-Key`, same file, sent twice | Second call returns the first response | Charged once |
+
+See the [Aadhaar FAQ](/products/aadhaar/faq) and the [OCR upload recipe](/recipes/ocr-upload-multipart).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/aadhaar-ocr) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/aadhaar-ocr)

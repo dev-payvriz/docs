@@ -1,0 +1,62 @@
+---
+title: "Detailed PAN lookup"
+sidebarTitle: "PAN Detailed"
+description: "Fetch the full KYC record behind a PAN: name, address, masked Aadhaar, masked contact details, gender, DOB, Aadhaar link status and linked bank accounts."
+openapi: "openapi2.0.json POST /v2/verify/pan_detailed"
+---
+
+Use PAN Detailed when a PAN check alone is not enough and you want the record behind it to prefill or cross-check an application. It runs the same input checks as [PAN Validation](/api-reference/pan/pan-validation) and returns a richer `data` object. Sensitive values come back masked: Aadhaar to its last 4 digits, phone to its last 2 digits, email to the first 2 characters of the local part, and bank account numbers to their last 4 digits.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+- Branch on `error_code`: `null` means the record was found, `IDTO_202` means no record exists. Both are `status: "success"` and both are billed.
+- Not every source returns every field. `gender`, `email`, `phone_number`, `masked_aadhaar` and `dob` can be `null`, `address` fields can be empty strings, and `bank_details` can be an empty list. Treat each field as optional.
+- `full_name_split` is `[first, middle, last]`; the middle entry is an empty string when there is none.
+- `category` is one of `individual`, `company`, `huf`, `firm`, `aop`, `trust`, `boi`, `local_authority`, `artificial_juridical_person`, `government` or `unknown`.
+- `name` in the request is optional. The fields above do not depend on it.
+- `extras` can carry additional fields when the source returns them, and is often an empty object. Do not build logic on its keys.
+
+<Tip>
+Send an `Idempotency-Key` header on every call so a retry after a timeout returns the first result instead of charging you again. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |
+| `IDTO_001` | 400 | Invalid input: Pan number is required. Please check and retry. | No |
+| `IDTO_001` | 400 | Invalid PAN format. Please check and retry. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `IDTO_005` | 400 | User consent is required to proceed. | No |
+| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real PAN with `user_consent: true` | 200, `error_code: null`, `data` with the record | Yes |
+| A well-formed PAN that has no record | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| `pan_number: "ABCDE12345"` (wrong shape) | 400, `IDTO_001` | No |
+| `user_consent: false` | 400, `IDTO_005` | No |
+| Body without `user_consent` | 422, `IDTO_001` | No |
+| Same `Idempotency-Key` and body, sent twice | Second call returns the first response | Charged once |
+
+See the [PAN FAQ](/products/pan/faq) for common questions.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/pan/pan-detailed) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/pan/pan-detailed)

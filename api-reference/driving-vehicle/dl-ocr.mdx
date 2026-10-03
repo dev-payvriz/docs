@@ -1,0 +1,66 @@
+---
+title: "Read a driving licence image (OCR)"
+sidebarTitle: "Driving licence OCR"
+description: "Upload a photo or scan of a driving licence and get the licence number, holder name, date of birth and address as structured fields."
+openapi: "openapi2.0.json POST /v2/verify/dl_ocr"
+---
+
+Upload an image of the licence as `multipart/form-data` in the `file` field. IDTO reads the card and returns its fields. Pair it with [Verify a driving licence](/api-reference/driving-vehicle/driving-licence) to confirm the extracted number against the issuing record.
+
+Every response has the same shape whichever source serves the call. Branch on `error_code`, never on `status`:
+
+- `error_code: null` with `data`: fields were read from the card. Billed.
+- `error_code: "IDTO_202"` with `data: null`: no driving licence could be read from the file. Billed.
+- Any non-2xx response: the check did not complete. Never billed.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Input rules
+
+| Field | Rule |
+|---|---|
+| `file` | Required. One image of the licence, at most 12 MB. Larger uploads return `IDTO_503` (413). |
+| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+
+`data.dl_number` is returned only when the text read matches two letters followed by 11 to 14 digits; otherwise it is `null`. Check every field before you rely on it, OCR reads what is printed and can misread a worn card.
+
+## Retries and duplicate protection
+
+Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. Replaying the same key with the same body within 48 hours returns the stored first response without a new check or a new charge. The same key with a different body returns `IDTO_010` (422). A replay while the first call is still running returns `IDTO_004` (409). If the first call returned an error, nothing is stored, so a retry runs the check again.
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | No driving licence could be read from the document. Please upload a clear DL image. | Yes |
+| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
+| `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
+| `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
+| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+On `IDTO_202` or `IDTO_503`, ask the user for a sharper, well lit photo of the front of the card. Retry `IDTO_004`, `IDTO_006` and `IDTO_008` with backoff. Full taxonomy: [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected `error_code` | HTTP | Billed |
+|---|---|---|---|
+| Clear photo of the front of a driving licence | `null` | 200 | Yes |
+| Photo of a different document or a blank page | `IDTO_202` | 200 | Yes |
+| File larger than 12 MB | `IDTO_503` | 413 | No |
+| Request without the `file` part | `IDTO_001` | 422 | No |
+
+Questions: [Driving licence and vehicle FAQ](/products/driving-vehicle/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fdriving-vehicle%2Fdl-ocr) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fdriving-vehicle%2Fdl-ocr)

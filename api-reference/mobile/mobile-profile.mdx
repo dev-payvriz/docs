@@ -1,0 +1,100 @@
+---
+title: "Fetch a mobile subscriber profile"
+sidebarTitle: "Mobile profile"
+description: "Look up the profile linked to an Indian mobile number. v1 endpoint, charged only when a profile is found."
+openapi: "openapi2.0.json POST /verify/mobile_profile"
+---
+
+Send a 10-digit Indian mobile number. When a profile is linked to it, IDTO returns it in a `result` object with `status: "success"`. Use it to pre-fill onboarding forms or to cross-check what a user typed against what is on record for their number. Collect the user's consent before you call it.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them). When no record is found, the response is a non-2xx error and you are not charged.
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the lookup again and can be charged twice.
+</Warning>
+
+## Response fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `status` | string | `success` when a profile was found. |
+| `result.name` | string | Name linked to the number. |
+| `result.dob` | string | Date of birth. |
+| `result.age` | string | Age in years. |
+| `result.gender` | string | Gender. |
+| `result.email` | string | Email linked to the number. |
+| `result.pan` | string | PAN linked to the number. |
+| `result.score` | string | Score returned with the profile. |
+| `result.address[]` | array | Addresses on record. Each has `first_line_of_address`, `second_line_of_address`, `third_line_of_address`, `city`, `state`, `postal_code`, `country_code` and `reported_date`, all strings. |
+| `tranx_id` | string | IDTO transaction id. Quote it to support. |
+| `timestamp` | string | Time of the call, ISO 8601. |
+
+<Note>
+The fields above are the ones returned in production for this endpoint. Treat every field under `result` as optional and read it defensively.
+</Note>
+
+```json
+{
+  "status": "success",
+  "result": {
+    "name": "RAHUL SHARMA",
+    "dob": "1990-01-01",
+    "age": "36",
+    "gender": "MALE",
+    "email": "rahul.sharma@example.com",
+    "pan": "ABCDE1234F",
+    "score": "100",
+    "address": [
+      {
+        "first_line_of_address": "12 SAMPLE STREET",
+        "second_line_of_address": "SAMPLE AREA",
+        "third_line_of_address": "SAMPLE AREA",
+        "city": "BENGALURU",
+        "state": "KARNATAKA",
+        "postal_code": "560001",
+        "country_code": "IN",
+        "reported_date": "2026-01-15"
+      }
+    ]
+  },
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30.123456+00:00",
+  "chargeble": "true",
+  "user_consent": "true"
+}
+```
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| `mobile` key missing from the body | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
+| `mobile` empty | 400 | `{"detail": {"status": "error", "message": "Mobile number is required", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
+| No profile for the number | Non-2xx | Same `{"detail": {...}}` shape; `message` text varies | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A mobile number with a linked profile | 200, `status: "success"`, `result` populated | Yes |
+| A number with no linked profile | non-2xx, `{"detail": {...}}` | No |
+| `{"mobile": ""}` | 400, "Mobile number is required" | No |
+| `{}` | 422, `{"detail": [...]}` | No |
+
+Staging calls reach live sources, so use a number you are authorised to look up. Questions: [Mobile FAQ](/products/mobile/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fmobile%2Fmobile-profile) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fmobile%2Fmobile-profile)

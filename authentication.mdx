@@ -30,12 +30,12 @@ Because these headers work in any request, this method is for calls your own bac
 
 ### Hosts
 
-| Host | Purpose |
-| --- | --- |
-| `https://dev.idto.ai` | Sandbox. Use your dev credentials here while building and testing. |
-| `https://prod.idto.ai` | Production. Billable, and every call reaches a real verification source. Use only once you're ready to go live. |
+| Environment | Base URL | Notes |
+| --- | --- | --- |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
-Dev and prod credentials are separate pairs. A dev `X-Client-ID` and `X-API-Key` won't authenticate against `prod.idto.ai`, and vice versa.
+Staging and production keys are separate pairs. A staging `X-Client-ID` and `X-API-Key` won't authenticate against `prod.idto.ai`, and vice versa. See [Environments](/environments).
 
 ## Browser and mobile SDKs: token exchange
 
@@ -67,17 +67,30 @@ curl --request POST \
 }
 ```
 
-The token is valid for 900 seconds (15 minutes) and only permits running the verification flows exposed by the SDK. It can't call server-to-server verification endpoints, merchant-management endpoints, or webhook configuration.
+The token is valid for 900 seconds (15 minutes). It is a short-lived, client-side credential: the SDK sends it as `Authorization: Bearer <token>` and it authenticates verification calls as your account until it expires. Your `client_secret` never leaves your server. Mint a token per user session, just before you start the SDK, and never log or persist it.
+
+Errors: wrong credentials return `401` with `{"detail": "Invalid client credentials"}`, and an inactive client returns `401` with `{"detail": "Client is inactive"}`.
 
 ### Your backend passes the token to the SDK
 
-Hand `access_token` to the SDK at init time as its client token. If a session runs longer than 15 minutes, the SDK calls back to your backend to request a fresh token the same way, rather than re-exchanging your permanent credentials from the client side.
+Hand `access_token` to the SDK at init time as its client token. If a user takes longer than 15 minutes, the web SDK calls its `getToken` option on a `401`, so point that at an endpoint on your backend that mints a fresh token the same way. Never move the exchange to the client.
 
 </Steps>
 
 <Warning>
   `POST /auth/sdk/token` is meant to be called from your backend, not from the browser or app itself. If the client-side code called it directly, it would need your permanent `X-API-Key` to do so, which defeats the purpose of the exchange.
 </Warning>
+
+## Authentication errors
+
+| HTTP | `detail` | Cause |
+| --- | --- | --- |
+| 401 | `Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token.` | Headers missing, or the key pair does not match |
+| 403 | `Client is inactive` | The client has been deactivated |
+| 403 | `Customer is inactive` | The account is deactivated |
+| 404 | `Customer not found for this client` | The client is not linked to an active account |
+
+These are returned before any verification runs and are never billed.
 
 ## Which method to use
 
@@ -86,3 +99,5 @@ Hand `access_token` to the SDK at init time as its client token. If a session ru
 | Your backend, calling `/verify/*` or `/v2/verify/*` directly | `X-Client-ID` + `X-API-Key` headers |
 | Your backend, provisioning a session for a web or mobile SDK | `POST /auth/sdk/token`, then hand the returned token to the SDK |
 | The SDK itself, running in a user's browser or app | The short-lived token from `/auth/sdk/token`, never your permanent key pair |
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

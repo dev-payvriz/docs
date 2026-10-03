@@ -1,0 +1,69 @@
+---
+title: "Aadhaar OKYC: send OTP"
+sidebarTitle: "OKYC send OTP"
+description: "Step 1 of Aadhaar OKYC: send a one-time password to the mobile linked to an Aadhaar and get a session_id."
+openapi: "openapi2.0.json POST /v2/verify/okyc_generate_otp"
+---
+
+Aadhaar OKYC verifies a person against their Aadhaar record with an OTP the holder receives on the mobile number linked to their Aadhaar. It takes two calls. This one sends the OTP and returns a `session_id`. The second, [OKYC submit OTP](/api-reference/aadhaar/okyc-get-result), takes that `session_id` and the OTP and returns the holder's name, date of birth, gender, address and photo.
+
+Make both calls with the same API credentials. Ask the holder to type the OTP into your app, then send it with step 2.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+<Warning>
+This call sends a real SMS to the holder in both environments. Only send it for an Aadhaar whose holder has asked to be verified.
+</Warning>
+
+## How to read the result
+
+- `status` is `success` for every completed call. Branch on `error_code`, never on `status`.
+- `error_code: null` with `data.session_id`: the OTP was sent. Keep `session_id` for step 2.
+- `error_code: "IDTO_202"` with `data: null`: the Aadhaar number was rejected as invalid. This is a definitive answer and is billed.
+- `billed` is `true` for both outcomes above and `false` on every error.
+- `user_consent` must be `true`. Record the holder's consent before you call.
+
+<Tip>
+Send an `Idempotency-Key` header (up to 255 characters). If a network error makes you retry with the same key and body, you get the first response back, no second SMS is sent and you are not charged again. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | Invalid Aadhaar number. Please check and retry. | Yes |
+| `IDTO_001` | 400 | Invalid input: Aadhaar number must be 12 digits. Please check and retry. | No |
+| `IDTO_001` | 400 | Invalid input: Aadhaar number is invalid. Please check and retry. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `IDTO_005` | 400 | User consent is required to proceed. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly or contact support at tech@idto.ai. | No |
+
+`IDTO_103` means OTP generation is blocked for this Aadhaar for now. Ask the holder to try again later, or offer DigiLocker or an Aadhaar upload instead. A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real Aadhaar with a linked mobile, `user_consent: true` | 200, `error_code: null`, `data.session_id` | Yes |
+| A 12-digit number starting 2 to 9 that has no Aadhaar record | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| `aadhaar_number: "99999999001"` (11 digits) | 400, `IDTO_001` | No |
+| A 12-digit `aadhaar_number` whose first digit is 0 or 1 | 400, `IDTO_001` | No |
+| `user_consent: false` | 400, `IDTO_005` | No |
+| Body without `aadhaar_number` | 422, `IDTO_001` | No |
+| Same `Idempotency-Key`, same body, sent twice | Second call returns the first response, one SMS | Charged once |
+| Same `Idempotency-Key`, different `aadhaar_number` | 422, `IDTO_010` | No |
+
+Input rules: `aadhaar_number` is exactly 12 digits and the first digit is 2 to 9, with no spaces or dashes. See [Input formats](/reference/input-formats), the [Aadhaar FAQ](/products/aadhaar/faq) and the [send-OTP recipe](/recipes/aadhaar-okyc-send-otp).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/okyc-generate-otp) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/okyc-generate-otp)

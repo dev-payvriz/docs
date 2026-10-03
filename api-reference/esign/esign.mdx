@@ -1,0 +1,63 @@
+---
+title: "Create an eSign request"
+sidebarTitle: "Create eSign request"
+description: "Submit PDFs and their signers for electronic signature and get a docket_id back."
+openapi: "openapi2.0.json POST /verify/esign"
+---
+
+Creates an eSign docket: one or more PDFs, the people who must sign them, and where each signature goes. Signers sign through the link they receive. Store the `docket_id` and `document_id` from the response; you need them to download the signed PDF with [Download the signed document](/api-reference/esign/esign-document) and to match the [eSign completed webhook](/api-reference/webhooks/esign-completed).
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Request rules
+
+| Field | Rule |
+|---|---|
+| `documents[].content` | Base64 PDF, at most 10 MB after decoding. A `data:` prefix is accepted. |
+| `documents[].content_type` | `pdf` |
+| `documents[].signature_sequence` | `sequential` or `parallel` |
+| `documents[].return_url` | Where the signer lands after signing. Redirect only: it never carries the signed document. |
+| `signers_info[].signer_position.appearance` | One of `top-left`, `top-right`, `bottom-left`, `bottom-right` (exact, lowercase), or an array of `{x1, y1, x2, y2}` boxes. |
+| `signers_info[].page_number` | `"1"`, `"all"`, or a list such as `"3,5"`. Applies to every box. |
+| `signers_info[].document_to_be_signed` | The `reference_doc_id` of the document this signer signs. |
+| `final_copy_recipients` | Comma-separated emails that receive the signed copy. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent` set to `"true"`; an uncharged one does not carry them as `"true"`. This endpoint does not return a `billed` field.
+
+<Warning>
+This endpoint has no idempotency support. If a call times out and you retry it, you can create and pay for a second docket. Before retrying, check whether an `esign.completed` webhook or a `POST /verify/esign/document` call already knows the docket.
+</Warning>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "<message>"}` | No |
+| Client or account inactive | 403 | `{"detail": "<message>"}` | No |
+| Customer not found for this client | 404 | `{"detail": "<message>"}` | No |
+| Body validation failed (missing field, not base64, over 10 MB, unknown `appearance`) | 422 | `{"detail": [{"loc": [...], "msg": "..."}]}` | No |
+| Signing request rejected upstream | 4xx | `{"detail": {"status": "error", "message", "error_code", "data": null, "tranx_id", "timestamp"}}` | No |
+| Signing platform unreachable | 500 | Not part of the contract; retry later | No |
+
+## Response
+
+| Field | Meaning |
+|---|---|
+| `docket_id` | Docket identifier. Store it. |
+| `document_id` | Identifier of the document in the docket. |
+| `signer_info[]` | One entry per signer: `signer_ref_id` (yours), `signer_id`, `reference_doc_id`, `document_id`, and `invitation_link`, the signer's signing link. |
+| `response_time_stamp` | Time the signing platform accepted the request. |
+| `tranx_id`, `timestamp` | IDTO transaction id and recorded time. |
+
+See the [eSign workflow guide](/guides/esign-workflow), the [eSign and download recipe](/recipes/esign-and-download) and the [eSign FAQ](/products/esign/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/esign/esign) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/esign/esign)

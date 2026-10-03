@@ -1,0 +1,49 @@
+---
+title: "Get a DigiLocker reference key"
+sidebarTitle: "DigiLocker: reference key"
+description: "Exchange the code from the DigiLocker redirect for a reference key valid for one hour."
+openapi: "openapi2.0.json POST /verify/digilocker/get_reference"
+---
+
+Step 2 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Send the `code` and `codeVerifier` your `redirect_url` received. You get back a `reference_key`, valid for one hour, to use with [DigiLocker user details](/api-reference/aadhaar/digilocker-user-details) and [Download the e-Aadhaar XML](/api-reference/aadhaar/digilocker-fetch-aadhaar). Call it as soon as the redirect arrives: the `code` is short-lived and works once.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`, which is every time a `reference_key` is returned. A charged JSON response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them).
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the call again and can be charged twice.
+</Warning>
+
+If you only need the holder's profile, use [DigiLocker profile](/api-reference/aadhaar/digilocker) instead: it exchanges the same `code` in one call, returns a masked profile and supports `Idempotency-Key`.
+
+## Errors
+
+| Case | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| Code rejected (expired, already used, or not matching the verifier) | 400 | `{"detail": {"status": "error", "message": "No access_token received", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
+| A required field missing or of the wrong type | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A fresh `code` and its `codeVerifier` | 200, `status: "success"`, `reference_key`, `expires_at` | Yes |
+| The same `code` a second time | 400, `message: "No access_token received"` | No |
+| Body without `code_verifier` | 422, `{"detail": [...]}` | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/digilocker-get-reference) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/digilocker-get-reference)

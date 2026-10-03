@@ -1,6 +1,6 @@
 ---
-title: "Error Codes"
-sidebarTitle: "Error Codes"
+title: "Handling errors"
+sidebarTitle: "Handling errors"
 description: "How idto reports success, no-record, and failure outcomes across every v2 endpoint, and where to look up a specific error code."
 ---
 
@@ -17,12 +17,12 @@ Every `/v2/verify/*` response carries the same three fields for figuring out wha
 </ResponseField>
 
 <ResponseField name="billed" type="boolean">
-  Whether the call consumed a credit. Always matches whether the response is a 2xx `"success"`: `true` for a full match, `true` for a definitive no-record result, `false` for anything raised.
+  Whether the call consumed a credit: `true` for a full match or a definitive no-record result, `false` for anything raised. A call made inside a verification session that already bills that step also returns `false`.
 </ResponseField>
 
 ## No-record is still success
 
-The pattern most integrations trip on: a query that runs cleanly but finds nothing (an invalid PAN, a bank account that doesn't exist) is not an error. It's HTTP `200`, `status: "success"`, `data: null`, and an `IDTO_2xx` code in `error_code`. `billed` is `true`, the check still ran and still cost a credit.
+The pattern most integrations trip on: a query that runs cleanly but finds nothing (an invalid PAN, a bank account that doesn't exist) is not an error. It's HTTP `200`, `status: "success"`, `data: null`, and `IDTO_202` in `error_code`. `billed` is `true`, the check still ran and still cost a credit.
 
 ```json
 {
@@ -40,7 +40,7 @@ Treat this as a distinct, expected outcome in your application, alongside "match
 
 ## Raised errors
 
-Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status on a raised error tells you the category (`400`/`422` for a bad request, `402` for insufficient credits, `429` for rate limiting, `500`/`503` for an idto-side or upstream issue), and `error_code` tells you exactly which one.
+Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status tells you the category: `400` or `422` for a request to fix, `401`, `403` or `404` for credentials, `409` for a duplicate or in-flight request, `429` for rate limiting, `503` for a transient condition worth retrying, and `500` for a problem on IDTO's side.
 
 ```json
 {
@@ -48,14 +48,45 @@ Anything that isn't a full match or a valid no-record result is a raised, non-2x
   "message": "User consent is required to proceed.",
   "error_code": "IDTO_005",
   "data": null,
-  "billed": false
+  "billed": false,
+  "chargeble": "false",
+  "user_consent": "false"
 }
+```
+
+## What to do with each outcome
+
+| Outcome | Example codes | Retry? | Action |
+| --- | --- | --- | --- |
+| Full result | `null` | No | Use `data` |
+| No record | `IDTO_202` | No | Show the user a clear "not found" and let them correct the input |
+| Bad input | `IDTO_001`, `IDTO_005`, `IDTO_101`, `IDTO_102`, `IDTO_401`, `IDTO_402` | No | Fix the request; check [Input formats](/reference/input-formats) |
+| OTP problems | `IDTO_205`, `IDTO_206` | After user action | Ask for a new OTP |
+| In flight or reused key | `IDTO_004`, `IDTO_010` | `IDTO_004` yes, later | See [Idempotency](/concepts/idempotency) |
+| Rate limited | `IDTO_006` | Yes, with backoff | See [Rate limits](/concepts/rate-limits) |
+| Transient | `IDTO_008`, `IDTO_103`, `IDTO_403` | Yes, with backoff | Same key, same body |
+| Image | `IDTO_503`, `IDTO_204` | After a new image | Ask for a clearer, smaller image |
+| IDTO side | `IDTO_007`, `IDTO_509`, `IDTO_609` | `IDTO_509` and `IDTO_609` once | Write to support with the `tranx_id` if it repeats |
+
+```python
+def handle(response):
+    body = response.json()
+    code = body.get("error_code")
+    if response.ok and code is None:
+        return "verified", body["data"]
+    if code == "IDTO_202":
+        return "not_found", None
+    if response.status_code in (429, 503):
+        return "retry", None
+    return "fix_request", body.get("message")
 ```
 
 ## Idempotent retries
 
-Send an `Idempotency-Key` header on a `/v2/verify/*` request to make retrying that exact call safe. Replaying the same key with the same body returns the original result rather than running (and billing) the check again. Replaying the same key with a different body is rejected.
+Send an `Idempotency-Key` header on a `/v2/verify/*` request to make retrying that exact call safe. Replaying the same key with the same body returns the original result rather than running (and billing) the check again. Replaying the same key with a different body is rejected with `IDTO_010`. A request still in flight under the same key returns `IDTO_004`. See [Idempotency](/concepts/idempotency).
 
 ## Full code reference
 
-The complete `IDTO_*` table, every code, its HTTP status, its default message, and whether it's billed, lives on one page: [v2 Error Codes](/reference/v2-error-codes). This page explains the pattern; that page is the lookup table.
+The complete `IDTO_*` table, every code, its HTTP status, its default message, and whether it's billed, lives on one page: [Error codes](/reference/v2-error-codes). This page explains the pattern; that page is the lookup table.
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

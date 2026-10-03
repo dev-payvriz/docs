@@ -1,0 +1,49 @@
+---
+title: "eSign FAQ"
+sidebarTitle: "FAQ"
+description: "Common questions about creating eSign dockets and downloading signed documents."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Which signature types are supported?">
+    Set `signature_type` per signer, for example `aadhaar` for Aadhaar-based eSign or `electronic` for an electronic signature.
+  </Accordion>
+  <Accordion title="Can several people sign one document?">
+    Yes. Add one entry per signer in `signers_info`. `signature_sequence` on the document sets whether they sign in order (`sequential`, using each signer's `sequence`) or in any order (`parallel`).
+  </Accordion>
+  <Accordion title="What am I charged for?">
+    Only for creating a docket, and only when the response `status` is `success`. Fetching the document and receiving the webhook are free.
+  </Accordion>
+  <Accordion title="How long can I download the signed PDF?">
+    IDTO archives the signed PDF as soon as every signer has signed and serves it from that archive. Download it when you get the webhook and store it on your side.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="Does return_url carry the signed document?">
+    No. It only brings the signer back to your site. Call `POST /verify/esign/document` to get the PDF.
+  </Accordion>
+  <Accordion title="How do I place the signature precisely?">
+    Pass `signer_position.appearance` as an array of `{x1, y1, x2, y2}` boxes instead of a preset. `page_number` picks the page or pages for every box.
+  </Accordion>
+  <Accordion title="Why do I get 502 when fetching?">
+    The status or the file could not be fetched at that moment, or the signed file is not ready yet. Retry with backoff. 502 is never billed.
+  </Accordion>
+  <Accordion title="What does 410 mean?">
+    The signed copy was deleted upstream before IDTO archived it. It cannot be regenerated. Contact support with the `docket_id`.
+  </Accordion>
+  <Accordion title="Can I retry a create call safely?">
+    No. `POST /verify/esign` has no idempotency support, so a retry can create and charge a second docket.
+  </Accordion>
+  <Accordion title="Is there a maximum file size?">
+    Each PDF can be at most 10 MB after base64 decoding. Larger files return 422.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/esign/faq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/esign/faq)

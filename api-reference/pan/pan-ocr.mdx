@@ -1,0 +1,71 @@
+---
+title: "Read a PAN card image"
+sidebarTitle: "PAN OCR"
+description: "Upload a PAN card image or PDF and get the PAN number, name, father's name and date of birth read from it."
+openapi: "openapi2.0.json POST /v2/verify/pan_ocr"
+---
+
+Use PAN OCR to prefill a form from a photo of the PAN card instead of asking the user to type. It reads the card only. It does not check the PAN against any registry, so follow it with [PAN Validation](/api-reference/pan/pan-validation) when you need to know the PAN is real.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Upload rules
+
+- Send `multipart/form-data` with the card in a field named `file`.
+- Accepted types: JPEG, PNG or PDF. Anything else, or an empty file, returns `IDTO_001`.
+- Keep the file under 5 MB. Larger files can be rejected with `IDTO_503` (413).
+- One card per image, front side, flat and in focus.
+
+```bash
+curl -X POST https://dev.idto.ai/v2/verify/pan_ocr \
+  -H "X-Client-ID: $IDTO_CLIENT_ID" \
+  -H "X-API-Key: $IDTO_API_KEY" \
+  -H "Idempotency-Key: pan-ocr-0001" \
+  -F "file=@pan-card.jpg"
+```
+
+## How to read the result
+
+- `error_code: null`: the card was read. `data.pan_number` is set only when the text read is a valid PAN shape; `dob` is `YYYY-MM-DD`.
+- `error_code: "IDTO_202"`: no PAN could be read. Ask the user for a clearer photo. This result is billed.
+- `name`, `father_name` and `dob` can be `null` when that part of the card is unreadable.
+
+<Tip>
+Send an `Idempotency-Key` header so a retried upload returns the first result instead of charging again. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | No PAN could be read from the document. Please upload a clear PAN image. | Yes |
+| `IDTO_001` | 400 | Invalid input: a readable document image (jpg, png or pdf) is required. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | The `file` field is missing. The message names the field. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Clear photo of a PAN card | 200, `error_code: null`, `data.pan_number` set | Yes |
+| Card photo where the PAN number cannot be read | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| A `.txt` or `.docx` file | 400, `IDTO_001` | No |
+| Request with no `file` field | 422, `IDTO_001` | No |
+| An image over 12 MB | 413, `IDTO_503` | No |
+
+The [OCR upload recipe](/recipes/ocr-upload-multipart) has a runnable example. See the [PAN FAQ](/products/pan/faq) for common questions.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/pan/pan-ocr) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/pan/pan-ocr)

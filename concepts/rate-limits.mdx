@@ -1,0 +1,57 @@
+---
+title: "Rate limits"
+sidebarTitle: "Rate limits"
+description: "What limits apply to server and SDK calls, what you receive when you hit one, and how to retry."
+---
+
+## Server-to-server calls
+
+Calls made with `X-Client-ID` and `X-API-Key` have no fixed per-key request quota. Capacity is protected in two other ways, and both are signalled in the response so you can back off.
+
+| HTTP | `error_code` | When | What to do |
+| --- | --- | --- | --- |
+| 503 | `IDTO_008` | IDTO is shedding load, or a verification source is not responding | Retry with exponential backoff and jitter |
+| 429 | `IDTO_006` | The verification source behind the product is rate limiting | Retry with backoff; spread bulk jobs over time |
+| 503 | `IDTO_103` or `IDTO_403` | The source could not complete this verification right now | Retry shortly |
+
+None of these are billed. For bulk jobs, run a bounded worker pool rather than firing every request at once, and treat a burst of `IDTO_008` as a signal to reduce concurrency.
+
+## SDK sessions
+
+An SDK token minted for a verification session is tied to that session. Each session allows **60** verification calls. Past that, calls return:
+
+```json
+{ "detail": "This verification session has used its allowance. Start a new session." }
+```
+
+with HTTP `429`. Start a new session for the user. Related session errors:
+
+| HTTP | `detail` | Cause |
+| --- | --- | --- |
+| 403 | `This client must supply the verification session it is working on.` | The session header is missing |
+| 403 | `This token belongs to a different verification session.` | The token was minted for another session |
+| 409 | `That verification session is no longer in progress.` | The session already finished |
+
+## Retry pattern
+
+```python
+import random
+import time
+
+import requests
+
+RETRYABLE = {429, 503}
+
+
+def verify(url, headers, body, attempts=5):
+    for attempt in range(attempts):
+        response = requests.post(url, headers=headers, json=body, timeout=60)
+        if response.status_code not in RETRYABLE:
+            return response
+        time.sleep(min(2 ** attempt, 30) + random.random())
+    return response
+```
+
+Send an `Idempotency-Key` on every v2 retry so a request that did complete is replayed instead of run and billed twice. See [Idempotency](/concepts/idempotency).
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

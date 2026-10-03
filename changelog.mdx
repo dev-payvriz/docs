@@ -1,0 +1,303 @@
+---
+title: "Changelog"
+description: "New features, improvements and fixes to the IDTO API and SDKs, dated by the day each change went live in production."
+rss: true
+---
+
+Each entry is dated by the day the change reached production. Subscribe with the RSS link at the top of this page.
+
+<Update label="October 2, 2026" tags={["Added"]}>
+**Added**
+
+- `POST /v2/verify/vpa_verification` verifies a UPI ID and returns the holder name.
+
+</Update>
+
+<Update label="September 21, 2026" tags={["Improved", "Fixed"]}>
+**Improved**
+
+- Aadhaar QR errors carry actionable messages, and an oversized image returns the standard 413 envelope.
+- The web SDK Aadhaar QR scanner retries more reliably and explains scanner failures.
+
+**Fixed**
+
+- Credit report calls no longer time out on slow bureau responses.
+
+</Update>
+
+<Update label="September 18, 2026" tags={["Improved"]}>
+**Improved**
+
+- DigiLocker Aadhaar fetch errors return structured IDTO error codes.
+
+</Update>
+
+<Update label="September 17, 2026" tags={["Improved"]}>
+**Improved**
+
+- Low-balance emails go out at three levels, the first time your balance drops under 5,000, then under 500, then under 100.
+
+</Update>
+
+<Update label="September 14, 2026" tags={["Added", "Fixed"]}>
+**Added**
+
+- `POST /v2/verify/employment_history`.
+- Mobile profile is available as a silent workflow step.
+
+**Fixed**
+
+- DigiLocker and mobile profile calls stop waiting on a slow upstream source after a fixed timeout and return a clear error.
+
+</Update>
+
+<Update label="September 12, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- Aadhaar OTP result calls on a session that can no longer be resumed return `IDTO_205`, asking the user to request a new OTP.
+
+</Update>
+
+<Update label="September 9, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- The web SDK shows the mobile profile address correctly and prints only the most complete address in the PDF report.
+
+</Update>
+
+<Update label="September 8, 2026" tags={["Added", "Fixed"]}>
+**Added**
+
+- The web SDK includes the mobile profile step in its result data and PDF report.
+
+**Fixed**
+
+- The web SDK DigiLocker step returns to the right page after consent.
+
+</Update>
+
+<Update label="September 7, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- Aadhaar OTP verification results again include every documented field.
+
+</Update>
+
+<Update label="August 27, 2026" tags={["Added"]}>
+**Added**
+
+- eSign completion is delivered server to server through the `esign.completed` webhook, and signed documents are archived when signing completes.
+
+</Update>
+
+<Update label="August 24, 2026" tags={["Improved"]}>
+**Improved**
+
+- Aadhaar OTP verification waits longer for the upstream response, so fewer calls time out.
+
+</Update>
+
+<Update label="August 20, 2026" tags={["Added"]}>
+**Added**
+
+- Verification links: create a shareable link with `POST /merchant/verification-links`, list them with `GET`, and revoke one with `DELETE /merchant/verification-links/{link_id}`. The link opens the hosted verification flow for your end user.
+
+</Update>
+
+<Update label="August 17, 2026" tags={["Added"]}>
+**Added**
+
+- `POST /verify/court_check` accepts an optional `father_name` to narrow matches.
+
+</Update>
+
+<Update label="August 10, 2026" tags={["Improved"]}>
+**Improved**
+
+- Aadhaar QR verification reads the older DigiLocker XML format.
+
+</Update>
+
+<Update label="August 6, 2026" tags={["Improved"]}>
+**Improved**
+
+- `reference_id` behaves the same on every bank verification source.
+
+</Update>
+
+<Update label="August 2, 2026" tags={["Added", "Fixed"]}>
+**Added**
+
+- Aadhaar OTP verification on v2: `/v2/verify/okyc_generate_otp` and `/v2/verify/okyc_get_result`.
+- `POST /v2/verify/digilocker`. The v1 `POST /verify/digilocker` stays available.
+- Slow employment history lookups return `202` with a `reference_id`; fetch the result from `GET /verify/result/{reference_id}`.
+
+**Fixed**
+
+- A PAN rejected for its format is no longer reported as no record found.
+
+</Update>
+
+<Update label="July 31, 2026" tags={["Added", "Fixed"]}>
+**Added**
+
+- Workflows can branch on the government ID the user picks.
+- The web SDK shows the government ID choice and follows the selected branch.
+
+**Fixed**
+
+- Workflow steps are billed only once the step reaches a final status, and selection steps are never billed.
+
+</Update>
+
+<Update label="July 27, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- A penny drop that completes after the first status check is no longer abandoned.
+
+</Update>
+
+<Update label="July 24, 2026" tags={["Added", "Improved"]}>
+**Added**
+
+- `POST /v2/verify/pan_detailed`.
+- `POST /v2/verify/gst_verification_basic`.
+- `POST /verify/esign/document` returns the signed PDF of a completed eSign document.
+
+**Improved**
+
+- The web SDK runs PAN and driving licence checks on the v2 endpoints.
+
+</Update>
+
+<Update label="July 23, 2026" tags={["Improved"]}>
+**Improved**
+
+- `invoice_ocr` returns the same output for the same image on repeat calls.
+
+</Update>
+
+<Update label="July 22, 2026" tags={["Added", "Improved"]}>
+**Added**
+
+- Workflow steps can be marked skippable, with a review and finalize screen at the end of the session.
+- The web SDK shows a skip option on skippable steps and the new review screen.
+- iOS SDK 0.1.0, a native Swift wrapper around the hosted verification flow.
+
+**Improved**
+
+- Flutter SDK 0.4.1 and React Native SDK 0.2.5 forward the `skippable` option to the hosted flow.
+
+</Update>
+
+<Update label="July 21, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- v2 errors raised inside a workflow now return their real HTTP status.
+- An upstream bank verification fault is no longer reported as a configuration error.
+
+</Update>
+
+<Update label="July 18, 2026" tags={["Improved"]}>
+**Improved**
+
+- Every v2 product now has one request contract, one set of response keys, one set of IDTO error codes and one billing rule, whichever source serves the call.
+
+</Update>
+
+<Update label="July 17, 2026" tags={["Improved", "Deprecated"]}>
+**Improved**
+
+- `/v2/verify/bank_verification` returns `account_number` masked to the last four digits, in the same format for every source.
+
+**Deprecated**
+
+- `extras.name_match_score` is no longer returned by `/v2/verify/bank_verification`, because the score was not comparable across sources.
+
+</Update>
+
+<Update label="July 16, 2026" tags={["Improved", "Fixed"]}>
+**Improved**
+
+- Bank verification by penny drop is charged only when the bank returns a definitive result.
+
+**Fixed**
+
+- `POST /verify/esign` no longer returns a server error when `user_id` is not a UUID.
+
+</Update>
+
+<Update label="July 15, 2026" tags={["Added", "Fixed", "Deprecated"]}>
+**Added**
+
+- `POST /verify/esign` accepts coordinate-based signature placement.
+- Android SDK 0.1.0, a native Kotlin wrapper around the hosted verification flow.
+
+**Fixed**
+
+- Credit report returns a no-record response, instead of an error, when the bureau has no record for the person.
+
+**Deprecated**
+
+- The Aadhaar QR route is now `POST /verify/aadhaar_qr`. The misspelled `POST /verify/aadhar_qr` keeps working as an alias; move to the new path.
+
+</Update>
+
+<Update label="July 13, 2026" tags={["Added"]}>
+**Added**
+
+- v2 OCR for PAN, driving licence and Aadhaar: `/v2/verify/pan_ocr`, `/v2/verify/dl_ocr` and `/v2/verify/aadhaar_ocr`.
+
+</Update>
+
+<Update label="July 12, 2026" tags={["Improved"]}>
+**Improved**
+
+- v2 errors share one flat envelope with an IDTO error code, whichever upstream source served the call.
+
+</Update>
+
+<Update label="July 11, 2026" tags={["Added"]}>
+**Added**
+
+- Aadhaar QR verification: decode the secure QR printed on an Aadhaar card.
+
+</Update>
+
+<Update label="July 9, 2026" tags={["Improved"]}>
+**Improved**
+
+- `/v2/verify/face_match` and `/v2/verify/liveness` return canonical response keys.
+
+</Update>
+
+<Update label="July 4, 2026" tags={["Improved"]}>
+**Improved**
+
+- Flutter SDK 0.4.0: the landing screen prefetches the session token and recovers from load, start and expired-session failures; adds an Aadhaar vs driving licence name-match pair.
+- The web SDK refreshes its session token automatically during a verification session.
+
+</Update>
+
+<Update label="June 26, 2026" tags={["Added"]}>
+**Added**
+
+- React Native SDK 0.2.0 is published on npm as `@idto/react-native-sdk`, with a navigation allow-list, DigiLocker pop-up support and a `readyTimeout` option.
+- Flutter SDK 0.3.0 is published on pub.dev as `idto_flutter`.
+
+</Update>
+
+<Update label="June 24, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- `POST /verify/mobile/get_otp` no longer returns intermittent 503 responses.
+- A malformed `X-Client-ID` header now returns 401 instead of a server error.
+
+</Update>
+
+<Update label="June 23, 2026" tags={["Added"]}>
+**Added**
+
+- `POST /verify/invoice_ocr` reads the fields of an uploaded invoice.
+
+</Update>

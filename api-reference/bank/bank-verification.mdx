@@ -1,0 +1,86 @@
+---
+title: "Verify a bank account (penny drop)"
+sidebarTitle: "Bank verification"
+description: "Confirm a bank account exists and can receive money, and get the name registered on it. Invalid accounts return a billed IDTO_202 result, not an error."
+openapi: "openapi2.0.json POST /v2/verify/bank_verification"
+---
+
+Send an account number and IFSC. IDTO runs a penny drop against the account and returns the name the bank holds for it. Use it before a payout, a refund or a loan disbursal to make sure the money lands in the right account.
+
+Every response has the same shape whichever bank network path serves the call. Branch on `error_code`, never on `status`:
+
+- `error_code: null` with `data`: the account is valid. Billed.
+- `error_code: "IDTO_202"` with `data: null`: the account is invalid, closed or does not exist. Billed, because the check ran to a definitive answer.
+- Any non-2xx response: the check did not complete. Never billed.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Name check
+
+`name` in the request is optional and is not scored. Compare `data.account_holder_name` with the name you hold, for example with your own fuzzy match, before you pay out.
+
+## Retries and duplicate protection
+
+<Note>
+Penny drops move real money, so this endpoint protects you from duplicates even without an `Idempotency-Key`. While a request is running, a second request with the identical body gets `IDTO_004` (409) and nothing is charged. Once the first finishes, an identical request runs again and is billed again.
+</Note>
+
+To make retries safe after a timeout, send an `Idempotency-Key` header (at most 255 characters). Replaying the same key with the same body within 48 hours returns the stored first result, byte for byte, without a new penny drop or a new charge. The same key with a different body returns `IDTO_010` (422). If the first call returned an error, nothing is stored and the retry runs the check again. See [Idempotency](/concepts/idempotency) and the [idempotent retry recipe](/recipes/bank-verification-idempotent-retry).
+
+## Response fields
+
+| Field | Meaning |
+|---|---|
+| `data.account_status` | `VALID` whenever `data` is present. |
+| `data.account_holder_name` | Name registered on the account. |
+| `data.account_number` | The account number, masked to its last 4 digits. |
+| `data.account_ifsc` | IFSC, upper case. |
+| `data.utr` | Reference of the penny drop transfer, when the bank network returns one. |
+| `data.failure_reason` | Extra detail from the bank network, usually `null`. |
+| `billed` | `true` when this call was charged. |
+| `tranx_id` | IDTO transaction id. Quote it to support. |
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | Bank account is invalid or does not exist. | Yes |
+| `IDTO_001` | 400 | Account number and IFSC code are required fields. / Invalid account number provided. / Invalid IFSC code. / Invalid reference_id. | No |
+| `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
+| `IDTO_101` | 400 | A required parameter is missing from the request. | No |
+| `IDTO_102` | 400 | A required parameter is missing from the request. | No |
+| `IDTO_401` | 400 | The account number provided is invalid. | No |
+| `IDTO_402` | 400 | The IFSC code provided is invalid. | No |
+| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+| `IDTO_103` | 503 | This verification could not be completed. Please retry shortly or contact support at tech@idto.ai. | No |
+| `IDTO_403` | 503 | This verification could not be completed. Please retry shortly or contact support at tech@idto.ai. | No |
+
+`IDTO_401` and `IDTO_402` mean the bank network refused the account number or IFSC as malformed for that bank. Fix the input; do not retry it unchanged. Retry `IDTO_004`, `IDTO_006`, `IDTO_008`, `IDTO_103` and `IDTO_403` with backoff. Full taxonomy: [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real, open account and its IFSC | 200, `error_code: null`, `data.account_holder_name` set | Yes |
+| A well-formed account number that no bank holds, or a closed account | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| `account_number: ""` | 400, `IDTO_001`, "Account number and IFSC code are required fields." | No |
+| `account_number: "0001-1122"` (symbols) or fewer than 6 characters | 400, `IDTO_001`, "Invalid account number provided." | No |
+| `ifsc: "ABCD1123456"` (fifth character not `0`) | 400, `IDTO_001`, "Invalid IFSC code." | No |
+| `account_number` key missing from the body | 422, `IDTO_001` | No |
+| Same body sent twice at the same time | second call 409, `IDTO_004` | No (second call) |
+| Same `Idempotency-Key`, different body | 422, `IDTO_010` | No |
+| Same `Idempotency-Key`, same body, after the first call returned 200 | 200, the stored first response | Not again |
+
+Staging calls reach live bank networks, so use an account you are authorised to verify. Input rules for every field: [Input formats](/reference/input-formats). Questions: [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fbank%2Fbank-verification) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fbank%2Fbank-verification)

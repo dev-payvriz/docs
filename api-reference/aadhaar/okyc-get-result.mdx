@@ -1,0 +1,62 @@
+---
+title: "Aadhaar OKYC: submit OTP"
+sidebarTitle: "OKYC submit OTP"
+description: "Step 2 of Aadhaar OKYC: submit the OTP for a session_id and get the holder's Aadhaar demographic record."
+openapi: "openapi2.0.json POST /v2/verify/okyc_get_result"
+---
+
+Step 2 of Aadhaar OKYC. Send the `session_id` from [OKYC send OTP](/api-reference/aadhaar/okyc-generate-otp) and the 6-digit OTP the holder received. A correct OTP returns the holder's Aadhaar record: name, date of birth or year of birth, gender, care-of, the address split into parts and as one line, and the photo when it is released.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+- A correct OTP returns 200, `status: "success"`, `error_code: null` and `data`. This is the only billed outcome. This step has no `IDTO_202` result.
+- Every key in `data` is always present. Filled keys come first and null keys last, in the same order for every call.
+- `dob` is `YYYY-MM-DD` when the full date is released. Some records release only the year: then `dob` is null and `year_of_birth` holds the four-digit year. Never assume a day and month.
+- `address` is one line built from the parts (`house`, `street`, `locality`, `district`, `state`, `country`) and ends with ` - <pincode>`. `country` is always `India`.
+- `has_photo` is `true` when the record released a photo, which is then in `photo`.
+- A wrong or expired OTP is a 422 `IDTO_205`, not billed. The holder can try again with the same `session_id` until the attempt limit for that session is reached; then you get 429 `IDTO_206` and must start again from step 1. Only a wrong OTP counts towards the limit.
+
+<Tip>
+Send an `Idempotency-Key` header. A retry with the same key and body returns the first response without re-submitting the OTP and without a second charge. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_205` | 422 | Invalid OTP or session expired. Please request a new OTP. | No |
+| `IDTO_206` | 429 | Maximum OTP attempts exceeded. Please generate a new OTP. | No |
+| `IDTO_001` | 400 | Invalid input: session_id and otp are required. Please check and retry. | No |
+| `IDTO_001` | 400 | Invalid input: OTP must be 6 digits. Please check and retry. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A malformed OTP is rejected before it is checked, so it does not use up an attempt. A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A fresh `session_id` and the OTP the holder received | 200, `error_code: null`, `data.name` filled | Yes |
+| A fresh `session_id` and a wrong 6-digit OTP | 422, `IDTO_205` | No |
+| Wrong OTPs sent until the attempt limit for that `session_id` | 429, `IDTO_206` | No |
+| `otp: "12345"` (5 digits) | 400, `IDTO_001` | No |
+| `otp: ""` | 400, `IDTO_001` | No |
+| Body without `session_id` | 422, `IDTO_001` | No |
+| An expired `session_id` | 422, `IDTO_205` | No |
+
+Input rules: `otp` is exactly 6 digits. `session_id` is the value step 1 returned, at most 255 characters. See the [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/okyc-get-result) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/okyc-get-result)

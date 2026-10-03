@@ -1,0 +1,93 @@
+---
+title: "Verify a bank account without a penny drop"
+sidebarTitle: "Pennyless bank verification"
+description: "Check a bank account by account number and IFSC without sending a deposit to it. v1 endpoint, charged only on a success status."
+openapi: "openapi2.0.json POST /verify/bank_verification/pennyless"
+---
+
+Send an account number and IFSC. IDTO checks the account without crediting a deposit to it, so the account holder sees no transaction. This is a v1 endpoint: the verification fields come back as the bank network returns them, plus IDTO's `tranx_id`, `timestamp` and billing flags.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them). A response without them was not charged, including a 200 response whose `status` is not `success`.
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the check again and can be charged twice. If you need safe retries and one fixed response shape, use [Bank verification](/api-reference/bank/bank-verification), which accepts an `Idempotency-Key`.
+</Warning>
+
+## Response fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `status` | string | `success` when the check ran to an answer. Only `success` is charged. |
+| `result.is_valid` | boolean | `true` when the account exists and is active. |
+| `result.account_holder_name` | string or null | Name registered on the account. `null` when the account is not valid. |
+| `result.account_number` | string | The account number checked. |
+| `result.account_ifsc` | string | IFSC checked. |
+| `result.failure_reason` | string or null | Why the account is not valid. `null` when it is valid. |
+| `result.npci_error_code` | string | Response code from the bank network. Can be empty. |
+| `result.user` | null | Always `null`. |
+| `tranx_id` | string | IDTO transaction id. Quote it to support. |
+| `timestamp` | string | Time of the call, ISO 8601. |
+
+<Warning>
+An account found invalid can return `status: "success"` with `result.is_valid: false`. That call is charged. Always check `result.is_valid`, not only `status`.
+</Warning>
+
+<Note>
+The fields above are the ones returned in production for this endpoint. Some account configurations return the verification fields at the top level instead of under `result`. `status`, `tranx_id`, `timestamp` and the billing flags are always present.
+</Note>
+
+```json
+{
+  "status": "success",
+  "result": {
+    "is_valid": true,
+    "account_holder_name": "RAHUL SHARMA",
+    "account_number": "000111222333",
+    "account_ifsc": "ABCD0123456",
+    "failure_reason": null,
+    "npci_error_code": "00",
+    "user": null
+  },
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30.123456+00:00",
+  "chargeble": "true",
+  "user_consent": "true"
+}
+```
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| Body fails validation (`account_number` or `ifsc` missing) | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
+| Not enough credits | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| Check failed at the bank network | Non-2xx | Same `{"detail": {...}}` shape; the status and `message` come from the bank network | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+Quote the `tranx_id` from `detail` to support when it is present.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real, open account and its IFSC | 200, `status: "success"`, `result.is_valid: true` | Yes |
+| A well-formed account number that no bank holds | 200, `status: "success"`, `result.is_valid: false`, or a non-2xx error | Yes on 200, no on error |
+| Body without `ifsc` | 422, `{"detail": [...]}` | No |
+| No `X-API-Key` header | 401 | No |
+| Account balance exhausted | 400, "Insufficient credits for this operation." | No |
+
+Staging calls reach live bank networks, so use an account you are authorised to verify. Questions: [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fbank%2Fbank-verification-pennyless) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fbank%2Fbank-verification-pennyless)

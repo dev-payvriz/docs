@@ -1,0 +1,42 @@
+---
+title: "Download the signed document"
+sidebarTitle: "Download signed document"
+description: "Get the signing status of a docket and the signed PDF once every signer has signed."
+openapi: "openapi2.0.json POST /verify/esign/document"
+---
+
+Returns `signing_status` for a docket's document and, once every signer has signed, the signed PDF as base64 in `content`. This is the only way to get the signed PDF: the `return_url` redirect never carries it. Call it after the [eSign completed webhook](/api-reference/webhooks/esign-completed) arrives, or after the signer returns to your `return_url`.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Behaviour
+
+- `document_id` is optional. Without it, IDTO uses the document returned when the docket was created. Send it for a docket with more than one document.
+- On `pending`, `document_id` echoes what you sent, so it is `null` if you sent none.
+- Once all signers have signed, IDTO keeps an archived copy and serves it from there, so later calls keep returning the PDF.
+- The call is read-only and not billed, so you can repeat it. Poll no more than once a minute; the webhook is the faster signal.
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "<message>"}` | No |
+| Client or account inactive | 403 | `{"detail": "<message>"}` | No |
+| Unknown docket | 404 | No eSign docket with this docket_id was found for your account. | No |
+| Unknown document in the docket | 404 | No signed document with this document_id was found in this docket. | No |
+| Document deleted before archiving | 410 | This signed document is no longer available from our eSign provider. Contact support with your docket ID. | No |
+| `docket_id` missing or blank | 422 | `{"detail": [...]}` | No |
+| Status unavailable | 502 | eSign status could not be retrieved for this docket_id. | No |
+| Document not ready yet | 502 | Signed document is not yet available for this docket_id. | No |
+| Document fetch failed | 502 | Signed document could not be retrieved for this docket_id. | No |
+
+404, 410 and 502 bodies are `{"detail": {"status": "error", "message": "..."}}`. Retry a 502 with backoff. A 410 is final: contact [support](/support) with the `docket_id`.
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/esign/esign-document) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/esign/esign-document)

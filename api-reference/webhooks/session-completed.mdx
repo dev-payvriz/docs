@@ -1,0 +1,26 @@
+---
+title: "Session completed webhook"
+sidebarTitle: "session.completed"
+description: "Sent once when a verification session reaches completed."
+openapi: "openapi2.0.json webhook session.completed"
+---
+
+IDTO POSTs this event to your webhook URL once a verification session reaches `completed`. It carries the verdict (`outcome`), whether the session was `partial`, which steps completed, were skipped, fell back or were excluded by a branch, and a summary of the consents captured.
+
+- The body has no `event` field. `event_id` has the form `evt_<session_id>_completed`.
+- If your account is set to attach the verification report, IDTO waits up to 5 minutes for it. `report.url` is a pre-signed link valid for 24 hours from that delivery attempt; `report` is `null` if the report was not ready in time.
+- Sessions that end as `abandoned` do not send this event. Read them with [Get session state](/api-reference/integration/session-state).
+
+## Headers
+
+| Header | Value |
+|---|---|
+| `X-Idto-Event-Id` | Same as `event_id` in the body. Stable across retries, so use it to drop duplicates. |
+| `X-Idto-Timestamp` | Unix seconds when IDTO signed the delivery. |
+| `X-Idto-Signature` | `sha256=<hex>`: HMAC-SHA256 of `<timestamp>.<raw body>` keyed with your signing secret. |
+
+Verify the signature over the exact bytes you received before parsing the JSON, and reject a timestamp more than 300 seconds old. Code for seven languages: [Verify webhook signatures](/recipes/verify-webhook-signatures). Setup, retries and secret rotation: [Webhooks](/concepts/webhooks).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/webhooks/session-completed) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/webhooks/session-completed)

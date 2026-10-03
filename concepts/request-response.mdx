@@ -6,14 +6,14 @@ description: "The mechanics of a single call: base URLs, required headers, reque
 
 ## Base URLs
 
-idto runs two separate origins:
+idto runs two environments. See [Environments](/environments) for keys and what differs.
 
-| Host | Purpose |
-| --- | --- |
-| `https://dev.idto.ai` | Sandbox. Use your development credentials here while building and testing. |
-| `https://prod.idto.ai` | Production. Billable, and every call reaches a real verification source. |
+| Environment | Base URL | Notes |
+| --- | --- | --- |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
-Dev and prod credentials are separate pairs and are not interchangeable.
+Staging and production keys are separate pairs and are not interchangeable.
 
 ## Required headers
 
@@ -99,7 +99,7 @@ For every `/v2/verify/*` endpoint, the HTTP status is the first thing to branch 
 - **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code` set to an `IDTO_2xx` code). Both are `status: "success"` and both are billed. Never treat `error_code` being non-null as a failure by itself, check whether the code falls in the `IDTO_2xx` range.
 - **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"`, `data` is `null`, and `billed` is `false` in every case except `IDTO_204`, which is the one raised error that is also unbilled by design rather than an exception to the unbilled rule.
 
-The exact status code for each `IDTO_*` code is fixed and documented in the [Error Codes reference](/reference/v2-error-codes), for example `IDTO_001` is always 400, `IDTO_009` is always 402, `IDTO_006` is always 429.
+The exact status code for each `IDTO_*` code is fixed and documented in the [Error Codes reference](/reference/v2-error-codes), for example `IDTO_006` is always 429.
 
 ## v1 responses look different
 

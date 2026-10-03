@@ -1,0 +1,61 @@
+---
+title: "Integration overview"
+sidebarTitle: "Overview"
+description: "Mint SDK tokens, open the hosted verification flow, and confirm results from your server."
+---
+
+Integration endpoints connect your server to the IDTO verification flow. Your server mints a short-lived SDK token, your front end opens the flow with it, and your server learns the result from the session completed webhook or by reading the session state. None of these calls are billed; the verifications inside the flow are.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    participant B as Your front end
+    participant S as Your server
+    participant I as IDTO
+    S->>I: POST /auth/sdk/token (client_id, API key)
+    I-->>S: access_token, 900 s
+    S-->>B: access_token
+    B->>I: IDTO SDK runs the verification steps
+    I->>S: session.completed webhook
+    S->>I: GET /sdk/v2/session/{session_token}/state
+    I-->>S: status, outcome, steps
+```
+
+<Frame>
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="IDTO SDK completion screen at the end of a verification flow" width="390" />
+</Frame>
+
+## Endpoints
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| [`POST /auth/sdk/token`](/api-reference/integration/sdk-token) | Client ID and API key in the body | Mint a 15 minute token |
+| [`GET /sdk/v2/session/{session_token}/state`](/api-reference/integration/session-state) | `Authorization: Bearer <SDK token>` | Read status and verdict |
+| [session.completed webhook](/api-reference/webhooks/session-completed) | Signed with your webhook secret | Push on completion |
+
+## Outcomes
+
+| `status` | `outcome` | Meaning |
+|---|---|---|
+| `in_progress` | `null` | The user is still in the flow |
+| `completed` | `verified` | All checks passed |
+| `completed` | `needs_review` | A soft flag was raised, such as a low name match |
+| `completed` | `not_verified` | A check failed |
+| `abandoned` | `null` | The session was abandoned |
+
+## Test scenarios
+
+| Input | Expected | Billed |
+|---|---|---|
+| Correct client ID and API key | 200 with `access_token` | No |
+| Wrong API key | 401 `Invalid client credentials` | No |
+| Session state with a token older than 15 minutes | 401 `SDK session token expired` | No |
+| Session state for another account's session | 403 | No |
+| Session state for an unknown `session_token` | 404 | No |
+
+Next: [SDK guides](/sdks/web), [Webhooks](/concepts/webhooks), [Integration FAQ](/products/integration/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/integration/overview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/integration/overview)

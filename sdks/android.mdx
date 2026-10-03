@@ -1,143 +1,174 @@
 ---
 title: "Android SDK"
-sidebarTitle: "Android (Kotlin)"
-description: "Add the idto verification flow to a native Android app via Gradle, backed by IDtoConfig and a small set of lifecycle callbacks."
+sidebarTitle: "Android"
+description: "Run the IDTO verification flow in a native Android app, from Kotlin or Java."
 ---
 
-The Android SDK is a Kotlin library distributed via JitPack. It targets `minSdk 24`, `compileSdk 36`, and JDK 17.
+The Android SDK opens the IDTO verification flow in its own screen and reports each result to a typed listener. It is a Kotlin library that Java apps use as is: every listener method has a default, so you override only the callbacks you need.
 
-<Note>
-  The SDK's own manifest does not declare the `INTERNET` permission. Your host app's manifest must include it for the SDK to reach the network.
-</Note>
+<Frame caption="The mobile number step, with the one-time code field.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-mobile-otp.png" alt="Mobile number verification screen with OTP entry" width="390" />
+</Frame>
+
+## Requirements
+
+| Item | Value |
+| --- | --- |
+| `minSdk` | 24 (Android 7.0) |
+| `compileSdk` and `targetSdk` | 36 |
+| JDK | 17 |
+| Host language | Kotlin or Java |
+| Device | A real device for document and selfie capture. Most emulators have no usable camera. |
+
+You also need a `client_id` and `client_secret` (kept on your server), a `workflowTemplateId`, and a backend route that mints a client token. See [Authentication](/authentication).
 
 ## Install
 
-Add the JitPack repository, then the dependency:
+Add the JitPack repository in `settings.gradle.kts`:
 
-```kotlin settings.gradle.kts
+```kotlin
 dependencyResolutionManagement {
     repositories {
-        maven("https://jitpack.io")
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
 
-```kotlin build.gradle.kts
+Then add the dependency in `app/build.gradle.kts`:
+
+```kotlin
 dependencies {
-    implementation("com.github.idto-ai:idto-android:0.1.1")
+    implementation("com.github.idto-ai:idto-android:0.1.0")
 }
 ```
 
-<Note>
-  `0.1.1` is the version currently declared in the SDK's own build configuration. Some in-repo documentation for this SDK has historically lagged behind and still referenced `0.1.0`. Confirm the latest published tag before pinning a version in a new integration.
-</Note>
+Groovy:
+
+```groovy
+dependencies {
+    implementation 'com.github.idto-ai:idto-android:0.1.0'
+}
+```
+
+## Permissions
+
+The library declares `CAMERA` and `RECORD_AUDIO` in its own manifest, so they merge into your app, and `IDto.open` requests any missing runtime permission before the flow starts. You add no manifest entries and call no permission API. The camera is used for documents and selfies, the microphone only for a liveness step. If the user has permanently denied the camera, the SDK offers a one-time dialog that opens Settings.
+
+## Quick start
+
+<Steps>
+  <Step title="Mint a client token on your server">
+    Your server calls `POST /auth/sdk/token` with `client_id` and `client_secret` and returns only `access_token` to the app. Never ship the secret in the app. Recipes: [Node](/recipes/sdk-token-node-express), [Java](/recipes/sdk-token-java), [Python](/recipes/sdk-token-python-fastapi).
+  </Step>
+  <Step title="Open the flow (Kotlin)">
+    ```kotlin
+    import ai.idto.sdk.IDto
+    import ai.idto.sdk.IDtoConfig
+    import ai.idto.sdk.IDtoEnv
+    import ai.idto.sdk.IDtoErrorData
+    import ai.idto.sdk.IDtoEventListener
+    import ai.idto.sdk.IDtoStepCompleteData
+    import ai.idto.sdk.IDtoWorkflowCompleteData
+
+    val config = IDtoConfig.Builder(clientToken, "your-workflow-template-uuid")
+        .businessName("Sample Traders")
+        .env(IDtoEnv.PRODUCTION)
+        .build()
+
+    IDto.open(this, config, object : IDtoEventListener {
+        override fun onStepComplete(data: IDtoStepCompleteData) {
+            Log.d("idto", "step ${data.step}")
+        }
+        override fun onWorkflowComplete(data: IDtoWorkflowCompleteData) {
+            confirmOnServer(data.sessionToken)
+        }
+        override fun onError(data: IDtoErrorData) {
+            Log.e("idto", "${data.step}: ${data.error}")
+        }
+        override fun onClose() {}
+    })
+    ```
+  </Step>
+  <Step title="Or open it from Java">
+    ```java
+    IDtoConfig config = new IDtoConfig.Builder(clientToken, "your-workflow-template-uuid")
+            .businessName("Sample Traders")
+            .build();
+
+    IDto.open(this, config, new IDtoEventListener() {
+        @Override public void onWorkflowComplete(IDtoWorkflowCompleteData data) {
+            confirmOnServer(data.getSessionToken());
+        }
+        @Override public void onError(IDtoErrorData data) {
+            Log.e("idto", data.getError());
+        }
+    });
+    ```
+  </Step>
+  <Step title="Confirm the result on your server">
+    Listener callbacks drive your UI only. Confirm the session from your server with the [session result recipe](/recipes/confirm-session-result) or a signed [webhook](/concepts/webhooks) before you grant access.
+  </Step>
+</Steps>
+
+`IDto.open(context, config, listener, tokenProvider)` works from any `Context`. `IDto.close()` closes the flow and `IDto.isOpen()` tells you whether one is open. Only one flow runs at a time: a second `open` while one is active calls the new listener's `onError` with `step = "init"` and `error = "session_active"` and opens nothing.
+
+<Frame caption="The selfie step. The flow picks the front camera.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-face-capture.png" alt="Selfie capture screen" width="390" />
+</Frame>
+
+## Token refresh
+
+Pass an `IDtoTokenProvider` as the fourth argument to `IDto.open`. When the client token expires, the SDK calls `getToken(callback)`; answer with `callback.onToken(newToken)` or `callback.onError(throwable)`.
 
 ## Configuration
 
-Configuration is supplied via `IDtoConfig.Builder`.
+`IDtoConfig.Builder(clientToken, workflowTemplateId)` takes these optional setters.
 
-### Required fields
-
-<ParamField body="clientToken" type="String" required>
-  Passed as the first constructor argument to `IDtoConfig.Builder`.
-</ParamField>
-
-<ParamField body="workflowTemplateId" type="String" required>
-  Passed as the second constructor argument to `IDtoConfig.Builder`.
-</ParamField>
-
-### Optional fields
-
-| Field | Purpose |
-| --- | --- |
-| `sessionToken` | Resume a previously started verification session. |
-| `merchantUserId` | Your own identifier for this end user. |
-| `phone` | Pre-fill the user's mobile number. |
-| `startFresh` | Force a new session even if a prior one exists for this user. |
-| `preVerified` | Mark specific modules as already verified, skipping them. |
-| `accumulatedData` | Seed the session with data already collected outside the SDK. |
-| `referenceName` | A name to cross-check against document data via name matching. |
-| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
-| `nameMatchConfig` | Configuration for the name-match comparison. |
-| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
-| `faceMatchConfig` | Configuration for the face-match comparison. |
-| `panConfig` | Configuration for the PAN verification step. |
-| `businessName` | Display name shown in the flow header. |
-| `logo` | Logo shown in the flow. |
-| `theme` | Visual theme overrides. |
-| `language` | Locale for flow copy. |
-| `displayMode` | Layout mode for the flow. |
-| `bottomSheet` | Whether to render as a bottom sheet. |
-| `colors` | Color token overrides. |
-| `debug` | Enable verbose SDK logging. |
-| `readyTimeoutMs` | Milliseconds to wait for the flow to become ready before failing. |
-| `allowedHosts` | Restrict which hosts the embedded flow may load. |
-| `env` | Target environment (e.g. sandbox vs. production). |
-| `baseUrl` | Override the API base URL the SDK calls. |
-
-<ParamField body="skippable" type="List<String>">
-  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every idto SDK, Android included.
-</ParamField>
+| Setter | Type | Purpose |
+| --- | --- | --- |
+| `sessionToken` | `String` | Resume an earlier session. |
+| `startFresh` | `Boolean` | Start a new session even if one is in progress. |
+| `merchantUserId` | `String` | Your own id for this user. |
+| `phone` | `String` | Prefills the mobile number step. |
+| `preVerified` | `Map<String, Boolean>` | Module slugs you already verified, which the flow skips. |
+| `accumulatedData` | `JSONObject` | Data you already hold, passed into the session. |
+| `referenceName` | `String` | Name every document name is matched against. |
+| `nameMatchConfig` | `IDtoNameMatchConfig` | Threshold, decision mode (`ALL` or `ANY`), honorifics, aliases, compare pairs. |
+| `faceMatchReferenceImage` | `String` | Reference photo for face match. |
+| `faceMatchConfig` | `IDtoFaceMatchConfig` | Skip liveness, threshold, liveness failure policy. |
+| `aadhaarConfig` | `IDtoAadhaarConfig` | DigiLocker failure limit, OKYC on or off. |
+| `panConfig` | `IDtoPanConfig` | Skip the PAN context screen. |
+| `businessName` | `String` | Your name in the flow header. |
+| `logo` | `String` | URL of your logo. |
+| `language` | `IDtoLanguage` | `EN` or `HI`. |
+| `theme` | `IDtoTheme` | `LIGHT` or `DARK`. |
+| `colors` | `IDtoColors` | Colour overrides. |
+| `displayMode` | `IDtoDisplayMode` | `FULL_SCREEN` or `BOTTOM_SHEET`. |
+| `bottomSheet` | `IDtoBottomSheet` | Sheet height limits. |
+| `env` | `IDtoEnv` | `PRODUCTION` (default, `https://prod.idto.ai`) or `DEVELOPMENT` (staging, `https://dev.idto.ai`). |
+| `baseUrl` | `String` | Overrides the API host. |
+| `readyTimeoutMs` | `Long` | How long to wait for the flow to load. Default 30000. |
+| `allowedHosts` | `List<String>` | Extra hostnames the flow may navigate to, for example when you set a custom `baseUrl`. |
+| `debug` | `Boolean` | Sends the flow's console logs and blocked navigations to Logcat. Default `false`. |
 
 ## Callbacks
 
-<ResponseField name="onStepComplete" type="function">
-  Fires after each module finishes.
+`IDtoEventListener` methods, all optional:
 
-  <Expandable title="IDtoStepCompleteData fields">
-    <ResponseField name="step" type="String">The module slug that just completed.</ResponseField>
-    <ResponseField name="result" type="Object">The step's verification result.</ResponseField>
-    <ResponseField name="accumulatedData" type="Object">All data collected across the session so far.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-    <ResponseField name="creditsDeducted" type="Number">Credits deducted for this step.</ResponseField>
-    <ResponseField name="balanceRemaining" type="Number">Your account's remaining credit balance after this step.</ResponseField>
-  </Expandable>
-</ResponseField>
+| Method | Payload fields |
+| --- | --- |
+| `onStepComplete(IDtoStepCompleteData)` | `step`, `result`, `accumulatedData`, `sessionToken`, `creditsDeducted`, `balanceRemaining` |
+| `onWorkflowComplete(IDtoWorkflowCompleteData)` | `allSteps`, `accumulatedData`, `sessionToken` |
+| `onError(IDtoErrorData)` | `step`, `error`, `sessionToken` |
+| `onAbandon(IDtoAbandonData)` | `atStep`, `reason`, `sessionToken` |
+| `onClose()` | none |
 
-<ResponseField name="onWorkflowComplete" type="function">
-  Fires when the whole workflow finishes.
+`onError` with `step = "init"` comes from the SDK itself: `session_active` (a flow is already open), `network_error` (the flow did not load within `readyTimeoutMs`) or `unknown_error` (the WebView stopped). Other `error` values are readable messages to log, not to match on.
 
-  <Expandable title="IDtoWorkflowCompleteData fields">
-    <ResponseField name="allSteps" type="List">Every module result from the session.</ResponseField>
-    <ResponseField name="accumulatedData" type="Object">All data collected across the session.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-  </Expandable>
+## See it run
 
-  <Warning>
-    `onWorkflowComplete` is non-terminal: the verification sheet stays open to show the success or report screen. `onClose` is the only terminal event, and it always fires exactly once.
-  </Warning>
-</ResponseField>
+<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.mp4"></video>
 
-<ResponseField name="onAbandon" type="function">
-  Fires when the user leaves the flow before completion.
-
-  <Expandable title="IDtoAbandonData fields">
-    <ResponseField name="atStep" type="String">The module slug the user was on when they left.</ResponseField>
-    <ResponseField name="reason" type="String">Why the session ended, where known.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="onError" type="function">
-  Fires on a recoverable or fatal error.
-
-  <Expandable title="IDtoErrorData fields">
-    <ResponseField name="step" type="String">The module slug active when the error occurred.</ResponseField>
-    <ResponseField name="error" type="String">Error detail.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="onClose()" type="function">
-  Fires when the sheet closes. No payload. This is the only terminal callback.
-</ResponseField>
-
-## Integration notes
-
-<Note>
-  There is no `"failed"` status on this SDK. A failed check rolls up into `outcome: not_verified` rather than a separate status value.
-</Note>
-
-<Tip>
-  If you persist `sessionToken` to resume a session across app launches, treat it as a secret.
-</Tip>
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fandroid) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fandroid)

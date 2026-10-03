@@ -1,0 +1,66 @@
+---
+title: "Input formats"
+sidebarTitle: "Input formats"
+description: "The format rule IDTO checks for every v2 request field, so you can validate input before you call."
+---
+
+IDTO checks these rules before it contacts any verification source. A value that fails returns `IDTO_001` with HTTP `400` and is never billed. Run the same checks in your own form or backend to catch typos before a round trip. Values are trimmed and, where noted, upper-cased before the check.
+
+## Identity
+
+| Field | Endpoints | Rule | Pattern | Example |
+| --- | --- | --- | --- | --- |
+| `pan_number` | `pan_validation`, `pan_detailed` | 10 characters: 5 letters, 4 digits, 1 letter. Upper-cased first | `^[A-Z]{5}[0-9]{4}[A-Z]$` | `ABCDE1234F` |
+| `aadhaar_number` | `okyc_generate_otp` | 12 digits, first digit 2 to 9 | `^[2-9][0-9]{11}$` | `999999990019` |
+| `otp` | `okyc_get_result` | 6 digits | `^[0-9]{6}$` | `123456` |
+| `session_id` | `okyc_get_result` | The `session_id` returned by `okyc_generate_otp` | | |
+| `licence_number` | `driving_licence` | At least 8 letters or digits once spaces and hyphens are removed | `^[A-Za-z0-9]{8,}$` after removing spaces and `-` | `KA0120200000001` |
+| `dob` | `driving_licence` | A real date in one of `YYYY-MM-DD`, `DD-MM-YYYY`, `DD/MM/YYYY` | | `1990-01-01` |
+| `uan` | `employment_history` | 12 digits | `^\d{12}$` | 12 digits |
+| `code`, `code_verifier` | `digilocker` | Both required, as returned by the DigiLocker consent step | | |
+
+## Business
+
+| Field | Endpoints | Rule | Pattern | Example |
+| --- | --- | --- | --- | --- |
+| `id_number` | `gst_verification_basic` | 15-character GSTIN. Upper-cased first | `^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z][A-Z][0-9A-Z]$` | `29ABCDE1234F1Z5` |
+| `id_number` | `cin_mca_verification` | A CIN (21 characters) or LLPIN; not blank, at most 25 characters. Upper-cased first | | `U72900KA2020PTC000000` |
+
+## Bank
+
+| Field | Endpoints | Rule | Pattern | Example |
+| --- | --- | --- | --- | --- |
+| `account_number` | `bank_verification` | 6 to 40 letters or digits | `^[A-Za-z0-9]{6,40}$` | `000111222333` |
+| `ifsc` | `bank_verification` | 11 characters: 4 letters, a zero, 6 letters or digits | `^[A-Za-z]{4}0[A-Za-z0-9]{6}$` | `ABCD0123456` |
+| `reference_id` | `bank_verification` | Optional. 1 to 40 letters, digits or hyphens | `^[A-Za-z0-9-]{1,40}$` | `order-1001` |
+
+A missing `account_number` returns `IDTO_101` and a missing `ifsc` returns `IDTO_102`, both HTTP `400`.
+
+## Consent
+
+| Field | Endpoints | Rule |
+| --- | --- | --- |
+| `user_consent` | `pan_validation`, `pan_detailed`, `okyc_generate_otp`, `aadhaar_qr` | Must be `true` (the strings `"true"` and `"True"` are also accepted). Anything else returns `IDTO_005`, HTTP `400` |
+
+## Images and files
+
+| Endpoints | Field | Limit |
+| --- | --- | --- |
+| `pan_ocr`, `aadhaar_ocr`, `dl_ocr`, `invoice_ocr` | `file` | JPEG, PNG or PDF, up to 5 MB. Another file type returns `IDTO_001` (400) |
+| `face_match` | `image1`, `image2` | Up to 10 MB each |
+| `aadhaar_qr` | `file` | Up to 11 MB, or send the decoded `qr_data` instead |
+
+An image that is too large or cannot be read returns `IDTO_503`, HTTP `413`. `aadhaar_qr` returns `IDTO_204` (422) when no readable QR is found.
+
+## Headers
+
+| Header | Rule |
+| --- | --- |
+| `Idempotency-Key` | Optional, at most 255 characters. Longer keys return `IDTO_001`, HTTP `400` |
+| `Content-Type` | `application/json`, or `multipart/form-data` on file endpoints |
+
+## Schema errors
+
+A body that is not valid JSON, misses a required field, or sends a field of the wrong type is rejected with HTTP `422` and `IDTO_001` before any format rule runs.
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

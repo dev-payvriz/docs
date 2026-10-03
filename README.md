@@ -20,7 +20,7 @@ Set up your AI coding tool to work with Mintlify:
 npx skills add https://mintlify.com/docs
 ```
 
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
+This command installs Mintlify's documentation skill for your configured AI coding tools. The skill includes component reference, writing standards, and workflow guidance.
 
 See the [AI tools guides](/ai-tools) for tool-specific setup.
 

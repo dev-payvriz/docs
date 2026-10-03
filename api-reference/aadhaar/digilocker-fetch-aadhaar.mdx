@@ -1,0 +1,53 @@
+---
+title: "Download the e-Aadhaar XML"
+sidebarTitle: "DigiLocker: e-Aadhaar XML"
+description: "Download the holder's e-Aadhaar XML from DigiLocker as a file."
+openapi: "openapi2.0.json POST /verify/digilocker/fetch_aadhaar"
+---
+
+Step 3 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Returns the holder's e-Aadhaar from DigiLocker as an XML file, not JSON: the response has the XML's content type and `Content-Disposition: attachment; filename="document.xml"`. Save the body as a file. The XML is the e-Aadhaar as issued, so keep it under the same controls as any Aadhaar copy. The holder must have consented to share Aadhaar during the DigiLocker sign-in.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response returns the XML file. Errors return JSON and are not charged. A charged JSON response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them).
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the call again and can be charged twice.
+</Warning>
+
+## Errors
+
+| Case | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| `reference_key` empty | 400 | `{"detail": {"status": "error", "message": "reference_key is required", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| `reference_key` unknown | 404 | Same shape, `message` "Reference key not found" | No |
+| `reference_key` older than one hour | 410 | Same shape, `message` "Reference key expired" | No |
+| Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
+| User did not consent to share Aadhaar, or it is not in their DigiLocker | 403 | `{"detail": {"status": "error", "message": "User did not consent to share Aadhaar, or the Aadhaar document is not present in DigiLocker.", "error_code": "2005", "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| Aadhaar not linked to the DigiLocker account | 404 | Same shape, `message` "Aadhaar is not linked in this user's DigiLocker account.", `error_code` `"2007"` | No |
+| DigiLocker could not return the file | DigiLocker's status | Same shape, `error_code` `"2009"`; retry, or ask for another KYC document | No |
+| A required field missing or of the wrong type | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A `reference_key` from a user who consented to share Aadhaar | 200, XML file | Yes |
+| A `reference_key` from a user who did not share Aadhaar | 403, `error_code: "2005"` | No |
+| A `reference_key` older than one hour | 410, "Reference key expired" | No |
+| `{"reference_key": ""}` | 400, "reference_key is required" | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/digilocker-fetch-aadhaar) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/digilocker-fetch-aadhaar)

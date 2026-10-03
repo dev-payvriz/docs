@@ -16,7 +16,7 @@ curl --request POST \
   --header "Content-Type: application/json" \
   --data '{
     "agreement_type": "loan_agreement",
-    "docket_title": "Loan Agreement - RAHUL SHARMA",
+    "docket_title": "Loan Agreement RAHUL SHARMA",
     "docket_description": "Loan agreement for onboarding",
     "final_copy_recipients": "rahul.sharma@example.com",
     "documents": [
@@ -25,7 +25,7 @@ curl --request POST \
         "content_type": "pdf",
         "content": "JVBERi0xLjQKJcOkw7zDtsO...",
         "signature_sequence": "sequential",
-        "return_url": "https://acme.example.com/kyc/esign/callback"
+        "return_url": "https://www.example.com/kyc/esign/return"
       }
     ],
     "signers_info": [
@@ -49,17 +49,32 @@ curl --request POST \
 ```json
 {
   "status": "success",
-  "message": "Docket created.",
-  "data": { "docket_id": "b6e1f2a0-1234-4abc-9def-0123456789ab" }
+  "docket_id": "b6e1f2a0-1234-4abc-9def-0123456789ab",
+  "document_id": "doc_00000001",
+  "response_time_stamp": "2026-10-01T10:00:00.000Z",
+  "signer_info": [
+    {
+      "signer_ref_id": "signer_1",
+      "signer_id": "sgn_00000001",
+      "reference_doc_id": "doc_1",
+      "document_id": "doc_00000001",
+      "invitation_link": "https://www.example.com/sign/sgn_00000001"
+    }
+  ],
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-10-01T10:00:00.123456+00:00",
+  "chargeble": "true",
+  "user_consent": "true"
 }
 ```
+
 
 A few fields worth calling out:
 
 - `documents[].content` is base64-encoded PDF content, capped at 10 MB per document.
 - `signer_position.appearance` is either one of the four preset strings (`top-left`, `top-right`, `bottom-left`, `bottom-right`, exact casing) or an array of `{x1, y1, x2, y2}` coordinate boxes if you need precise placement. Which page(s) the signature lands on is controlled separately by `page_number` (`"1"`, `"all"`, or a list like `"3,5"`), not per coordinate box.
 - `final_copy_recipients` is a comma-separated list of emails to receive the signed copy once complete.
-- Save the `docket_id` you get back, it's what you use for every call after this.
+- Save the `docket_id` and `document_id` you get back. You need them for every call after this.
 
 ## Step 2: The signer's redirect (`return_url`)
 
@@ -105,22 +120,24 @@ Once every signer on the document has signed:
 `content` is the base64-encoded signed PDF. A docket with multiple documents needs `document_id` on the request to pick a specific one, otherwise the first is returned.
 
 <Note>
-  We could not verify a fixed retention window in the current source for how long a completed signed document stays retrievable from idto's own archive. What is verified: idto archives a copy of every signed document out of its own eSign provider as soon as all signers finish, specifically because the provider's own copy can be deleted at any time without notice (see below). Fetch the document promptly once you know signing is complete rather than assuming a long window either side.
+  IDTO archives a copy of every signed document as soon as all its signers finish, and serves later downloads from that archive. Download the PDF when the completion webhook arrives and keep your own copy.
 </Note>
 
 If the underlying eSign provider has already deleted its copy of the document before idto could archive it, `POST /verify/esign/document` returns:
 
 ```json
 {
-  "status": "error",
-  "message": "This signed document is no longer available from our eSign provider. Contact support with your docket ID."
+  "detail": {
+    "status": "error",
+    "message": "This signed document is no longer available from our eSign provider. Contact support with your docket ID."
+  }
 }
 ```
 
 That's an HTTP `410`. If this happens, the only path forward is contacting idto support with the `docket_id`, the document cannot be regenerated from idto's side once the provider's copy is gone and no archive was made in time.
 
 <Warning>
-  If a docket's documents never finish signing, idto stops polling the provider for that docket's completion **90 days** after the original `POST /verify/esign` call (verified: `ESIGN_ARCHIVE_ABANDON_DAYS`). Don't rely on an eSign docket resolving itself after months of inactivity, treat a docket that hasn't completed within a reasonable business timeframe (days, not months) as abandoned and start a new one if needed.
+  IDTO watches a docket for completion for 90 days after the `POST /verify/esign` call. A docket that is not fully signed by then sends no completion webhook. Treat a docket that has not completed within your normal business window (days, not months) as abandoned and create a new one.
 </Warning>
 
 ## Step 4: The completion webhook
@@ -143,19 +160,14 @@ The payload carries no PDF bytes and no expiry field, it's a signal to go fetch 
 
 | Header | Meaning |
 | --- | --- |
-| `X-idto-Event-Id` | Matches `event_id` in the body, use it to deduplicate retried deliveries. |
-| `X-idto-Timestamp` | Unix timestamp the signature was computed over. |
-| `X-idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your webhook signing secret. |
+| `X-Idto-Event-Id` | Matches `event_id` in the body, use it to deduplicate retried deliveries. |
+| `X-Idto-Timestamp` | Unix timestamp the signature was computed over. |
+| `X-Idto-Signature` | `sha256=<hex>`, an HMAC-SHA256 over `"{timestamp}.{raw_body}"` using your webhook signing secret. |
 
-```python
-import hashlib
-import hmac
+Verify the signature and reject a timestamp more than 300 seconds old before you trust the body. Code in seven languages is in [Verify webhook signatures](/recipes/verify-webhook-signatures); setup and retries are in [Webhooks](/concepts/webhooks).
 
-def verify_idto_webhook(secret, raw_body, timestamp, signature_header):
-    expected = hmac.new(
-        secret.encode(),
-        (timestamp + ".").encode() + raw_body,
-        hashlib.sha256,
-    ).hexdigest()
-    return hmac.compare_digest("sha256=" + expected, signature_header)
-```
+Full field reference: [Create an eSign request](/api-reference/esign/esign), [Download the signed document](/api-reference/esign/esign-document), [eSign completed webhook](/api-reference/webhooks/esign-completed).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20guides/esign-workflow) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20guides/esign-workflow)

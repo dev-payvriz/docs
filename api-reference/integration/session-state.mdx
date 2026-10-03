@@ -1,0 +1,34 @@
+---
+title: "Get session state"
+sidebarTitle: "Get session state"
+description: "Read the status, verdict and per-step progress of a verification session."
+openapi: "openapi2.0.json GET /sdk/v2/session/{session_token}/state"
+---
+
+Returns where a verification session stands: `status` (`in_progress`, `completed`, `abandoned`), the verdict `outcome` (`verified`, `needs_review`, `not_verified`, or `null` until completed), `partial`, and the status of every step. Use it to confirm a result on your server before you act on what the front end reports.
+
+<Note>
+Authenticate with an SDK token, not the API key pair. Mint one with [Mint an SDK token](/api-reference/integration/sdk-token) and send `Authorization: Bearer <access_token>`. Any client of the account that owns the session can read it.
+</Note>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| Token missing, invalid, revoked or expired | 401 | `{"detail": "SDK session token expired"}` and similar | No |
+| Session belongs to another account | 403 | `{"detail": "Client does not own this session"}` | No |
+| Unknown session token | 404 | `{"detail": "Session not found"}` | No |
+| Unexpected failure | 500 | Not part of the contract; retry later | No |
+
+For a push instead of a poll, use the [session completed webhook](/api-reference/webhooks/session-completed). Full example: [confirm a session result](/recipes/confirm-session-result).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/integration/session-state) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/integration/session-state)

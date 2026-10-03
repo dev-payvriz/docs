@@ -1,0 +1,43 @@
+---
+title: "Business verification FAQ"
+sidebarTitle: "FAQ"
+description: "Answers to common questions about GST, company and employment history checks."
+---
+
+## General
+
+<AccordionGroup>
+<Accordion title="Which GST product should I use?">
+Use GST basic to confirm that a GSTIN is registered and read its name, status and principal place of business. Use GST advanced when you also need return filing history, goods and services and every place of business.
+</Accordion>
+<Accordion title="Am I charged when the GSTIN or CIN does not exist?">
+On the v2 products, yes. A definitive no-record answer returns HTTP 200 with `error_code` `IDTO_202` and `billed: true`, because the registry was searched. On GST advanced, a missing record returns 404 and is not charged.
+</Accordion>
+<Accordion title="Does the CIN product accept an LLPIN?">
+Yes. Send the LLPIN in `id_number`. Any identifier up to 25 characters is looked up.
+</Accordion>
+<Accordion title="What does is_current_employment mean?">
+It is `true` when the employment record has no exit date in the EPF record. It shows the EPF account is open with that establishment, not that the person is on its payroll today.
+</Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+<Accordion title="Should I branch on status or error_code?">
+On `error_code`. Every 2xx v2 response has `status: "success"`, including no-record results, which carry `IDTO_202`.
+</Accordion>
+<Accordion title="How do I retry safely after a timeout?">
+On v2 products, send the same `Idempotency-Key` with the same body. You get the stored result and are not billed again. GST advanced has no idempotency support, so a retry can be charged again.
+</Accordion>
+<Accordion title="Why are directors missing from a CIN response?">
+Calls made from a browser with an SDK session token do not receive `directors_brief` or `extras`. Call from your server with your API key pair.
+</Accordion>
+<Accordion title="Do I need to format the GSTIN before sending it?">
+No. Leading and trailing spaces are removed and letters are upper-cased. The value must then be a valid 15-character GSTIN or the call returns `IDTO_001` and is not billed.
+</Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fbusiness%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fbusiness%2Ffaq)

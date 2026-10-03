@@ -1,0 +1,43 @@
+---
+title: "Mobile FAQ"
+description: "Answers to common questions about IDTO mobile profile lookups and the SDK mobile step."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Am I charged when no profile is found?">
+    No. When no profile is linked to the number, `/verify/mobile_profile` returns a non-2xx error and you are not charged. You are charged only when the response `status` is `success`.
+  </Accordion>
+  <Accordion title="Does the profile lookup send an OTP to the user?">
+    No. `/verify/mobile_profile` is a server-side lookup and the user receives nothing. To prove a user owns the number, use the mobile step in the IDTO SDK flow, which sends a 6-digit OTP.
+  </Accordion>
+  <Accordion title="Which numbers can I look up?">
+    Indian mobile numbers. Send the 10-digit number without `+91`.
+  </Accordion>
+  <Accordion title="Can I test without being charged?">
+    There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources and deducts credits from your staging account, so use a number you are authorised to look up. Requests that fail validation (missing or empty `mobile`) are never charged.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="Is it safe to retry after a timeout?">
+    Not automatically. `/verify/mobile_profile` has no idempotency support, so a retry runs the lookup again and a second `success` is charged again. Record the `tranx_id` of every response and retry only when you received no response at all.
+  </Accordion>
+  <Accordion title="How do I tell a charged call from an uncharged one?">
+    A charged response has `status: "success"` and carries `"chargeble": "true"` and `"user_consent": "true"`, spelled as the API returns them. Every error comes back as a non-2xx response and is not charged.
+  </Accordion>
+  <Accordion title="Why is the profile inside result and not data?">
+    `/verify/mobile_profile` is a v1 endpoint and keeps its original shape: `status`, `result`, `tranx_id`, `timestamp`, plus the billing flags on a charged call. v2 endpoints use the `data` envelope described in [Request and response](/concepts/request-response).
+  </Accordion>
+  <Accordion title="What does an error look like?">
+    Errors raised after authentication use `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`. A body that fails validation returns `{"detail": [...]}` with status 422. Authentication failures return `{"detail": "..."}` with 401, 403 or 404.
+  </Accordion>
+  <Accordion title="Which credentials does it take?">
+    The `X-Client-ID` and `X-API-Key` pair from your dashboard, sent from your server. Never call it from a browser or app with these keys. See [Authentication](/authentication).
+  </Accordion>
+</AccordionGroup>
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fmobile%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fmobile%2Ffaq)

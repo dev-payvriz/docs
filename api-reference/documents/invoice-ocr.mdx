@@ -1,0 +1,87 @@
+---
+title: "Read an invoice or utility bill (OCR)"
+sidebarTitle: "Invoice OCR"
+description: "Upload a tax invoice or utility bill and get the buyer and seller details, GSTINs, line items, totals and bank details as structured fields."
+openapi: "openapi2.0.json POST /v2/verify/invoice_ocr"
+---
+
+Upload the document as `multipart/form-data` in the `file` field. IDTO classifies it, rejects document types that cannot prove an address, and returns the parties, invoice details, line items, tax totals and payment details. Use it for address verification and for supplier or merchant onboarding.
+
+Every response has the same shape whichever source serves the call. Branch on `error_code`, never on `status`:
+
+- `error_code: null` with `data`: the document is a tax invoice or utility bill and fields were read. Billed.
+- `error_code: "IDTO_202"` with `data: null`: the file was read but is not an accepted document, or carries no invoice details. Billed.
+- Any non-2xx response: the check did not complete. Never billed.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Input rules
+
+| Field | Rule |
+|---|---|
+| `file` | Required. One file of the invoice or bill, at most 12 MB. Larger uploads return `IDTO_503` (413). |
+| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+
+## Accepted documents
+
+| `data.document_type` | Result |
+|---|---|
+| `TAX_INVOICE`, `UTILITY_BILL` | Accepted. Fields returned. |
+| `DELIVERY_CHALLAN`, `RENT_AGREEMENT`, `BANK_STATEMENT`, `OTHER` | `IDTO_202`. `data.document_type` is set and every other field is `null`, so you can tell the user what they uploaded. |
+
+## Response fields
+
+| Field | Meaning |
+|---|---|
+| `data.buyer`, `data.vendor` | Billed party and issuing party: name, address, GSTIN, PAN, state, contact, email. |
+| `data.invoice_details` | Invoice number, date and order reference. |
+| `data.line_items` | Description, HSN or SAC, quantity, unit rate and total per line. |
+| `data.totals` | CGST, SGST, IGST, grand total and amount in words. |
+| `data.bank_details` | Account number, IFSC and bank name printed on the document. |
+| `billed` | `true` when this call was charged. |
+
+Every value is what is printed on the document. Validate a GSTIN or bank account with the matching verification endpoint before you rely on it.
+
+## Retries and duplicate protection
+
+Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. Replaying the same key with the same body within 48 hours returns the stored first response without a new check or a new charge. The same key with a different body returns `IDTO_010` (422). A replay while the first call is still running returns `IDTO_004` (409). If the first call returned an error, nothing is stored, so a retry runs the check again.
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | The document was read but no invoice details were found on it. Please upload a tax invoice or a utility bill that shows the billing address. | Yes |
+| `IDTO_202` | 200 | This document appears to be a bank statement, which is not accepted for address verification. Please upload a tax invoice or a utility bill. | Yes |
+| `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
+| `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
+| `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
+| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+The second `IDTO_202` message names the detected type, for example a delivery challan or a rent agreement. `IDTO_008` is also returned when the reader is at capacity; retry it, `IDTO_004` and `IDTO_006` with backoff. Full taxonomy: [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected `error_code` | HTTP | Billed |
+|---|---|---|---|
+| Clear scan of a GST tax invoice | `null` | 200 | Yes |
+| Electricity bill showing the billing address | `null` | 200 | Yes |
+| Bank statement | `IDTO_202` | 200 | Yes |
+| Photo with no invoice text | `IDTO_202` | 200 | Yes |
+| File larger than 12 MB | `IDTO_503` | 413 | No |
+| Request without the `file` part | `IDTO_001` | 422 | No |
+
+Questions: [Documents FAQ](/products/documents/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fdocuments%2Finvoice-ocr) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fdocuments%2Finvoice-ocr)

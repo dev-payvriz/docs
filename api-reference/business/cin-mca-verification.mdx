@@ -1,0 +1,60 @@
+---
+title: "Verify a company CIN"
+sidebarTitle: "CIN"
+description: "Look up a Corporate Identification Number or LLPIN and get company status, incorporation details and directors."
+openapi: "openapi2.0.json POST /v2/verify/cin_mca_verification"
+---
+
+Confirm that a company or LLP is registered and active, and read its incorporation date, category, class, registered address, listing status, registrar and a brief list of directors. Use it to onboard a business customer or to check a counterparty before you contract with it.
+
+The identifier is trimmed and upper-cased. A blank value, or one longer than 25 characters, is rejected with `IDTO_001` before any lookup and is not billed.
+
+<Note>
+When the call is made from a browser with an SDK session token, `directors_brief` and `extras` are removed from the response. Call from your server with your API key pair to receive them.
+</Note>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | CIN is invalid or not found in MCA records. | Yes |
+| `IDTO_001` | 400 | Invalid CIN format. Please check and retry. | No |
+| `IDTO_001` | 422 | Invalid request. The body is missing `id_number` or a field has the wrong type. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_008` | 503 or 504 | The verification service is momentarily busy. Please retry shortly. | No |
+
+Branch on `error_code`, not on `status`: a no-record result is `status: "success"` with an `error_code`. Full list in [v2 error codes](/reference/v2-error-codes).
+
+## Retries
+
+Send an `Idempotency-Key` header (up to 255 characters) to make retries safe. Replaying the same key with the same body returns the stored result without running or billing the verification again. The same key with a different body returns `IDTO_010`; a replay while the first call is still running returns `IDTO_004`. If the first call returned an error, nothing is stored and a retry runs the verification again.
+
+## Test scenarios
+
+Use these input classes in staging to exercise each outcome.
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Registered CIN, for example `U72900KA2020PTC000000` format | `error_code: null`, `data` filled | Yes |
+| Well-formed CIN that is not registered | `IDTO_202`, `data: null` | Yes |
+| `id_number` empty or blank | `IDTO_001` (400) | No |
+| `id_number` longer than 25 characters | `IDTO_001` (400) | No |
+| `id_number` missing from the body | `IDTO_001` (422) | No |
+| Same `Idempotency-Key`, different body | `IDTO_010` (422) | No |
+
+Questions about company lookups are answered in the [Business FAQ](/products/business/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fbusiness%2Fcin-mca-verification) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fbusiness%2Fcin-mca-verification)

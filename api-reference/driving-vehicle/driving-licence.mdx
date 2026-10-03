@@ -1,0 +1,84 @@
+---
+title: "Verify a driving licence"
+sidebarTitle: "Driving licence"
+description: "Check a driving licence number and date of birth against the issuing record and get the holder details, validity and vehicle classes."
+openapi: "openapi2.0.json POST /v2/verify/driving_licence"
+---
+
+Send a licence number and the holder's date of birth. IDTO looks up the licence with the issuing authority and returns the holder name, address, validity dates and the vehicle classes the holder may drive. Use it to onboard drivers and delivery partners, or before handing over a rental vehicle.
+
+Every response has the same shape whichever source serves the call. Branch on `error_code`, never on `status`:
+
+- `error_code: null` with `data`: the licence exists and matches the date of birth. Billed.
+- `error_code: "IDTO_202"` with `data: null`: no licence matches this number and date of birth. Billed, because the check ran to a definitive answer.
+- Any non-2xx response: the check did not complete. Never billed.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Input rules
+
+| Field | Rule |
+|---|---|
+| `licence_number` | Required. At least 8 letters and digits once spaces and hyphens are removed, for example `KA0120200000001` or `KA01 20200000001`. |
+| `dob` | Required. `YYYY-MM-DD`, `DD-MM-YYYY` or `DD/MM/YYYY`. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+
+## Response fields
+
+| Field | Meaning |
+|---|---|
+| `data.dl_number` | Licence number as held by the issuer. |
+| `data.name`, `data.relative_name` | Holder name and father's or husband's name. |
+| `data.dob` | Date of birth on the record. |
+| `data.address`, `data.pincode` | Address on the licence and its PIN code. |
+| `data.status` | Licence status reported by the issuer. |
+| `data.issuing_authority` | Issuing RTO and state. |
+| `data.validity` | Non-transport and transport validity dates. |
+| `data.vehicle_classes` | Classes of vehicle the holder may drive. |
+| `data.blood_group`, `data.photo` | Present when the issuer returns them; `photo` is base64. |
+| `billed` | `true` when this call was charged. |
+| `tranx_id` | IDTO transaction id. Quote it to support. |
+
+## Retries and duplicate protection
+
+Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. Replaying the same key with the same body within 48 hours returns the stored first response without a new check or a new charge. The same key with a different body returns `IDTO_010` (422). A replay while the first call is still running returns `IDTO_004` (409). If the first call returned an error, nothing is stored, so a retry runs the check again.
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |
+| `IDTO_001` | 400 | Invalid input: Driving licence number is required. Please check and retry. | No |
+| `IDTO_001` | 400 | Invalid input: A valid date of birth is required. Please check and retry. | No |
+| `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
+| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+Fix the input on `IDTO_001`; do not retry it unchanged. Retry `IDTO_004`, `IDTO_006` and `IDTO_008` with backoff. Full taxonomy: [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected `error_code` | HTTP | Billed |
+|---|---|---|---|
+| Valid licence number with the matching date of birth | `null` | 200 | Yes |
+| Well-formed licence number with no matching record | `IDTO_202` | 200 | Yes |
+| `licence_number` shorter than 8 characters, for example `KA01` | `IDTO_001` | 400 | No |
+| `dob` as `1990.01.01` | `IDTO_001` | 400 | No |
+| `dob` missing from the body | `IDTO_001` | 422 | No |
+| Same `Idempotency-Key`, different body | `IDTO_010` | 422 | No |
+
+Questions: [Driving licence and vehicle FAQ](/products/driving-vehicle/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fdriving-vehicle%2Fdriving-licence) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fdriving-vehicle%2Fdriving-licence)

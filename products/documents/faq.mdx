@@ -1,0 +1,39 @@
+---
+title: "Documents FAQ"
+description: "Answers to common questions about invoice and utility bill OCR, accepted document types and billing."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Which documents are accepted?">
+    Tax invoices and utility bills. Delivery challans, rent agreements, bank statements and other documents return `IDTO_202` with `data.document_type` set.
+  </Accordion>
+  <Accordion title="Am I charged when the document is rejected?">
+    Yes. A rejection by type or a document with no invoice details is HTTP 200 with `IDTO_202` and `billed: true`, because the document was read. Errors (non-2xx) are never billed.
+  </Accordion>
+  <Accordion title="Does IDTO verify the GSTIN or bank account on the invoice?">
+    No. Invoice OCR returns what is printed. Verify a GSTIN or a bank account with the matching verification endpoint.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="How do I upload the file?">
+    Send `multipart/form-data` with the document in the `file` field, at most 12 MB.
+  </Accordion>
+  <Accordion title="What does IDTO_008 mean on this endpoint?">
+    The reader is at capacity or the service is busy. It is HTTP 503 and not billed; retry with backoff.
+  </Accordion>
+  <Accordion title="Can I retry a timed-out upload safely?">
+    Yes. Send an `Idempotency-Key` header. Replaying the same key with the same file within 48 hours returns the first response without a new charge.
+  </Accordion>
+  <Accordion title="How do I tell the user what they uploaded?">
+    On a type rejection, read `data.document_type` (for example `BANK_STATEMENT`) and show the `message`, which names the detected type and asks for a tax invoice or utility bill.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdocuments%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdocuments%2Ffaq)

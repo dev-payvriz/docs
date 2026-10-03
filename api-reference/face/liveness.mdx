@@ -1,0 +1,77 @@
+---
+title: "Check liveness of a face image"
+sidebarTitle: "Liveness"
+description: "Check that a selfie shows a live person in front of the camera, not a printed photo, a screen or a mask, and get a liveness decision."
+openapi: "openapi2.0.json POST /v2/verify/liveness"
+---
+
+Send one selfie as base64 in `person`. IDTO checks it for signs of a presentation attack, such as a photo of a screen or a printout, and for capture problems such as closed eyes, blur or low light. Run it before [Face match](/api-reference/face/face-match) so you only compare faces from a live capture.
+
+Every response has the same shape whichever source serves the call. Branch on `error_code` and `data.is_live`:
+
+- `error_code: null`, `data.is_live: true`: the capture looks live. Billed.
+- `error_code: null`, `data.is_live: false`: the check ran and the capture failed it. Billed.
+- Any non-2xx response: the check did not complete. Never billed.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Input rules
+
+| Field | Rule |
+|---|---|
+| `person` | Required. Base64 of a JPEG or PNG selfie, at most 10 MB. A `data:image/jpeg;base64,` prefix is accepted. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+
+## Response fields
+
+| Field | Meaning |
+|---|---|
+| `data.is_live` | The decision. |
+| `data.liveness_score` | Score behind the decision. |
+| `data.extras` | Supplementary signals behind the decision. Keys can differ from call to call; do not build logic on them. |
+| `billed` | `true` when this call was charged. |
+
+When `is_live` is `false`, ask the user to retake the selfie in good light, facing the camera, with nothing covering the face.
+
+## Retries and duplicate protection
+
+Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. Replaying the same key with the same body within 48 hours returns the stored first response without a new check or a new charge. The same key with a different body returns `IDTO_010` (422). A replay while the first call is still running returns `IDTO_004` (409). If the first call returned an error, nothing is stored, so a retry runs the check again.
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_001` | 400 | Invalid input: person must be base64-encoded image data. | No |
+| `IDTO_503` | 413 | Invalid input: the image could not be read. Please upload a clear JPEG or PNG. | No |
+| `IDTO_609` | 500 | Liveness could not be determined. Please try again. | No |
+| `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
+| `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+`IDTO_503` is also returned, with the standard image message, when `person` is larger than 10 MB. Retry `IDTO_609`, `IDTO_004`, `IDTO_006` and `IDTO_008` with backoff. Full taxonomy: [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | HTTP | Billed |
+|---|---|---|---|
+| Clear, well lit selfie of a live person | `error_code: null`, `is_live: true` | 200 | Yes |
+| Photo of a face shown on a phone screen | `error_code: null`, `is_live: false` | 200 | Yes |
+| `person` is an empty string | `IDTO_001` | 400 | No |
+| `person` is valid base64 but not an image | `IDTO_503` | 413 | No |
+| Body without `person` | `IDTO_001` | 422 | No |
+
+Questions: [Face and liveness FAQ](/products/face/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fface%2Fliveness) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fface%2Fliveness)

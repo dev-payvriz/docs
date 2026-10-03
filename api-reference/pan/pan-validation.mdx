@@ -1,0 +1,62 @@
+---
+title: "Validate a PAN"
+sidebarTitle: "PAN Validation"
+description: "Check that a PAN exists and is active, and get back the name on record and the holder category."
+openapi: "openapi2.0.json POST /v2/verify/pan_validation"
+---
+
+Use PAN Validation when you hold a PAN and need to know it is real before you continue onboarding. One call returns the name on record, whether the PAN is active, and the holder category (individual, company, HUF and so on) read from the PAN itself. If you also need address, masked Aadhaar or linked bank accounts, call [PAN Detailed](/api-reference/pan/pan-detailed) instead.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+- `status` is `success` for every completed check, found or not. Branch on `error_code`, never on `status`.
+- `error_code: null` with `data` present: the PAN was found. `data.pan_status` is `Active` for an active PAN.
+- `error_code: "IDTO_202"` with `data: null`: no record exists for this PAN. This is a definitive answer and is billed.
+- `billed` tells you whether this call was charged. It is `true` for both outcomes above, and `false` on every error.
+- `user_consent` in the request must be `true`; record the end user's consent before you call.
+
+<Tip>
+Send an `Idempotency-Key` header (up to 255 characters) on every call. If a network error makes you retry with the same key and the same body, you get the first result back and are not charged again. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | Record is invalid or does not exist. | Yes |
+| `IDTO_001` | 400 | Invalid input: Pan number is required. Please check and retry. | No |
+| `IDTO_001` | 400 | Invalid PAN format. Please check and retry. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `IDTO_005` | 400 | User consent is required to proceed. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real, active PAN with `user_consent: true` | 200, `error_code: null`, `data.pan_status: "Active"` | Yes |
+| A well-formed PAN that has no record | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| `pan_number: ""` | 400, `IDTO_001` | No |
+| `pan_number: "ABCDE12345"` (wrong shape) | 400, `IDTO_001` | No |
+| `user_consent: false` | 400, `IDTO_005` | No |
+| Body without `pan_number` | 422, `IDTO_001` | No |
+| Same `Idempotency-Key`, same body, sent twice | Second call returns the first response | Charged once |
+| Same `Idempotency-Key`, different `pan_number` | 422, `IDTO_010` | No |
+
+Input rules: `pan_number` is 10 characters, five letters, four digits, one letter (`ABCDE1234F`), sent in upper case. See the [PAN FAQ](/products/pan/faq) and the [PAN recipe](/recipes/verify-pan-branch-on-error-code) for a worked example.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/pan/pan-validation) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/pan/pan-validation)

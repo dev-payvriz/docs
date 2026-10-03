@@ -1,0 +1,54 @@
+---
+title: "Environments"
+sidebarTitle: "Environments"
+description: "The staging and production base URLs, how to get keys for each, and what a call costs in each."
+---
+
+idto runs two environments. They share the same API contract, so code written against staging works against production by changing only the base URL and the key pair.
+
+| Environment | Base URL | Notes |
+| --- | --- | --- |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+<Warning>
+  There is no sandbox that returns canned results. Every staging call reaches a live verification source, exactly as in production. Test only with identities you have permission to verify, such as your own team's documents with their consent.
+</Warning>
+
+## Keys
+
+Each environment has its own `X-Client-ID` and `X-API-Key` pair, and a pair from one environment does not authenticate against the other.
+
+- **Staging:** ask your IDTO account manager. Staging keys are issued by hand.
+- **Production:** generate them in the dashboard under **API Credentials** once your account has completed go-live. See the [Go-live checklist](/go-live-checklist).
+
+```bash
+export IDTO_BASE_URL="https://dev.idto.ai"
+export IDTO_CLIENT_ID="your_client_id"
+export IDTO_API_KEY="your_api_key"
+```
+
+Read the base URL from configuration rather than hardcoding it, so promoting a build to production is a configuration change only.
+
+## The dashboard's Sandbox Mode
+
+A new dashboard account opens in **Sandbox Mode**. In that mode the dashboard's built-in API tester shows sample output in the browser and makes no API call. It is a way to explore response shapes, not a test environment, and nothing it shows reaches either base URL above. See the [Dashboard guide](/guides/dashboard).
+
+## What differs between environments
+
+| | Staging | Production |
+| --- | --- | --- |
+| API contract | Same | Same |
+| Verification sources | Live | Live |
+| Credits | Staging account balance | Production account balance |
+| Keys | Issued by your account manager | Generated in the dashboard |
+| Webhook secret | Set separately per environment | Set separately per environment |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">Make a first call against staging.</Card>
+  <Card title="Go-live checklist" icon="list-check" href="/go-live-checklist">Everything to confirm before you switch the base URL.</Card>
+</CardGroup>
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

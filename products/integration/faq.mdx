@@ -1,0 +1,43 @@
+---
+title: "Integration FAQ"
+sidebarTitle: "FAQ"
+description: "Common questions about SDK tokens, session state and completion webhooks."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Why not put my API key in the app?">
+    Anyone can read a key shipped in a browser or app and run billable calls on your account. Keep it on your server and hand the SDK a 15 minute token instead.
+  </Accordion>
+  <Accordion title="Are integration calls billed?">
+    No. Minting tokens, reading session state and receiving webhooks are free. You pay for the verifications run inside the flow.
+  </Accordion>
+  <Accordion title="Webhook or session state?">
+    Use the webhook to learn about completion as it happens, and session state to confirm a result on demand or to recover after a missed webhook.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="How long does an SDK token last?">
+    900 seconds (`expires_in`). Mint a new one for each flow you open rather than caching it.
+  </Accordion>
+  <Accordion title="Can I call session state with my API key?">
+    No. It takes `Authorization: Bearer <SDK token>`. Mint a token from your server first.
+  </Accordion>
+  <Accordion title="Why do I get 403 on session state?">
+    The session belongs to another IDTO account. Any client of the owning account can read it.
+  </Accordion>
+  <Accordion title="Why is my webhook not arriving?">
+    Check that a signing secret exists: until you generate one in the dashboard, IDTO does not send events. Also check that the URL is `https://` and returns a 2xx within 10 seconds.
+  </Accordion>
+  <Accordion title="What is partial?">
+    `partial` is `true` when at least one step was skipped or fell back to an alternative.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/integration/faq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/integration/faq)

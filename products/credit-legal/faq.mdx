@@ -1,0 +1,43 @@
+---
+title: "Credit and legal FAQ"
+sidebarTitle: "FAQ"
+description: "Answers to common questions about credit reports and court record checks."
+---
+
+## General
+
+<AccordionGroup>
+<Accordion title="Do I need the individual's consent for a credit report?">
+Yes. Collect explicit consent from the individual before you request their credit report, and keep a record of it.
+</Accordion>
+<Accordion title="Am I charged when the person has no credit report?">
+Yes. The bureau was searched, so the call returns `status: "success"` with an empty `result` and is charged.
+</Accordion>
+<Accordion title="Am I charged when a court check finds no cases?">
+Yes. A completed search with no matches returns `status: "success"` with empty lists and `totalResult: 0`, and is charged.
+</Accordion>
+<Accordion title="What is the difference between strong_match and possible_match?">
+Each record found gets a weighted match score against the name, address and father's name you sent. Records above 85 percent are in `strong_match`; the rest are in `possible_match`. Review possible matches manually.
+</Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+<Accordion title="How do I know whether a call was charged?">
+A charged call carries `"chargeble": "true"` and `"user_consent": "true"`. An uncharged call has neither field.
+</Accordion>
+<Accordion title="Can I retry a timed-out request safely?">
+These endpoints have no idempotency support, so a retry runs again and can be charged again. Retry only when the first call returned no response, or an error status.
+</Accordion>
+<Accordion title="Why does the credit report response have no tranx_id?">
+This endpoint returns only `status`, `message`, `result` and the billing flags. Send your own `user_id` with each call to tie it to your records.
+</Accordion>
+<Accordion title="Does sending father_name change the result of a court check?">
+It is optional. When sent, it is passed to the search to narrow the match.
+</Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fcredit-legal%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fcredit-legal%2Ffaq)

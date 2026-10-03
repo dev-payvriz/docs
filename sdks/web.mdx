@@ -1,129 +1,211 @@
 ---
 title: "Web SDK"
-sidebarTitle: "Web (ReactJS)"
-description: "Embed the idto verification widget in any web app with a single script tag, no bundler or npm install required."
+sidebarTitle: "Web"
+description: "Open the IDTO verification flow in any web app with one script tag. No bundler, npm install or CSS file needed."
 ---
 
-The Web SDK is a CDN-distributed widget that mounts inside a shadow root, so it never leaks host-page CSS and host-page CSS never leaks into it. It works with any modern browser and any frontend stack, React included, since it is a plain script tag rather than an npm package.
+The Web SDK is a single script that opens the IDTO verification flow over your page. It renders inside a shadow root, so your page styles never reach the flow and the flow's styles never reach your page. It works with any frontend stack, React included, because it is a plain script tag.
 
-<Note>
-  There is currently no published browser or OS support matrix for this SDK. If your users are on very old browsers, test the flow directly before relying on it in production.
-</Note>
+<Frame caption="The flow opens with an overview of the steps in your workflow.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-overview.png" alt="Verification overview screen listing the workflow steps" width="390" />
+</Frame>
+
+## Before you start
+
+You need:
+
+- A `client_id` and `client_secret` from the IDTO dashboard. The secret stays on your server.
+- A `workflow_template_id`: the UUID of the workflow that decides which steps run and in what order.
+- A backend route that mints a short-lived client token. See [Authentication](/authentication) and the [Node and Express recipe](/recipes/sdk-token-node-express).
 
 ## Install
 
-Add the script tag once, anywhere on the page that will open the widget:
+Add the script tag once, on any page that opens the flow:
 
 ```html
 <script src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/sdk/prod/idto.js"></script>
 ```
 
+The script defines `window.IDtoSDK` with two methods, `open(config)` and `close()`.
+
+## Quick start
+
+<Steps>
+  <Step title="Mint a client token on your server">
+    Call `POST /auth/sdk/token` with your `client_id` and `client_secret`. The response carries `access_token` (the client token) and `expires_in` in seconds. Return only the token to the browser.
+
+    ```js
+    app.post("/api/idto-token", async (req, res) => {
+      const r = await fetch("https://prod.idto.ai/auth/sdk/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: process.env.IDTO_CLIENT_ID,
+          client_secret: process.env.IDTO_API_KEY,
+        }),
+      });
+      const { access_token } = await r.json();
+      res.json({ client_token: access_token });
+    });
+    ```
+  </Step>
+  <Step title="Open the flow">
+    ```html
+    <button id="verify">Verify your identity</button>
+    <script>
+      document.getElementById("verify").addEventListener("click", async () => {
+        const r = await fetch("/api/idto-token", { method: "POST" });
+        const { client_token } = await r.json();
+        IDtoSDK.open({
+          client_token,
+          workflow_template_id: "your-workflow-template-uuid",
+          businessName: "Sample Traders",
+          getToken: async () => (await (await fetch("/api/idto-token", { method: "POST" })).json()).client_token,
+          onStepComplete: (d) => console.log("step done", d.step),
+          onWorkflowComplete: (d) => fetch("/api/idto-confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_token: d.session_token }),
+          }),
+          onError: (d) => console.error("IDTO error", d.step, d.error),
+          onAbandon: (d) => console.warn("abandoned at", d.at_step),
+          onClose: () => console.log("closed"),
+        });
+      });
+    </script>
+    ```
+  </Step>
+  <Step title="Confirm the result on your server">
+    Browser callbacks drive your UI only. Before you grant access, confirm the session from your server with the [session result recipe](/recipes/confirm-session-result) or a signed [webhook](/concepts/webhooks).
+  </Step>
+</Steps>
+
+<Frame caption="A PAN capture step inside the flow.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-capture.png" alt="PAN card capture screen" width="390" />
+</Frame>
+
+## Environments
+
+| `env` | API host | Use for |
+| --- | --- | --- |
+| `"production"` (default) | `https://prod.idto.ai` | Live traffic |
+| `"development"` | `https://dev.idto.ai` | Staging, with staging credentials |
+
+The token must come from the same environment the flow points at. Staging runs real checks, see [Environments](/environments).
+
 ## Configuration
 
-### Required fields
+### Required
 
 <ParamField body="client_token" type="string" required>
-  A short-lived token issued by your backend for this verification session.
+  The `access_token` your server minted from `POST /auth/sdk/token`.
 </ParamField>
 
 <ParamField body="workflow_template_id" type="string" required>
-  The workflow UUID configured for this product during onboarding.
+  UUID of the workflow to run.
 </ParamField>
 
-### Optional fields
+### Session and user
 
-| Field | Purpose |
-| --- | --- |
-| `getToken` | Callback your backend supplies to refresh `client_token` if the session runs long. |
-| `businessName` | Display name shown in the widget header. |
-| `merchant_user_id` | Your own identifier for this end user, for correlating results with your records. |
-| `logo` | URL of a logo shown in the widget. |
-| `displayMode` | Layout mode for the widget (e.g. modal vs. full screen). |
-| `desktopModal` | Whether to render as a centered modal on desktop viewports. |
-| `bottomSheet` | Whether to render as a bottom sheet on mobile viewports. |
-| `theme` | Visual theme overrides for the widget UI. |
-| `language` | Locale for widget copy. |
-| `env` | Target environment (e.g. sandbox vs. production). |
-| `phone` | Pre-fill the user's mobile number. |
-| `session_token` | Resume a previously started verification session. |
-| `start_fresh` | Force a new session even if a prior one exists for this user. |
-| `pre_verified` | Mark specific modules as already verified, skipping them. |
-| `accumulated_data` | Seed the session with data already collected outside the widget. |
-| `reference_name` | A name to cross-check against document data via name matching. |
-| `nameMatchConfig` | Configuration for the name-match comparison. |
-| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
-| `faceMatchConfig` | Configuration for the face-match comparison. |
-| `panConfig` | Configuration for the PAN verification step. |
-| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
-| `colors` | Color token overrides for the widget theme. |
-| `baseUrl` | Override the API base URL the widget calls. |
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `getToken` | `() => Promise<string>` | Returns a fresh client token when the current one expires. |
+| `session_token` | `string` | Resume an earlier session instead of starting a new one. |
+| `start_fresh` | `boolean` | Start a new session even if one is in progress for this browser. |
+| `merchant_user_id` | `string` | Your own id for this user, returned with the session. |
+| `phone` | `string` | Prefills the mobile number step. |
+| `pre_verified` | `Record<string, boolean>` | Module slugs you already verified, keyed `true`, which the flow skips. |
+| `skippable` | `string[]` | Module slugs the user may skip and finish later. See [Modules](/sdks/modules). |
+| `accumulated_data` | `object` | Data you already hold, passed into the session. |
 
-<ParamField body="skippable" type="string[]">
-  An array of module slugs (see [Modules](/sdks/modules)) that the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every idto SDK, web included.
-</ParamField>
+### Matching
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `reference_name` | `string` | Name every document name is matched against. |
+| `nameMatchConfig` | `object` | `threshold` (number), `decision_mode` (`"all"` or `"any"`), `extra_honorifics` (string array), `aliases` (object), `compare_pairs` (any of `"aadhaar_vs_pan"`, `"aadhaar_vs_dl"`, `"aadhaar_vs_bank"`, `"pan_vs_bank"`). |
+| `faceMatchReferenceImage` | `string` | Reference photo the live selfie is compared with. |
+| `faceMatchConfig` | `object` | `skipLiveness` (boolean), `threshold` (number), `livenessFailurePolicy` (`"fail_open"`, `"fail_closed"` or `"needs_review"`). |
+| `aadhaarConfig` | `object` | `digilockerMaxFailures` (`1` or `2`), `okycEnabled` (boolean). |
+| `panConfig` | `object` | `skipContextScreen` (boolean). |
+
+### Branding and display
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `businessName` | `string` | Your name, shown in the flow header. |
+| `logo` | `string` | URL of your logo. |
+| `language` | `"en"` or `"hi"` | Language of the flow copy. |
+| `theme` | `"light"` or `"dark"` | Colour scheme. |
+| `colors` | `object` | `background`, `text`, `text2`, `border`, `primary`, `secondary`, `buttonTextColor_primary`, `buttonTextColor_secondary`. |
+| `displayMode` | `"full_screen"` or `"bottom_sheet"` | Layout on small screens. |
+| `desktopModal` | `object` | `width`, `height`, `breakpoint` for the centred modal on wide screens. |
+| `bottomSheet` | `object` | `minHeight`, `maxHeight` for bottom sheet mode. |
+| `env` | `"production"` or `"development"` | API environment. Default `"production"`. |
+| `baseUrl` | `string` | Overrides the API host. Takes precedence over `env`. |
 
 ## Callbacks
 
 <ResponseField name="onStepComplete(data)" type="function">
-  Fires after each module in the workflow finishes.
+  Fires after each step finishes.
 
-  <Expandable title="payload fields">
-    <ResponseField name="step" type="string">The module slug that just completed.</ResponseField>
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-    <ResponseField name="credits_deducted" type="number">Credits deducted for this step.</ResponseField>
-    <ResponseField name="balance_remaining" type="number">Your account's remaining credit balance after this step.</ResponseField>
-    <ResponseField name="result" type="object">The step's verification result.</ResponseField>
-    <ResponseField name="accumulated_data" type="object">All data collected across the session so far.</ResponseField>
+  <Expandable title="data">
+    <ResponseField name="step" type="string">Slug of the step that finished.</ResponseField>
+    <ResponseField name="result" type="object">That step's result.</ResponseField>
+    <ResponseField name="accumulated_data" type="object">Everything collected so far, keyed by slug.</ResponseField>
+    <ResponseField name="session_token" type="string">The session token.</ResponseField>
+    <ResponseField name="credits_deducted" type="number">Credits charged for this step.</ResponseField>
+    <ResponseField name="balance_remaining" type="number">Your credit balance after this step.</ResponseField>
   </Expandable>
 </ResponseField>
 
-<ResponseField name="onWorkflowComplete(result)" type="function">
-  Fires when the whole workflow finishes.
+<ResponseField name="onWorkflowComplete(data)" type="function">
+  Fires once when every step is done.
 
-  <Expandable title="payload fields">
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-    <ResponseField name="outcome" type="string">
-      Overall workflow outcome. Documented here and returned at runtime, but not currently present in this SDK's published TypeScript types (`IDtoWorkflowCompleteData`). If you consume this in a strictly-typed TypeScript project, cast or widen the type rather than relying on it being inferred.
-    </ResponseField>
-    <ResponseField name="all_steps" type="array">Every module result from the session.</ResponseField>
-    <ResponseField name="accumulated_data" type="object">All data collected across the session.</ResponseField>
+  <Expandable title="data">
+    <ResponseField name="all_steps" type="object[]">One entry per step, each with its `slug` and result fields.</ResponseField>
+    <ResponseField name="accumulated_data" type="object">Everything collected, keyed by slug.</ResponseField>
+    <ResponseField name="session_token" type="string">Send this to your server to confirm the result.</ResponseField>
   </Expandable>
-
-  <Note>
-    `credits_deducted` and `balance_remaining` are only available on `onStepComplete`, they are not repeated in this payload.
-  </Note>
 </ResponseField>
 
 <ResponseField name="onError(data)" type="function">
-  Fires on a recoverable or fatal error.
+  Fires when a step or the session start fails.
 
-  <Expandable title="payload fields">
-    <ResponseField name="step" type="string">The module slug active when the error occurred.</ResponseField>
-    <ResponseField name="error" type="string">One of 8 stable error strings, or free text when `step` is `"init"`.</ResponseField>
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
+  <Expandable title="data">
+    <ResponseField name="step" type="string">Slug of the active step, or `"init"` when the session could not start.</ResponseField>
+    <ResponseField name="error" type="string">A readable message. Log it; do not match on its text.</ResponseField>
+    <ResponseField name="session_token" type="string">The session token. Empty when `step` is `"init"`.</ResponseField>
   </Expandable>
 </ResponseField>
 
 <ResponseField name="onAbandon(data)" type="function">
-  Fires when the user leaves the flow before completion.
+  Fires when the user leaves the flow from an error screen.
 
-  <Expandable title="payload fields">
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-    <ResponseField name="at_step" type="string">The module slug the user was on when they left.</ResponseField>
-    <ResponseField name="reason" type="string">Why the session ended, where known.</ResponseField>
+  <Expandable title="data">
+    <ResponseField name="at_step" type="string">Slug of the step the user was on.</ResponseField>
+    <ResponseField name="reason" type="string">Why the session ended, for example `"error"`.</ResponseField>
+    <ResponseField name="session_token" type="string">The session token.</ResponseField>
   </Expandable>
 </ResponseField>
 
 <ResponseField name="onClose()" type="function">
-  Fires when the widget closes. No payload.
+  Fires when the flow closes, with no payload.
 </ResponseField>
 
-## Integration notes
+<Frame caption="The completion screen shown after the last step.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="Workflow complete screen" width="390" />
+</Frame>
 
-<Warning>
-  Always provide at least a `console.error` stub for `onError` and `onAbandon` during development. Omitting either one silently swallows the corresponding failures.
-</Warning>
+## Methods
 
-<Note>
-  Do not call `IDtoSDK.open()` again while a widget instance is already mounted.
-</Note>
+| Method | Behaviour |
+| --- | --- |
+| `IDtoSDK.open(config)` | Opens the flow. Calling it while a flow is open closes that one and opens a new one. |
+| `IDtoSDK.close()` | Closes the flow. `onClose` fires when it has gone. |
+
+## See it run
+
+<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.mp4"></video>
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fweb) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fweb)

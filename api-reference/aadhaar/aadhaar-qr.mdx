@@ -1,0 +1,75 @@
+---
+title: "Aadhaar QR"
+sidebarTitle: "Aadhaar QR"
+description: "Read the QR code on an Aadhaar card or e-Aadhaar and check its UIDAI digital signature."
+openapi: "openapi2.0.json POST /v2/verify/aadhaar_qr"
+---
+
+Every Aadhaar card and e-Aadhaar carries a QR code. Newer cards carry a secure QR, signed by UIDAI, with the holder's name, date of birth, gender, address and photo. Aadhaar QR reads that code and checks the signature, so you can tell a genuine card from an edited one without an OTP. Older cards carry an unsigned QR: it is read, but nothing can be verified.
+
+Send one of:
+
+- `multipart/form-data` with `file`: a photo or scan of the QR. Works for every account.
+- JSON with `qr_data`: the text you decoded from the QR yourself. If your account returns `IDTO_001` for `qr_data`, send the image instead.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+Every readable QR returns 200, `status: "success"`, `error_code: null`, and is billed. Decide with `data.authentic` and `data.is_signed`:
+
+| `authentic` | `is_signed` | `message` | Meaning |
+|---|---|---|---|
+| `true` | `true` | Aadhaar QR verified successfully. | Signed QR, signature matched. The data is as UIDAI issued it. |
+| `false` | `true` | Aadhaar QR was read, but its UIDAI signature did not match. Do not treat this card as verified. | The QR was altered or is not genuine. Reject the card. |
+| `null` | `false` | Aadhaar QR was read. It carries no UIDAI signature to verify. | Old unsigned QR. Treat the data as self-declared. |
+| `null` | `true` or `null` | Aadhaar QR was read, but its UIDAI signature was not checked. Treat this card as unverified. | Signature not checked on this call. Treat as unverified. |
+
+- `dob` is passed through as the QR holds it, not reformatted. An old QR may hold only the year of birth.
+- `reference_id` is the QR's own reference. On an old QR it is the masked Aadhaar number (`XXXXXXXX` plus the last 4 digits).
+- `address` is one line built from the parts. `extras` carries the parts (`care_of`, `house`, `street`, `location`, `vtc`, `district`, `state` and so on), `format` (`secure_qr` or `old_xml`) and, on a secure QR, `mobile_registered` and `email_registered`.
+- Photo: send `include_photo: true` to get the holder's photo as Base64 in `photo` with `photo_mime: "image/png"`. Without it, `photo` is `null` and `has_photo` still tells you whether one exists. The decoded photo is not saved with the call record.
+- `user_consent` must be `true` (`"true"` or `"1"` in a form).
+- No readable QR in the image is a 422 `IDTO_204` and is not billed.
+
+<Tip>
+Send an `Idempotency-Key` header. A retry with the same key and body returns the first response without a second charge. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_204` | 422 | No readable Aadhaar QR was found in the image. | No |
+| `IDTO_001` | 400 | Invalid input: send exactly one of an Aadhaar QR image or qr_data. Please check and retry. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_005` | 400 | User consent is required to proceed. | No |
+| `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A clear photo of a secure QR from a genuine card, `user_consent: true` | 200, `authentic: true`, `is_signed: true` | Yes |
+| A photo of an old card's QR | 200, `authentic: null`, `is_signed: false` | Yes |
+| A photo with no QR in it | 422, `IDTO_204` | No |
+| Both `file` and `qr_data`, or neither | 400, `IDTO_001` | No |
+| `user_consent` missing or false | 400, `IDTO_005` | No |
+| An image larger than 11 MB | 413, `IDTO_503` | No |
+| Same `Idempotency-Key`, same body, sent twice | Second call returns the first response | Charged once |
+
+See the [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/aadhaar-qr) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/aadhaar-qr)

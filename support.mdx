@@ -1,0 +1,32 @@
+---
+title: "Support"
+sidebarTitle: "Support"
+description: "How to reach IDTO, and what to include so we can trace a call quickly."
+---
+
+Write to **tech@idto.ai** for integration help, staging keys, or anything about a specific call. Your IDTO account manager handles commercial questions, production enablement and new products.
+
+## Include these in every request
+
+| Include | Where to find it |
+| --- | --- |
+| `tranx_id` | Every v2 response body, and most v1 verification responses |
+| Endpoint and environment | For example `POST /v2/verify/pan_validation` on staging |
+| HTTP status and `error_code` | The response you received |
+| Time of the call | The `timestamp` field in the response, or your own log time with time zone |
+| `Idempotency-Key` | If you sent one |
+
+The `tranx_id` lets us find the exact call. Do not send full identity numbers, OTPs, document images or API keys by email; a `tranx_id` is enough.
+
+## Before you write
+
+- Check the code in [Error codes](/reference/v2-error-codes). Most outcomes have a fixed meaning and a next step.
+- For `IDTO_008` (503) and `IDTO_103` or `IDTO_403` (503), retry with backoff first. These are transient.
+- For `IDTO_007` (500), write to us: it means a configuration problem on our side for your account, and retrying will not help.
+- For a rejection about insufficient credits, recharge your balance from the dashboard **Billing** page.
+
+## Status of a call that timed out
+
+On a v2 endpoint, if your client timed out and you do not know whether the call completed, retry it with the same `Idempotency-Key` and the same body. If the first call finished with a 2xx, you receive its stored response and are not billed again. If it is still running you receive `IDTO_004` (409); wait and retry. If it ended in an error, nothing was stored, so the retry runs the verification again. v1 endpoints do not support idempotency. See [Idempotency](/concepts/idempotency).
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

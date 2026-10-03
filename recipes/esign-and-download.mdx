@@ -1,0 +1,118 @@
+---
+title: "eSign a document and download the signed copy"
+description: "Create an eSign docket for a PDF, then fetch the signed copy once every signer has signed."
+---
+
+Create a docket with the PDF and the signers, let the signers sign, then download the signed PDF from your server.
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Create the docket and fetch the document">
+<CodeGroup>
+
+```python esign.py
+import base64
+import os
+import sys
+import uuid
+
+import requests
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+HEADERS = {"X-Client-ID": os.environ["IDTO_CLIENT_ID"], "X-API-Key": os.environ["IDTO_API_KEY"]}
+
+
+def create_docket(pdf_path, signer_name, signer_email, signer_mobile, send_invite):
+    document_id = str(uuid.uuid4())
+    with open(pdf_path, "rb") as pdf:
+        content = base64.b64encode(pdf.read()).decode()
+    payload = {
+        "agreement_type": "service_agreement",
+        "docket_title": "Service agreement",
+        "docket_description": "Service agreement for signature",
+        "final_copy_recipients": signer_email,
+        "documents": [
+            {
+                "reference_doc_id": document_id,
+                "content_type": "pdf",
+                "content": content,
+                "signature_sequence": "sequential",
+            }
+        ],
+        "signers_info": [
+            {
+                "signer_ref_id": str(uuid.uuid4()),
+                "signer_name": signer_name,
+                "signer_email": signer_email,
+                "signer_mobile": signer_mobile,
+                "signature_type": "aadhaar",
+                "trigger_esign_request": send_invite,
+                "authentication_mode": "email",
+                "document_to_be_signed": document_id,
+                "signer_position": {"appearance": "bottom-right"},
+                "page_number": "1",
+                "sequence": "1",
+            }
+        ],
+    }
+    response = requests.post(f"{BASE_URL}/verify/esign", headers=HEADERS, json=payload, timeout=(5, 60))
+    return response.status_code, response.json()
+
+
+def download_signed_copy(docket_id):
+    response = requests.post(
+        f"{BASE_URL}/verify/esign/document",
+        headers=HEADERS,
+        json={"docket_id": docket_id},
+        timeout=(5, 60),
+    )
+    body = response.json()
+    if response.status_code == 200 and body.get("signing_status") == "completed":
+        return "signed", base64.b64decode(body["content"])
+    return body.get("signing_status") or body.get("detail"), None
+
+
+if __name__ == "__main__":
+    status, docket = create_docket(sys.argv[1], "RAHUL SHARMA", "rahul.sharma@example.com", "9999999999", False)
+    print(status, docket.get("status"), sorted(docket.keys()))
+    print(download_signed_copy(docket["docket_id"]))
+```
+
+</CodeGroup>
+
+`send_invite=True` sends the signer a signing invitation. Keep the `docket_id` from the response, you need it to download the signed copy.
+
+```json 200
+{"status": "success", "docket_id": "<docket-id>", "document_id": "<document-id>", "signer_info": [{"signer_ref_id": "<signer-ref-id>", "signer_id": "<signer-id>", "document_id": "<document-id>", "reference_doc_id": "<reference-doc-id>", "invitation_link": "<signing-url>"}], "chargeble": "true", "user_consent": "true"}
+```
+</Step>
+<Step title="Download the signed copy">
+`POST /verify/esign/document` with the `docket_id`. Until every signer has signed, `signing_status` is `pending` and `content` is `null`:
+
+```json 200
+{"status": "success", "signing_status": "pending", "document_id": null, "content": null, "content_type": "pdf"}
+```
+
+When signing is complete, `signing_status` is `completed` and `content` is the base64 PDF. Save it in your own storage right away.
+</Step>
+</Steps>
+
+## Good to know
+
+- Creating a docket is charged. Fetching the document is not.
+- Fetch and store the signed copy soon after signing completes. Signed copies are not kept indefinitely, and a fetch for an expired copy returns `410`.
+- See [eSign workflow](/guides/esign-workflow) for signer positions and signing order.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fesign-and-download) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fesign-and-download)

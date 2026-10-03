@@ -54,7 +54,7 @@ curl https://prod.idto.ai/links/lnk_8f3a2b91c4d5e6f7
 {
   "label": "Vendor onboarding KYC",
   "brand": {
-    "businessName": "Acme Retail",
+    "businessName": "SAMPLE TECHNOLOGIES",
     "brandColor": "#111111",
     "theme": "light",
     "blurb": "Quick identity check before we onboard you as a vendor.",
@@ -109,7 +109,7 @@ curl --request POST \
 
 ### Get the combined result
 
-Configure a webhook URL and signing secret for your account in the dashboard (**Webhooks** section). When the session finishes, whatever the outcome, idto POSTs a signed payload to that URL:
+Configure a webhook URL and signing secret for your account in the dashboard (**Webhooks** section). Set the secret first: until one exists, deliveries fail. When the session finishes, whatever the outcome, idto POSTs a signed payload to that URL:
 
 ```json
 {
@@ -158,8 +158,10 @@ Retry your signing secret against both the current and, during a rotation window
 
 ## What this guide is not
 
-The `/sdk/v2/session/*` endpoints (session init, step start/complete, finalize, and so on) are the internal protocol idto's own SDKs (web, Android, iOS, Flutter, React Native) speak to the backend once a `client_token` is in hand. They are not part of this public API surface and aren't documented here, if you're embedding verification inside your own native or web app rather than sending customers to the hosted link, integrate the relevant [SDK](/sdks/web) instead of calling that protocol yourself.
+The SDKs talk to IDTO through their own session protocol once a `client_token` is in hand, and that protocol is not a public API. Two pieces of it are documented for server use: [Mint an SDK token](/api-reference/integration/sdk-token) and [Get session state](/api-reference/integration/session-state). If you are embedding verification in your own app rather than sending customers to a hosted link, integrate the relevant [SDK](/sdks/web). The full completion payload and its headers are on [Session completed](/api-reference/webhooks/session-completed).
 
 <Warning>
   `mobile_verification` can never be included in a link's `skippable` list, it's how the end customer is identified for the session. Any other module in the sequence can be marked skippable if your workflow allows completing it later.
 </Warning>
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

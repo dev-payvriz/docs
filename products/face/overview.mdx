@@ -1,0 +1,62 @@
+---
+title: "Face and liveness"
+description: "Confirm a selfie comes from a live person and that it matches the photo on an ID document."
+---
+
+Use this module to bind a person to an identity document. Liveness confirms that the selfie was taken of a real person in front of the camera. Face match then compares that selfie with the photo on the ID.
+
+## Endpoints
+
+| Endpoint | What it does | Billed when |
+|---|---|---|
+| [Liveness](/api-reference/face/liveness) `POST /v2/verify/liveness` | Checks one base64 selfie for presentation attacks and capture problems. | Every 2xx, including `is_live: false` |
+| [Face match](/api-reference/face/face-match) `POST /v2/verify/face_match` | Compares two faces and returns a 0 to 100 score and a match decision. | Every 2xx, including `is_match: false` |
+
+## How a selfie check works
+
+```mermaid
+sequenceDiagram
+    participant App as Your app
+    participant Server as Your server
+    participant IDTO
+    App->>Server: Selfie
+    Server->>IDTO: POST /v2/verify/liveness (person)
+    IDTO-->>Server: data.is_live
+    alt is_live true
+        Server->>IDTO: POST /v2/verify/face_match (image1 selfie, image2 ID photo)
+        IDTO-->>Server: data.is_match, data.match_score
+        Server-->>App: Approve or send to review
+    else is_live false
+        Server-->>App: Ask for a new selfie
+    end
+```
+
+## Outcomes and billing
+
+Both endpoints return the IDTO envelope. A 2xx response is billed whatever the decision: a failed liveness check or a non-matching face is still a completed check. Errors such as an unreadable image (`IDTO_503`, 413) or no decision (`IDTO_509` or `IDTO_609`, 500) are never billed. Face match treats a score of 70 or more as a match.
+
+## In the hosted flow
+
+The face step of the IDTO verification flow guides the user through the selfie capture.
+
+<video controls muted playsInline src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.mp4" aria-label="Face capture step in the IDTO verification flow"></video>
+
+<Frame>
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-face-capture.png" alt="Selfie capture screen in the IDTO verification flow" width="390" />
+</Frame>
+
+## Test scenarios
+
+| Endpoint | Input | Expected | Billed |
+|---|---|---|---|
+| Liveness | Clear selfie of a live person | 200, `is_live: true` | Yes |
+| Liveness | Base64 that is not an image | 413, `IDTO_503` | No |
+| Face match | Two photos of the same person | 200, `is_match: true` | Yes |
+| Face match | Photos of two different people | 200, `is_match: false` | Yes |
+| Face match | Neither `image2` nor `image2_url` | 400, `IDTO_001` | No |
+
+Each endpoint page lists its full set. Common questions: [FAQ](/products/face/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fface%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fface%2Foverview)

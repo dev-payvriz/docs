@@ -1,133 +1,171 @@
 ---
 title: "React Native SDK"
 sidebarTitle: "React Native"
-description: "Add the idto verification flow to a React Native app via npm, controlled by a mountable modal component with a small set of lifecycle callbacks."
+description: "Run the IDTO verification flow in a React Native or Expo app with one component."
 ---
 
-The React Native SDK requires `react >=18.0.0`, `react-native >=0.71.0`, and `react-native-webview >=13.6.0`.
+The React Native SDK is the `IDtoVerification` component. Render it with `visible` set to `true` and it opens the IDTO verification flow in a modal, calling your props as each step finishes.
 
-<Tip>
-  Using Expo (managed workflow): add the SDK's own config plugin. It writes the camera and microphone permission strings into your app config for you.
-</Tip>
+<Frame caption="A driving licence result inside the flow.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-dl-result.png" alt="Driving licence verification result screen" width="390" />
+</Frame>
+
+## Requirements
+
+| Peer dependency | Version |
+| --- | --- |
+| `react` | 18.0.0 or later |
+| `react-native` | 0.71.0 or later, or Expo SDK 49 or later |
+| `react-native-webview` | 13.6.0 or later |
+| `react-native-safe-area-context` | 4.0.0 or later |
+
+Use a real device for document and selfie capture. You also need a `client_id` and `client_secret` (kept on your server), a `workflowTemplateId`, and a backend route that mints a client token. See [Authentication](/authentication).
 
 ## Install
 
 ```bash
 npm install @idto/react-native-sdk react-native-webview react-native-safe-area-context
-cd ios && pod install
+cd ios && pod install && cd ..
 ```
 
-## Configuration
+The current version is `0.2.5`. To let users save the result report as a PDF, also install the optional `react-native-blob-util` (0.19.0 or later) and `react-native-share` (10.0.0 or later). Without them the download button does nothing and the rest of the flow is unaffected.
 
-Configuration is supplied as props on `IDtoVerificationProps`.
+## Permissions
 
-### Required fields
+**Expo.** Add the bundled config plugin. It fills in the iOS camera and microphone usage strings and the Android `CAMERA` and `RECORD_AUDIO` permissions, and keeps any values you set yourself.
 
-<ParamField body="visible" type="boolean" required>
-  Mounts the verification modal when `true`, unmounts it when `false`.
-</ParamField>
+```json
+{ "expo": { "plugins": ["@idto/react-native-sdk"] } }
+```
 
-<ParamField body="clientToken" type="string" required>
-  Field on `IDtoVerificationProps`.
-</ParamField>
+**Bare React Native.** Add the iOS keys to `Info.plist`:
 
-<ParamField body="workflowTemplateId" type="string" required>
-  Field on `IDtoVerificationProps`.
-</ParamField>
+```xml
+<key>NSCameraUsageDescription</key>
+<string>We use the camera to verify your identity.</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>We use the microphone during the liveness check.</string>
+```
 
-### Optional fields
+And the Android permissions to `android/app/src/main/AndroidManifest.xml` inside `<manifest>`:
 
-| Field | Purpose |
-| --- | --- |
-| `sessionToken` | Resume a previously started verification session. |
-| `merchantUserId` | Your own identifier for this end user. |
-| `phone` | Pre-fill the user's mobile number. |
-| `startFresh` | Force a new session even if a prior one exists for this user. |
-| `preVerified` | Mark specific modules as already verified, skipping them. |
-| `accumulatedData` | Seed the session with data already collected outside the SDK. |
-| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
-| `referenceName` | A name to cross-check against document data via name matching. |
-| `nameMatchConfig` | Configuration for the name-match comparison. |
-| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
-| `faceMatchConfig` | Configuration for the face-match comparison. |
-| `panConfig` | Configuration for the PAN verification step. |
-| `businessName` | Display name shown in the flow header. |
-| `logo` | Logo shown in the flow. |
-| `language` | Locale for flow copy. |
-| `theme` | Visual theme overrides. |
-| `displayMode` | Layout mode for the flow. |
-| `bottomSheet` | Whether to render as a bottom sheet. |
-| `env` | Target environment (e.g. sandbox vs. production). |
-| `baseUrl` | Override the API base URL the SDK calls. |
-| `colors` | Color token overrides. |
-| `getToken` | Callback your app supplies to refresh `clientToken` if the session runs long. |
-| `debug` | Enable verbose SDK logging. |
-| `allowedHosts` | Restrict which hosts the embedded flow may load. |
-| `readyTimeout` | Time to wait for the flow to become ready before failing. |
+```xml
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
 
-<ParamField body="skippable" type="string[]">
-  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every idto SDK, React Native included.
-</ParamField>
+The OS asks the user the first time a camera step opens.
 
-<Warning>
-  Config props are read once per open and are immutable for that session. Close the modal and reopen it to apply changed config.
-</Warning>
+## Quick start
+
+<Steps>
+  <Step title="Mint a client token on your server">
+    Your server calls `POST /auth/sdk/token` with `client_id` and `client_secret` and returns only `access_token` to the app. Recipes: [Node](/recipes/sdk-token-node-express), [TypeScript](/recipes/sdk-token-typescript), [Python](/recipes/sdk-token-python-fastapi).
+  </Step>
+  <Step title="Render the component">
+    ```tsx
+    import { useState } from 'react'
+    import { Button } from 'react-native'
+    import { IDtoVerification } from '@idto/react-native-sdk'
+
+    export function KycScreen() {
+      const [visible, setVisible] = useState(false)
+      const [clientToken, setClientToken] = useState<string | null>(null)
+
+      const start = async () => {
+        const r = await fetch('https://your-server.example.com/api/idto-token', { method: 'POST' })
+        setClientToken((await r.json()).client_token)
+        setVisible(true)
+      }
+
+      return (
+        <>
+          <Button title="Verify your identity" onPress={start} />
+          {clientToken && (
+            <IDtoVerification
+              visible={visible}
+              clientToken={clientToken}
+              workflowTemplateId="your-workflow-template-uuid"
+              businessName="Sample Traders"
+              env="production"
+              onStepComplete={(d) => console.log('step', d.step)}
+              onWorkflowComplete={(d) => confirmOnServer(d.session_token)}
+              onError={(d) => console.error(d.step, d.error)}
+              onAbandon={() => setVisible(false)}
+              onClose={() => setVisible(false)}
+            />
+          )}
+        </>
+      )
+    }
+    ```
+
+    Your app owns `visible`. Set it to `false` in `onClose` and `onAbandon`. Props are read once per open, so close and reopen to apply new values, and wait for `onClose` before reopening.
+  </Step>
+  <Step title="Confirm the result on your server">
+    Callbacks drive your UI only. Confirm the session from your server with the [session result recipe](/recipes/confirm-session-result) or a signed [webhook](/concepts/webhooks) before you grant access.
+  </Step>
+</Steps>
+
+<Frame caption="The completion screen shown after the last step.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="Workflow complete screen" width="390" />
+</Frame>
+
+## Props
+
+### Required
+
+| Prop | Type | Purpose |
+| --- | --- | --- |
+| `visible` | `boolean` | Opens the flow when `true`. |
+| `clientToken` | `string` | The `access_token` your server minted. |
+| `workflowTemplateId` | `string` | UUID of the workflow to run. |
+
+### Optional
+
+| Prop | Type | Purpose |
+| --- | --- | --- |
+| `getToken` | `() => Promise<string>` | Returns a fresh client token when the current one expires. |
+| `sessionToken` | `string` | Resume an earlier session. |
+| `startFresh` | `boolean` | Start a new session even if one is in progress. |
+| `merchantUserId` | `string` | Your own id for this user. |
+| `phone` | `string` | Prefills the mobile number step. |
+| `preVerified` | `Record<string, boolean>` | Module slugs you already verified, which the flow skips. |
+| `skippable` | `string[]` | Module slugs the user may skip. See [Modules](/sdks/modules). |
+| `accumulatedData` | `object` | Data you already hold, passed into the session. |
+| `referenceName` | `string` | Name every document name is matched against. |
+| `nameMatchConfig` | `object` | `threshold`, `decision_mode`, `extra_honorifics`, `aliases`, `compare_pairs`. |
+| `faceMatchReferenceImage` | `string` | Reference photo for face match. |
+| `faceMatchConfig` | `object` | `skipLiveness`, `threshold`, `livenessFailurePolicy`. |
+| `aadhaarConfig` | `object` | `digilockerMaxFailures`, `okycEnabled`. |
+| `panConfig` | `object` | `skipContextScreen`. |
+| `businessName` | `string` | Your name in the flow header. |
+| `logo` | `string` | URL of your logo. |
+| `language` | `'en'` or `'hi'` | Language of the flow copy. |
+| `theme` | `'light'` or `'dark'` | Colour scheme. |
+| `displayMode` | `'full_screen'` or `'bottom_sheet'` | Layout. |
+| `bottomSheet` | `object` | Sheet height limits. |
+| `colors` | `object` | Colour overrides. |
+| `env` | `'production'` or `'development'` | `production` (default, `https://prod.idto.ai`) or `development` (staging, `https://dev.idto.ai`). |
+| `baseUrl` | `string` | Overrides the API host. |
+| `readyTimeout` | `number` | Milliseconds to wait for the flow to load. Default 30000. |
+| `allowedHosts` | `string[]` | Extra hostnames the flow may navigate to. |
+| `debug` | `boolean` | Prints the flow's log messages. |
 
 ## Callbacks
 
-<ResponseField name="onStepComplete" type="function">
-  Fires after each module finishes.
+| Prop | Payload fields |
+| --- | --- |
+| `onStepComplete` | `step`, `result`, `accumulated_data`, `session_token`, `credits_deducted`, `balance_remaining` |
+| `onWorkflowComplete` | `all_steps`, `accumulated_data`, `session_token` |
+| `onError` | `step`, `error`, `session_token` |
+| `onAbandon` | `at_step`, `reason`, `session_token` |
+| `onClose` | none |
 
-  <Expandable title="payload fields">
-    <ResponseField name="step" type="string">The module slug that just completed.</ResponseField>
-    <ResponseField name="result" type="object">The step's verification result.</ResponseField>
-    <ResponseField name="accumulated_data" type="object">All data collected across the session so far.</ResponseField>
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-    <ResponseField name="credits_deducted" type="number">Credits deducted for this step.</ResponseField>
-    <ResponseField name="balance_remaining" type="number">Your account's remaining credit balance after this step.</ResponseField>
-  </Expandable>
-</ResponseField>
+`error` is a readable message to log, not to match on. Always pass `onError` and `onAbandon`, at least as logging stubs, so failures are visible during development.
 
-<ResponseField name="onWorkflowComplete" type="function">
-  Fires when the whole workflow finishes.
+## See it run
 
-  <Expandable title="payload fields">
-    <ResponseField name="all_steps" type="array">Every module result from the session.</ResponseField>
-    <ResponseField name="accumulated_data" type="object">All data collected across the session.</ResponseField>
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
+<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-driving-licence.mp4"></video>
 
-<ResponseField name="onError" type="function">
-  Fires on a recoverable or fatal error.
-
-  <Expandable title="payload fields">
-    <ResponseField name="step" type="string">The module slug active when the error occurred.</ResponseField>
-    <ResponseField name="error" type="string">One of 8 stable error enum strings.</ResponseField>
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="onAbandon" type="function">
-  Fires when the user leaves the flow before completion.
-
-  <Expandable title="payload fields">
-    <ResponseField name="at_step" type="string">The module slug the user was on when they left.</ResponseField>
-    <ResponseField name="reason" type="string">Why the session ended, where known.</ResponseField>
-    <ResponseField name="session_token" type="string">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="onClose" type="function">
-  Fires when the modal closes. No payload.
-</ResponseField>
-
-## Integration notes
-
-<Warning>
-  Always provide at least a stub for `onError` and `onAbandon`. Omitting either one silently swallows the corresponding failures.
-</Warning>
-
-<Note>
-  Do not toggle `visible` from `false` back to `true` within about a second of closing it. Wait for `onClose` to fire before reopening.
-</Note>
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Freact-native) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Freact-native)

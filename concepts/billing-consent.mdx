@@ -11,13 +11,13 @@ The rule for every `/v2/verify/*` product is the same: **a call is billed exactl
 That covers two outcomes:
 
 - A **full match**: `error_code` is `null` and `data` is populated.
-- A **definitive no-record result**: `error_code` is set to an `IDTO_2xx` code and `data` is `null`. The lookup still ran to completion, it just didn't find anything, and that is a billable outcome, not a free one.
+- A **definitive no-record result**: `error_code` is `IDTO_202` and `data` is `null`. The lookup still ran to completion, it just didn't find anything, and that is a billable outcome, not a free one.
 
-Both cases carry `billed: true`.
+Both cases carry `billed: true`. One exception: a call that carries a `workflow_session_token` for a verification session that already bills this step returns `billed: false`, because the session step is charged instead of the individual call.
 
 A **raised error** (any non-2xx response) is never billed. `status` is `"error"`, `data` is `null`, and `billed` is `false`.
 
-There is exactly one exception: `IDTO_204` (no readable Aadhaar QR found in the uploaded image) is a raised, non-2xx error, but it is still `billed: false` like every other raised error. It gets called out on its own because it is the one product-specific code integrators ask about by name, not because its billing behavior is actually different from the rule above.
+`IDTO_204` (no readable Aadhaar QR found in the uploaded image) is a raised 422 and follows the same rule: `billed: false`.
 
 ```json
 {

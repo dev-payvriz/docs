@@ -1,0 +1,49 @@
+---
+title: "Bank FAQ"
+description: "Answers to common questions about IDTO bank account verification."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Am I charged when the account is invalid?">
+    Yes, on `/v2/verify/bank_verification`. An invalid, closed or non-existent account returns HTTP 200 with `error_code: "IDTO_202"` and `billed: true`, because the check ran to a definitive answer. Any non-2xx response is never billed.
+  </Accordion>
+  <Accordion title="Does IDTO match the name I send against the account holder's name?">
+    No. `name` is optional and is not scored. Compare `data.account_holder_name` in the response with the name you hold, using the matching rule your risk policy needs.
+  </Accordion>
+  <Accordion title="What is the difference between penny drop and pennyless verification?">
+    `/v2/verify/bank_verification` credits a small deposit to the account and returns a fixed response shape, with idempotency support. `/verify/bank_verification/pennyless` is a v1 endpoint that checks the account without a deposit; its fields come back as the bank network returns them and it has no idempotency support. Use the v2 endpoint for new integrations.
+  </Accordion>
+  <Accordion title="Do I get the full account number back?">
+    No. `data.account_number` is masked to its last 4 digits, for example `********2333`. `data.account_ifsc` is returned in upper case.
+  </Accordion>
+  <Accordion title="Can I test without being charged?">
+    There is no sandbox. Staging (`https://dev.idto.ai`) reaches live bank networks and deducts credits from your staging account, so use an account you are authorised to verify. The [Test scenarios](/api-reference/bank/bank-verification#test-scenarios) table lists inputs that return each error without running a penny drop.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="What happens if I send the same request twice?">
+    Without an `Idempotency-Key`: while the first request is running, an identical second request (same body) gets `IDTO_004` (409) and is not charged. After the first finishes, an identical request runs a new penny drop and is billed again. With an `Idempotency-Key`: a replay with the same body within 48 hours returns the stored first response without a new charge.
+  </Accordion>
+  <Accordion title="My request timed out. Was I charged?">
+    If the check finished on IDTO's side, yes. Send every request with an `Idempotency-Key`, then retry with the same key and body: you get the stored result and no second charge. If the first call ended in an error, nothing is stored and the retry runs the check again. See the [idempotent retry recipe](/recipes/bank-verification-idempotent-retry).
+  </Accordion>
+  <Accordion title="Which input formats are accepted?">
+    `account_number`: 6 to 40 letters or digits, no spaces or symbols. `ifsc` (or `ifsc_code`): 4 letters, a zero, then 6 letters or digits, any case. `reference_id`: 1 to 40 letters, digits or hyphens. Anything else returns `IDTO_001` (400) before any charge.
+  </Accordion>
+  <Accordion title="What do IDTO_401 and IDTO_402 mean?">
+    The bank network rejected the account number (`IDTO_401`) or the IFSC (`IDTO_402`) as invalid. Neither is billed. Ask the user to check the details instead of retrying the same input.
+  </Accordion>
+  <Accordion title="Which errors should I retry?">
+    Retry `IDTO_004` (409), `IDTO_006` (429), `IDTO_008`, `IDTO_103` and `IDTO_403` (503) with backoff, using the same `Idempotency-Key`. Do not retry `IDTO_001`, `IDTO_401`, `IDTO_402` or `IDTO_010` without changing the request. A low IDTO balance returns HTTP 400 with `error_code: null`: recharge, then retry.
+  </Accordion>
+  <Accordion title="How do I tell a charged v1 pennyless call from an uncharged one?">
+    A charged response has `status: "success"` and carries `"chargeble": "true"` and `"user_consent": "true"`. Any other response was not charged.
+  </Accordion>
+</AccordionGroup>
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fbank%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fbank%2Ffaq)

@@ -51,6 +51,8 @@ idto fingerprints the request body under each key. What happens next depends on 
 
 If a second request with the same key arrives while the first one is still being processed, it is rejected with `IDTO_004` (409) rather than queued or replayed, since there is no completed result yet to return.
 
+If the first attempt ended in a raised error (non-2xx), no result is stored and the key is released, so a retry with the same key runs the verification again. Only 2xx results are replayed.
+
 Omitting the header is fine and is the default: without it, every request runs and bills independently, with no replay protection.
 
 ## v2 only

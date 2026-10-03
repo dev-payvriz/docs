@@ -1,0 +1,80 @@
+---
+title: "Confirm a session result from your server"
+description: "Check a verification session's step statuses from your server after the SDK reports completion."
+---
+
+The SDK `onWorkflowComplete` callback runs in the user's browser, so confirm the outcome from your server before you act on it. The session token is the `session_token` your app passes to the SDK, which the callbacks also return.
+
+Session state is read with an SDK token, not with the API key headers, so the server mints one first.
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Mint an SDK token and read the state">
+<CodeGroup>
+
+```python session_state.py
+import os
+import sys
+
+import requests
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+
+
+def sdk_token():
+    response = requests.post(
+        f"{BASE_URL}/auth/sdk/token",
+        json={"client_id": os.environ["IDTO_CLIENT_ID"], "client_secret": os.environ["IDTO_API_KEY"]},
+        timeout=(5, 15),
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def session_state(session_token):
+    response = requests.get(
+        f"{BASE_URL}/sdk/v2/session/{session_token}/state",
+        headers={"Authorization": f"Bearer {sdk_token()}"},
+        timeout=(5, 15),
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json()
+
+
+if __name__ == "__main__":
+    print(session_state(sys.argv[1]))
+```
+
+</CodeGroup>
+</Step>
+<Step title="Read the steps">
+A known session returns `200` with a `steps` list. Each step has `step_index`, `module_slug`, `status`, `version` and `retry_count`. State carries step statuses only. Fetch the verification details through your normal result flow.
+
+A session token that has no session returns `404`, and the function returns `None`:
+
+```json 404
+{"detail": "Session not found"}
+```
+</Step>
+</Steps>
+
+## Good to know
+
+- `401` means the SDK token is missing or expired. Mint a new one, it lasts 900 seconds.
+- `403` means this SDK token may not read that session.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fconfirm-session-result) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fconfirm-session-result)

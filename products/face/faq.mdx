@@ -1,0 +1,42 @@
+---
+title: "Face and liveness FAQ"
+description: "Answers to common questions about face match scores, liveness decisions, image limits and billing."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="What score counts as a match?">
+    `is_match` is `true` when `match_score` is 70 or more. `confidence` is `HIGH` at 85 or more, `MEDIUM` from 60 to below 85 and `LOW` below 60.
+  </Accordion>
+  <Accordion title="Am I charged when faces do not match or liveness fails?">
+    Yes. A 2xx response with `is_match: false` or `is_live: false` is a completed check and is billed. Only non-2xx errors are free.
+  </Accordion>
+  <Accordion title="Should I run liveness before face match?">
+    Yes. Face match compares any two images, including a photo of a photo. Running liveness first makes sure the selfie came from a live person.
+  </Accordion>
+  <Accordion title="What do I do with a MEDIUM confidence non-match?">
+    Scores from 60 to below 70 are `MEDIUM` but not a match. Send them to manual review instead of rejecting the user.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="How do I send the images?">
+    Face match takes `multipart/form-data`: `image1` as a file and either `image2` as a file or `image2_url` as a public `https` URL. Liveness takes JSON with the selfie as base64 in `person`; a `data:image/jpeg;base64,` prefix is accepted.
+  </Accordion>
+  <Accordion title="What is the image size limit?">
+    10 MB per image. Larger images return `IDTO_503` (413) and are not billed.
+  </Accordion>
+  <Accordion title="What do IDTO_509 and IDTO_609 mean?">
+    No decision could be produced: `IDTO_509` for face match and `IDTO_609` for liveness, both HTTP 500 and not billed. Retry with a clearer, front-facing photo.
+  </Accordion>
+  <Accordion title="Can I rely on the keys inside data.extras?">
+    No. `extras` carries supplementary signals whose keys can differ from call to call. Build your logic on `is_match`, `match_score`, `confidence`, `is_live` and `liveness_score`.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fface%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fface%2Ffaq)

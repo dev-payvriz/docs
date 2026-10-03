@@ -1,0 +1,97 @@
+---
+title: "Aadhaar OKYC: send an OTP"
+description: "Start Aadhaar offline KYC by sending an OTP to the holder's registered mobile, then submit the OTP to get the result."
+---
+
+Aadhaar OKYC is a two-call flow. The first call sends an OTP to the mobile number registered with the Aadhaar and returns a `session_id`. The second call submits the OTP the holder received.
+
+<Warning>Only send an OTP for an Aadhaar the holder has given you consent for. The OTP goes to a real person's phone.</Warning>
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Send the OTP">
+<CodeGroup>
+
+```bash curl
+curl -sS -X POST "$IDTO_BASE_URL/v2/verify/okyc_generate_otp" \
+  -H "X-Client-ID: $IDTO_CLIENT_ID" \
+  -H "X-API-Key: $IDTO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"aadhaar_number": "999999990019", "user_consent": true}'
+```
+
+```javascript okyc.mjs
+const BASE_URL = process.env.IDTO_BASE_URL ?? "https://prod.idto.ai";
+const HEADERS = {
+  "X-Client-ID": process.env.IDTO_CLIENT_ID,
+  "X-API-Key": process.env.IDTO_API_KEY,
+  "Content-Type": "application/json",
+};
+
+async function post(path, payload) {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000),
+  });
+  return { http: response.status, body: await response.json() };
+}
+
+export async function sendOtp(aadhaarNumber) {
+  const { http, body } = await post("/v2/verify/okyc_generate_otp", {
+    aadhaar_number: aadhaarNumber,
+    user_consent: true,
+  });
+  if (body.status === "success" && body.error_code === null) return { sessionId: body.data.session_id };
+  return { http, errorCode: body.error_code, message: body.message };
+}
+
+export async function submitOtp(sessionId, otp) {
+  const { http, body } = await post("/v2/verify/okyc_get_result", { session_id: sessionId, otp });
+  if (body.status === "success" && body.error_code === null) return { outcome: "verified", data: body.data };
+  return { outcome: "error", http, errorCode: body.error_code, message: body.message };
+}
+
+if (process.argv[2] === "send") console.log(await sendOtp(process.argv[3]));
+```
+
+</CodeGroup>
+
+A successful send returns `200` with `data.session_id`. Keep it with the user's record.
+
+```json 200
+{"status": "success", "error_code": null, "data": {"session_id": "<session-id>"}, "billed": true}
+```
+</Step>
+<Step title="Submit the OTP">
+Call `submitOtp(sessionId, otp)` with the OTP the holder types in. A verified result returns `error_code: null` and the Aadhaar details in `data`.
+</Step>
+</Steps>
+
+## Test it
+
+The sample Aadhaar `999999990019` is a test placeholder. On staging it is rejected without an OTP being sent:
+
+```json 400
+{"status": "error", "message": "Invalid input. Please check the request and try again.", "error_code": "IDTO_001", "data": null, "billed": false}
+```
+
+## Good to know
+
+- `user_consent` must be `true`, or the call returns `IDTO_005`.
+- A malformed OTP is rejected with `IDTO_001` before it is checked.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Faadhaar-okyc-send-otp) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Faadhaar-okyc-send-otp)

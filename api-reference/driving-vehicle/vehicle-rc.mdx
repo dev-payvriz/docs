@@ -1,0 +1,85 @@
+---
+title: "Verify a vehicle registration (RC)"
+sidebarTitle: "Vehicle RC"
+description: "Look up a vehicle registration number and get the registration, owner address, insurance, tax, permit and fitness details on record."
+openapi: "openapi2.0.json POST /verify/vehicle_rc"
+---
+
+Send a registration number. IDTO looks it up in the vehicle registry and returns the record: registration and expiry dates, chassis and engine numbers, make and model, insurance, tax, pollution certificate, permit, financer and blacklist details. Use it for fleet onboarding, vehicle loans and insurance underwriting.
+
+This is a v1 endpoint. It does not use the v2 envelope: there is no `error_code` on success and no `billed` field.
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both set to the string `"true"`. Any other response is not charged.
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs a new lookup and can be charged twice. Before retrying, check the transactions list in the dashboard for the first call.
+</Warning>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `vehicle_number` | Required. Registration number as printed on the RC, for example `KA01AB1234`. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+
+## Response fields
+
+<Note>
+More than one registry source can serve this endpoint. The fields below are present on every successful response, whichever source served it, plus `tranx_id` and `timestamp`. Most values are `null` when the registry does not hold them. A response can carry further keys; treat them as optional.
+</Note>
+
+| Field | Meaning |
+|---|---|
+| `status` | `success` when the lookup returned a record. |
+| `result.reg_no`, `result.reg_date`, `result.reg_authority` | Registration number, date and RTO. |
+| `result.rc_expiry_date`, `result.status_as_on` | Registration validity and the date the record was read. |
+| `result.chassis`, `result.engine` | Chassis and engine numbers as held by the registry. |
+| `result.vehicle_manufacturer_name`, `result.model`, `result.class`, `result.type`, `result.body_type`, `result.vehicle_category`, `result.vehicle_colour` | Make, model, vehicle class, type, body and colour. |
+| `result.owner_count`, `result.owner_father_name`, `result.mobile_number` | Ownership details. |
+| `result.present_address`, `result.permanent_address` | Owner addresses as single strings. |
+| `result.split_present_address`, `result.split_permanent_address` | The same addresses split into `address_line`, `city`, `district`, `state`, `country` and `pincode`. |
+| `result.vehicle_insurance_company_name`, `result.vehicle_insurance_policy_number`, `result.vehicle_insurance_upto` | Insurance on record. |
+| `result.vehicle_tax_upto`, `result.pucc_number`, `result.pucc_upto` | Road tax and pollution certificate validity. |
+| `result.permit_number`, `result.permit_type`, `result.permit_valid_from`, `result.permit_valid_upto`, `result.national_permit_number`, `result.national_permit_upto` | Permits for commercial vehicles. |
+| `result.rc_financer` | Financer with a hypothecation on the vehicle. |
+| `result.is_commercial`, `result.blacklist_status`, `result.blacklist_details`, `result.challan_details`, `result.noc_details` | Commercial flag, blacklist, challan and NOC information. |
+| `chargeble`, `user_consent` | `"true"` when the call was charged. |
+| `tranx_id`, `timestamp` | IDTO transaction id and time. Quote `tranx_id` to support. |
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "vehicle_number"], "msg": "Field required"}]}` | No |
+| none | 500 | Body is not part of the contract; retry later. | No |
+
+Other failures during the lookup use the same `{"detail": {...}}` shape as the 400 row, with the HTTP status and message of the failure. Read `detail.message` and `tranx_id` from it.
+
+## Test scenarios
+
+| Input | Expected | HTTP | Billed |
+|---|---|---|---|
+| Registration number of a registered vehicle | `status: success`, `chargeble: "true"` | 200 | Yes |
+| Body without `vehicle_number` | `detail` list | 422 | No |
+| Valid request on an account with no credits | `detail.message` "Insufficient credits for this operation." | 400 | No |
+| Missing `X-API-Key` header | `detail` string | 401 | No |
+
+Questions: [Driving licence and vehicle FAQ](/products/driving-vehicle/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fdriving-vehicle%2Fvehicle-rc) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fdriving-vehicle%2Fvehicle-rc)

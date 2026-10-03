@@ -1,0 +1,85 @@
+---
+title: "Upload a document for OCR"
+description: "Send a card image as multipart form data and read the extracted fields."
+---
+
+OCR endpoints take the image as `multipart/form-data` in a field named `file`. This recipe reads a PAN card with `POST /v2/verify/pan_ocr`. The same pattern works for `dl_ocr`, `aadhaar_ocr` and `invoice_ocr`.
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Upload the image">
+<CodeGroup>
+
+```bash curl
+curl -sS -X POST "$IDTO_BASE_URL/v2/verify/pan_ocr" \
+  -H "X-Client-ID: $IDTO_CLIENT_ID" \
+  -H "X-API-Key: $IDTO_API_KEY" \
+  -F "file=@pan-card.jpg;type=image/jpeg"
+```
+
+```python ocr_upload.py
+import os
+import sys
+
+import requests
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+HEADERS = {"X-Client-ID": os.environ["IDTO_CLIENT_ID"], "X-API-Key": os.environ["IDTO_API_KEY"]}
+
+
+def read_pan_card(path):
+    with open(path, "rb") as image:
+        response = requests.post(
+            f"{BASE_URL}/v2/verify/pan_ocr",
+            headers=HEADERS,
+            files={"file": (os.path.basename(path), image, "image/jpeg")},
+            timeout=(5, 60),
+        )
+    return response.status_code, response.json()
+
+
+if __name__ == "__main__":
+    status, body = read_pan_card(sys.argv[1])
+    print(status, body["status"], body["error_code"], body.get("billed"))
+```
+
+</CodeGroup>
+</Step>
+<Step title="Read the result">
+```json 200
+{
+  "status": "success",
+  "message": "PAN details extracted successfully.",
+  "error_code": null,
+  "data": {
+    "pan_number": "ABCDE1234F",
+    "name": "RAHUL SHARMA",
+    "father_name": "SURESH SHARMA",
+    "dob": "1990-01-01"
+  },
+  "billed": true
+}
+```
+
+A readable image that is not a PAN card, or has no readable PAN, returns a `2xx` with a non-null `error_code`. Branch on `error_code` as in [Verify a PAN and branch on error_code](/recipes/verify-pan-branch-on-error-code).
+</Step>
+</Steps>
+
+## Good to know
+
+- Do not set the `Content-Type` header yourself. curl `-F` and `requests` `files=` set the multipart boundary for you.
+- Send an `Idempotency-Key` to make retries safe. See [Retry safely with an idempotency key](/recipes/pan-ocr-idempotent-retry).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Focr-upload-multipart) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Focr-upload-multipart)

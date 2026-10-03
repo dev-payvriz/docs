@@ -1,0 +1,51 @@
+---
+title: "Check a DigiLocker account"
+sidebarTitle: "DigiLocker: check account"
+description: "Check whether a mobile number is registered with DigiLocker before you send the user there."
+openapi: "openapi2.0.json POST /verify/digilocker/verify_account"
+---
+
+Optional, before step 1 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Tells you whether a mobile number has a DigiLocker account, so you can send existing users to sign-in and new users to sign-up (`redirect_to_signup: true` on [Start a DigiLocker session](/api-reference/aadhaar/digilocker-initiate-session)).
+
+| `code` | `result.registered` | Meaning |
+|---|---|---|
+| `1004` | `true` | Registered. `result.digilockerid` is the account id. |
+| `2002` | `false` | Not registered. |
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`. Both outcomes above are `success` and both are charged. A charged JSON response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them).
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the call again and can be charged twice.
+</Warning>
+
+## Errors
+
+| Case | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| `mobile_number` missing or empty | 400 | `{"detail": {"status": "error", "message": "Mobile number invalid/missing.", "error_code": "3000", "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A mobile number registered with DigiLocker | 200, `code: 1004`, `result.registered: true` | Yes |
+| A mobile number with no DigiLocker account | 200, `code: 2002`, `result.registered: false` | Yes |
+| `{}` | 400, `error_code: "3000"` | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/digilocker-verify-account) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/digilocker-verify-account)

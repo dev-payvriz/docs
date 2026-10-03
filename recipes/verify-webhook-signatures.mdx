@@ -1,0 +1,178 @@
+---
+title: "Verify webhook signatures"
+description: "Check the X-Idto-Signature header on every webhook before you trust the payload, in seven languages."
+---
+
+Every webhook carries three headers:
+
+| Header | Value |
+|---|---|
+| `X-Idto-Event-Id` | Unique event ID. Use it to ignore duplicate deliveries |
+| `X-Idto-Timestamp` | Unix seconds when the delivery was signed |
+| `X-Idto-Signature` | `sha256=` followed by the hex HMAC-SHA256 of `<timestamp>.<raw body>`, keyed with your webhook secret |
+
+Verify against the raw request body bytes, before any JSON parsing, and reject deliveries older than 300 seconds.
+
+<Steps>
+<Step title="Store your webhook secret">
+Rotate a secret in the dashboard under Webhooks, then keep it in an environment variable such as `IDTO_WEBHOOK_SECRET`. Until you rotate one, deliveries fail.
+</Step>
+<Step title="Add the verifier">
+<CodeGroup>
+
+```javascript Node.js
+import crypto from "node:crypto";
+
+export function verifyIdtoSignature(rawBody, timestamp, signatureHeader, secret, toleranceSeconds = 300) {
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > toleranceSeconds) return false;
+  const expected = Buffer.from(
+    "sha256=" + crypto.createHmac("sha256", secret).update(`${timestamp}.`).update(rawBody).digest("hex"),
+  );
+  const received = Buffer.from(signatureHeader ?? "");
+  return expected.length === received.length && crypto.timingSafeEqual(expected, received);
+}
+```
+
+```typescript TypeScript
+import crypto from "node:crypto";
+
+export function verifyIdtoSignature(
+  rawBody: Buffer,
+  timestamp: string,
+  signatureHeader: string | undefined,
+  secret: string,
+  toleranceSeconds = 300,
+): boolean {
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > toleranceSeconds) return false;
+  const expected = Buffer.from(
+    "sha256=" + crypto.createHmac("sha256", secret).update(`${timestamp}.`).update(rawBody).digest("hex"),
+  );
+  const received = Buffer.from(signatureHeader ?? "");
+  return expected.length === received.length && crypto.timingSafeEqual(expected, received);
+}
+```
+
+```python Python
+import hashlib
+import hmac
+import time
+
+
+def verify_idto_signature(raw_body: bytes, timestamp: str, signature_header: str, secret: str, tolerance_seconds: int = 300) -> bool:
+    try:
+        age = abs(time.time() - int(timestamp))
+    except (TypeError, ValueError):
+        return False
+    if age > tolerance_seconds:
+        return False
+    digest = hmac.new(secret.encode(), timestamp.encode() + b"." + raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest("sha256=" + digest, signature_header or "")
+```
+
+```go Go
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"math"
+	"strconv"
+	"time"
+)
+
+func VerifyIdtoSignature(rawBody []byte, timestamp, signatureHeader, secret string, tolerance time.Duration) bool {
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil || math.Abs(float64(time.Now().Unix()-ts)) > tolerance.Seconds() {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(timestamp + "."))
+	mac.Write(rawBody)
+	expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(signatureHeader))
+}
+```
+
+```php PHP
+<?php
+function verifyIdtoSignature(string $rawBody, string $timestamp, string $signatureHeader, string $secret, int $toleranceSeconds = 300): bool
+{
+    if (!ctype_digit($timestamp) || abs(time() - (int) $timestamp) > $toleranceSeconds) {
+        return false;
+    }
+    $expected = 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $rawBody, $secret);
+    return hash_equals($expected, $signatureHeader);
+}
+```
+
+```ruby Ruby
+require "openssl"
+require "rack/utils"
+
+def verify_idto_signature(raw_body, timestamp, signature_header, secret, tolerance_seconds = 300)
+  return false unless timestamp.to_s.match?(/\A\d+\z/)
+  return false if (Time.now.to_i - timestamp.to_i).abs > tolerance_seconds
+
+  expected = "sha256=" + OpenSSL::HMAC.hexdigest("SHA256", secret, "#{timestamp}.#{raw_body}")
+  Rack::Utils.secure_compare(expected, signature_header.to_s)
+end
+```
+
+```java Java
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+public class IdtoWebhook {
+    public static boolean verifySignature(byte[] rawBody, String timestamp, String signatureHeader, String secret, long toleranceSeconds) throws Exception {
+        long ts;
+        try {
+            ts = Long.parseLong(timestamp);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        if (Math.abs(System.currentTimeMillis() / 1000 - ts) > toleranceSeconds || signatureHeader == null) {
+            return false;
+        }
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.update((timestamp + ".").getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex = new StringBuilder("sha256=");
+        for (byte b : mac.doFinal(rawBody)) {
+            hex.append(String.format("%02x", b));
+        }
+        return MessageDigest.isEqual(hex.toString().getBytes(StandardCharsets.UTF_8), signatureHeader.getBytes(StandardCharsets.UTF_8));
+    }
+}
+```
+
+</CodeGroup>
+</Step>
+<Step title="Call it from your handler">
+Pass the raw body, `X-Idto-Timestamp`, `X-Idto-Signature` and your secret. Return `401` when it is `false`, and `2xx` quickly when it is `true`, then process the event.
+
+In Express, read the raw body with `express.raw({ type: "application/json" })`. In Flask use `request.get_data()`, in PHP `file_get_contents('php://input')`.
+</Step>
+</Steps>
+
+## Tested behaviour
+
+Each verifier above was run against signatures produced by the IDTO signer:
+
+| Case | Result in all seven languages |
+|---|---|
+| Valid signature, current timestamp | `true` |
+| Body changed after signing | `false` |
+| Valid signature, timestamp 600 seconds old | `false` |
+
+## Good to know
+
+- A delivery that does not get a `2xx` is attempted up to 5 times in total, with backoff that grows to at most one hour.
+- After you rotate, the previous secret is kept as `previous`, so verify against both while you roll the change out.
+- See [Webhooks](/concepts/webhooks) for the event payloads.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fverify-webhook-signatures) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fverify-webhook-signatures)

@@ -1,0 +1,105 @@
+---
+title: "DigiLocker from your server"
+description: "Start a DigiLocker consent session from your server, send the user to the hosted page, and exchange the code on your callback."
+---
+
+DigiLocker returns documents the user already holds, after they sign in and consent. Your server starts the session, the user consents on a hosted page, and your callback exchanges the one-time code.
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Start a session">
+`POST /verify/digilocker/initiate_session` with `consent: true`, a `consent_purpose`, and the `redirect_url` of your own callback. The response carries the hosted `url`.
+
+<CodeGroup>
+
+```javascript digilocker.mjs
+import express from "express";
+
+const BASE_URL = process.env.IDTO_BASE_URL ?? "https://prod.idto.ai";
+const HEADERS = {
+  "X-Client-ID": process.env.IDTO_CLIENT_ID,
+  "X-API-Key": process.env.IDTO_API_KEY,
+  "Content-Type": "application/json",
+};
+const CALLBACK_URL = process.env.DIGILOCKER_CALLBACK_URL;
+
+async function post(path, payload) {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000),
+  });
+  return { http: response.status, body: await response.json() };
+}
+
+export async function startDigilocker(userId) {
+  return post("/verify/digilocker/initiate_session", {
+    user_id: userId,
+    consent: true,
+    consent_purpose: "KYC verification",
+    redirect_url: CALLBACK_URL,
+  });
+}
+
+const app = express();
+
+app.post("/kyc/digilocker/start", async (req, res) => {
+  const { http, body } = await startDigilocker("user-123");
+  if (body.status !== "success") return res.status(502).json({ error: "could not start DigiLocker", http });
+  res.json(body);
+});
+
+app.get("/kyc/digilocker/callback", async (req, res) => {
+  const { code, codeVerifier } = req.query;
+  const { http, body } = await post("/v2/verify/digilocker", {
+    code,
+    code_verifier: codeVerifier,
+  });
+  res.status(body.status === "success" ? 200 : 502).json({ http, error_code: body.error_code, data: body.data });
+});
+
+if (process.argv[2] === "start") console.log(JSON.stringify(await startDigilocker("user-123")));
+else app.listen(3000);
+```
+
+</CodeGroup>
+
+```bash
+npm install express
+DIGILOCKER_CALLBACK_URL=https://your-app.example.com/kyc/digilocker/callback node digilocker.mjs
+```
+
+```json 200
+{"status": "success", "url": "<hosted-consent-url>", "chargeble": "true", "user_consent": "true", "tranx_id": "<tranx-id>", "timestamp": "<timestamp>"}
+```
+</Step>
+<Step title="Send the user to the URL">
+Redirect the browser to `url`. The user signs in to DigiLocker and approves sharing.
+</Step>
+<Step title="Exchange the code on your callback">
+The hosted page redirects to your `redirect_url` with `code` and `codeVerifier` (plus `clientId` and `state`). A code works once, so pick one exchange:
+
+- Identity: `POST /v2/verify/digilocker` with `code` and `code_verifier`, as in the callback route above.
+- Documents: `POST /verify/digilocker/get_reference` with `code` and `code_verifier`, then `POST /verify/digilocker/user_details` or `POST /verify/digilocker/fetch_aadhaar` with the returned `reference_key`.
+</Step>
+</Steps>
+
+## Good to know
+
+- Starting a session is charged. `chargeble: "true"` in the response confirms it.
+- Use a `redirect_url` on your own HTTPS domain, and check `state` on the callback if you set one.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fdigilocker-consent-flow) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fdigilocker-consent-flow)

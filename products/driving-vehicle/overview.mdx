@@ -1,0 +1,62 @@
+---
+title: "Driving licence and vehicle"
+description: "Verify driving licences against the issuing record, read licence cards with OCR, and look up vehicle registration certificates."
+---
+
+Use this module to onboard drivers, delivery partners and vehicle owners. Verify that a licence is real and valid, pull the details off a licence photo, and confirm a vehicle's registration, insurance and tax status.
+
+## Endpoints
+
+| Endpoint | What it does | Billed when |
+|---|---|---|
+| [Verify a driving licence](/api-reference/driving-vehicle/driving-licence) `POST /v2/verify/driving_licence` | Checks licence number and date of birth with the issuer and returns holder details, validity and vehicle classes. | Every 2xx, including `IDTO_202` (no record) |
+| [Driving licence OCR](/api-reference/driving-vehicle/dl-ocr) `POST /v2/verify/dl_ocr` | Reads the fields printed on a licence image. | Every 2xx, including `IDTO_202` (nothing readable) |
+| [Vehicle RC](/api-reference/driving-vehicle/vehicle-rc) `POST /verify/vehicle_rc` | Returns the registration record for a vehicle number. v1 contract. | Only when `status` is `success` |
+
+## How a licence check works
+
+```mermaid
+sequenceDiagram
+    participant App as Your app
+    participant Server as Your server
+    participant IDTO
+    App->>Server: Licence photo or number + date of birth
+    opt Read the card first
+        Server->>IDTO: POST /v2/verify/dl_ocr (file)
+        IDTO-->>Server: data.dl_number, data.dob
+    end
+    Server->>IDTO: POST /v2/verify/driving_licence
+    IDTO-->>Server: error_code null + data, or IDTO_202
+    Server-->>App: Approve, ask again, or review
+```
+
+## Outcomes and billing
+
+The two v2 endpoints share the IDTO envelope. `error_code: null` means a record or a reading was returned; `IDTO_202` means the check ran and found nothing. Both are 2xx and billed. Every non-2xx response is an error and is never billed. Vehicle RC is a v1 endpoint: it is charged only when `status` is `success`, and the charge is marked by `chargeble: "true"`.
+
+## In the hosted flow
+
+The driving licence step of the IDTO verification flow collects the licence details from the user and shows the verified result.
+
+<video controls muted playsInline src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-driving-licence.mp4" aria-label="Driving licence step in the IDTO verification flow"></video>
+
+<Frame>
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-dl-result.png" alt="Driving licence result screen in the IDTO verification flow" width="390" />
+</Frame>
+
+## Test scenarios
+
+| Endpoint | Input | Expected | Billed |
+|---|---|---|---|
+| Driving licence | Valid number with matching date of birth | 200, `error_code: null` | Yes |
+| Driving licence | Well-formed number with no record | 200, `IDTO_202` | Yes |
+| Driving licence | `dob` in an unsupported format | 400, `IDTO_001` | No |
+| Driving licence OCR | Photo that is not a licence | 200, `IDTO_202` | Yes |
+| Driving licence OCR | File over 12 MB | 413, `IDTO_503` | No |
+| Vehicle RC | Body without `vehicle_number` | 422 | No |
+
+Each endpoint page lists its full set. Common questions: [FAQ](/products/driving-vehicle/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdriving-vehicle%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdriving-vehicle%2Foverview)

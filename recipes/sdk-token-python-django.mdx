@@ -1,0 +1,124 @@
+---
+title: "SDK token with Python and Django"
+description: "Mint an SDK token on your server (Python 3 and Django, as a single-file project) and open the IDTO verification flow in the browser."
+---
+
+Mint a short-lived SDK token on your server and hand it to the Web SDK in the browser. Your API key never leaves the server. Stack: Python 3 and Django, as a single-file project.
+
+<Steps>
+  <Step title="Set your credentials">
+Put your keys in environment variables. Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+  </Step>
+  <Step title="Install">
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install django requests
+export DJANGO_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+```
+  </Step>
+  <Step title="Add the token endpoint">
+`POST /api/idto/token` calls `POST /auth/sdk/token` with your client ID and API key and returns only the token and its lifetime to the browser.
+
+<CodeGroup>
+
+```python app.py
+import os
+import sys
+
+import requests
+from django.conf import settings
+from django.http import JsonResponse
+from django.urls import path
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
+settings.configure(
+    DEBUG=False,
+    ALLOWED_HOSTS=["localhost", "127.0.0.1"],
+    ROOT_URLCONF=__name__,
+    SECRET_KEY=os.environ["DJANGO_SECRET_KEY"],
+)
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+
+
+@csrf_exempt
+@require_POST
+def idto_token(request):
+    idto = requests.post(
+        f"{BASE_URL}/auth/sdk/token",
+        json={"client_id": os.environ["IDTO_CLIENT_ID"], "client_secret": os.environ["IDTO_API_KEY"]},
+        timeout=(5, 15),
+    )
+    if not idto.ok:
+        return JsonResponse({"error": "token request failed", "status": idto.status_code}, status=502)
+    body = idto.json()
+    return JsonResponse({"access_token": body["access_token"], "expires_in": body["expires_in"]})
+
+
+urlpatterns = [path("api/idto/token", idto_token)]
+
+if __name__ == "__main__":
+    from django.core.management import execute_from_command_line
+
+    execute_from_command_line(sys.argv)
+```
+
+</CodeGroup>
+  </Step>
+  <Step title="Open the verification flow">
+The page asks your server for a token and opens the flow. Use the workflow template ID from your dashboard, and drop `env: "development"` in production.
+
+```html public/index.html
+<script src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/sdk/prod/idto.js"></script>
+<button id="verify">Verify identity</button>
+<script>
+  document.getElementById("verify").addEventListener("click", async () => {
+    const response = await fetch("/api/idto/token", { method: "POST" });
+    const { access_token } = await response.json();
+    IDtoSDK.open({
+      client_token: access_token,
+      workflow_template_id: "YOUR_WORKFLOW_TEMPLATE_ID",
+      env: "development",
+      onWorkflowComplete: (data) => console.log("session", data.session_token),
+      onError: (data) => console.error(data),
+    });
+  });
+</script>
+```
+
+In a full Django project, put `idto_token` in a view module and add the route to your `urls.py`.
+  </Step>
+  <Step title="Run and check">
+```bash
+python app.py runserver 3000 --noreload
+```
+
+```bash
+curl -X POST http://localhost:3000/api/idto/token
+```
+
+```json 200
+{"access_token": "<sdk-token>", "expires_in": 900}
+```
+  </Step>
+</Steps>
+
+## Good to know
+
+- The SDK token lasts 900 seconds. Mint a new one for each verification instead of caching it.
+- Minting a token is not charged. Verifications that run inside the flow are charged as usual.
+- A `401` from `/auth/sdk/token` means the client ID or API key is wrong, or the client is inactive. Your endpoint returns `502` in that case so the browser never sees the upstream detail.
+- To confirm the result from your server after `onWorkflowComplete`, see [Confirm a session result from your server](/recipes/confirm-session-result).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fsdk-token-python-django) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fsdk-token-python-django)

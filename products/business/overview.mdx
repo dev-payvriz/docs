@@ -1,0 +1,60 @@
+---
+title: "Business verification"
+sidebarTitle: "Overview"
+description: "Verify GST registrations, companies and employment history for KYB and income checks."
+---
+
+Business verification covers know-your-business and employment checks: confirm a GSTIN, read a company's registry record, and fetch a person's EPFO employment history.
+
+<video controls preload="metadata" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.mp4" style={{ width: "100%", maxWidth: "390px", borderRadius: "12px" }}></video>
+
+## Endpoints
+
+| Product | Endpoint | Input | Use it to |
+|---|---|---|---|
+| [GST basic](/api-reference/business/gst-verification-basic) | `POST /v2/verify/gst_verification_basic` | GSTIN | Confirm a GST registration and read the business name and status |
+| [GST advanced](/api-reference/business/gst-advance) | `POST /verify/gst_advance` | GSTIN | Read filing history, goods and services and places of business |
+| [CIN](/api-reference/business/cin-mca-verification) | `POST /v2/verify/cin_mca_verification` | CIN or LLPIN | Confirm a company is registered and active, and list directors |
+| [Employment history](/api-reference/business/employment-history) | `POST /v2/verify/employment_history` | UAN | Confirm current and past employers |
+
+## How a call works
+
+```mermaid
+sequenceDiagram
+    participant App as Your server
+    participant IDTO as IDTO API
+    participant Src as Government registry
+    App->>IDTO: POST /v2/verify/gst_verification_basic (X-Client-ID, X-API-Key)
+    IDTO->>IDTO: Validate input format
+    alt Input malformed
+        IDTO-->>App: 400 IDTO_001, not billed
+    else Input valid
+        IDTO->>Src: Look up registration
+        alt Record found
+            IDTO-->>App: 200 success, error_code null, billed
+        else No record
+            IDTO-->>App: 200 success, IDTO_202, billed
+        else Source busy
+            IDTO-->>App: 503 IDTO_008, not billed
+        end
+    end
+```
+
+## Outcomes and billing
+
+| Outcome | v2 products | GST advanced |
+|---|---|---|
+| Record found | 200, `error_code: null`, billed | 200, `status: "success"`, charged |
+| No record | 200, `error_code: "IDTO_202"`, `data: null`, billed | 404, not charged |
+| Bad input | 400 or 422 `IDTO_001`, not billed | 400 or 422, not charged |
+| Source busy or rate limited | 503 `IDTO_008` or 429 `IDTO_006`, not billed | Error status, not charged |
+
+Every v2 response carries a boolean `billed`. Send an `Idempotency-Key` on v2 calls so a network retry is never billed twice; GST advanced has no idempotency support.
+
+## In a verification flow
+
+GST and company checks are available as steps in an IDTO workflow, so your customer enters their GSTIN or CIN in the hosted flow and you receive the result with the session. The recording above shows that step. See the [FAQ](/products/business/faq) for common questions.
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fbusiness%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fbusiness%2Foverview)

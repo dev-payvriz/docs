@@ -1,0 +1,63 @@
+---
+title: "Start a DigiLocker session"
+sidebarTitle: "DigiLocker: start session"
+description: "Get a URL that sends your user to DigiLocker to sign in and consent. Step 1 of the server-side DigiLocker flow."
+openapi: "openapi2.0.json POST /verify/digilocker/initiate_session"
+---
+
+Step 1 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Call it from your server with the page you want the user to come back to. It returns a `url`; open it in the user's browser. The user signs in to DigiLocker and consents, then their browser is sent to your `redirect_url` with these query parameters:
+
+| Parameter | What it is |
+|---|---|
+| `code` | Authorization code. Single use. |
+| `codeVerifier` | The matching PKCE verifier. Send it as `code_verifier`. |
+| `clientId` | Your IDTO client id. |
+| `state` | The `state` you sent, unchanged. |
+
+Then exchange the code with either [DigiLocker profile](/api-reference/aadhaar/digilocker) (v2, masked, normalised profile) or [Get a reference key](/api-reference/aadhaar/digilocker-get-reference) (v1, needed to download the e-Aadhaar XML). Each `code` works once.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`, which is every time a `url` is returned. A charged JSON response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them).
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the call again and can be charged twice.
+</Warning>
+
+## Request notes
+
+- `redirect_url` must be a full URL you control. It receives the `code`, so serve it over HTTPS.
+- `state` comes back unchanged. Use letters, digits, `-` and `_` only; other characters can be cut short on the way back.
+- `redirect_to_signup: true` opens DigiLocker's sign-up page instead of sign-in, for users without an account. Check first with [Check a DigiLocker account](/api-reference/aadhaar/digilocker-verify-account).
+- `consent` and `consent_purpose` are required. Record the user's consent before you call.
+
+## Errors
+
+| Case | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| `redirect_url` empty | 400 | `{"detail": {"status": "error", "message": "Redirection URL is required.", "error_code": "3002", "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
+| A required field missing or of the wrong type | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Valid body with your `redirect_url` | 200, `status: "success"`, `code: 1000`, `url` | Yes |
+| `redirect_url: ""` | 400, `error_code: "3002"` | No |
+| Body without `consent_purpose` | 422, `{"detail": [...]}` | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/digilocker-initiate-session) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/digilocker-initiate-session)

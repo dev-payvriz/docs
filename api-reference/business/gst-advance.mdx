@@ -1,0 +1,71 @@
+---
+title: "GST advanced lookup"
+sidebarTitle: "GST advanced"
+description: "Fetch the full GST profile for a GSTIN, including filing history, goods and services, and places of business."
+openapi: "openapi2.0.json POST /verify/gst_advance"
+---
+
+Fetch the detailed GST profile for a GSTIN: taxpayer details, return filing history and frequency, goods and services, and every registered place of business. Use it when you underwrite a business and need its filing behaviour, not just its registration.
+
+For a registration check only, use [Verify a GSTIN](/api-reference/business/gst-verification-basic), which supports idempotent retries.
+
+<Warning>
+This endpoint has no idempotency support. A retried request runs the verification again and can be charged again. Retry only after you have confirmed the first call did not return a response.
+</Warning>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged call carries `"chargeble": "true"` and `"user_consent": "true"`; an uncharged call has neither field.
+
+When no GST record exists for the GSTIN, `status` is not `success` and you are not charged.
+
+## Response fields
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `success` when the GSTIN was found. |
+| `tranx_id` | string | IDTO transaction id for this call. |
+| `timestamp` | string | Time IDTO recorded the call, ISO 8601. |
+| `chargeble` | string | `"true"` on a charged call, absent otherwise. |
+| `user_consent` | string | `"true"` on a charged call, absent otherwise. |
+
+<Note>
+The payload carries the fields listed plus the GST profile. The profile's field names depend on how this product is configured for your account; ask your IDTO account manager for your field list before you parse it.
+</Note>
+
+## Errors
+
+| Code | HTTP | When | Billed |
+|---|---|---|---|
+| `null` | 400 | *Wrapped.* The GSTIN was rejected, credits are insufficient, or the product is not enabled for your account. | No |
+| `null` | 404 | *Wrapped.* No GST record exists for this GSTIN. | No |
+| No code | 401 | Missing or invalid `X-Client-ID` or `X-API-Key`. | No |
+| No code | 403 | The client is inactive or not allowed to call this endpoint. | No |
+| No code | 422 | Body failed schema validation. Body: `{"detail": [{"loc": [...], "msg": "..."}]}`. | No |
+| No code | 500 | Unexpected failure. The body is not part of the contract; retry later. | No |
+
+`Code` is the `error_code` in the body. Errors marked *wrapped* return `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`.
+
+## Test scenarios
+
+Use these input classes in staging to exercise each outcome.
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Registered GSTIN | 200, `status: "success"` with the GST profile | Yes |
+| Well-formed GSTIN that is not registered | 404 wrapped error | No |
+| `gst_number` empty | 400 wrapped error | No |
+| `gst_number` missing from the body | 422 | No |
+
+Questions about GST lookups are answered in the [Business FAQ](/products/business/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fbusiness%2Fgst-advance) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fbusiness%2Fgst-advance)

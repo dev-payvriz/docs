@@ -53,14 +53,14 @@ v1 predates the shared envelope. A v1 response is close to whatever the underlyi
 - `tranx_id` and `timestamp` are always added to the response, on every call, success or not.
 - `chargeble` and `user_consent` are added only when the call was actually charged, which v1 decides by reading the provider's own `status` field on its raw reply. If that field says success, v1 stamps `chargeble: "true"` and `user_consent: "true"` and deducts credits; if not, neither key appears and nothing is charged.
 
-There is no `IDTO_*` error taxonomy in v1 and no fixed field set: two different v1 products can shape their success payload completely differently, because each one is just forwarding what its provider sent back. Consult that endpoint's own schema and examples rather than assuming any of the v2 conventions apply.
+v1 has no shared error taxonomy (a few v1 codes are listed in the v1-only section of [Error codes](/reference/v2-error-codes)) and no fixed field set: two different v1 products can shape their success payload completely differently, because each one is just forwarding what its provider sent back. Consult that endpoint's own schema and examples rather than assuming any of the v2 conventions apply.
 
 ## Which one to call
 
 idto currently has 17 products migrated onto v2: `aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `dl_ocr`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`, `pan_ocr`, and `pan_validation`.
 
 - **Use v2 for any of those 17 products.** It's the standard contract, the vendor-agnostic billing, and the one that will keep getting new products.
-- **Use v1 for everything else.** The remaining products, things like `esign`, `credit_report`, `gst_verification`, `mobile_to_pan`, and dozens more, have no v2 equivalent yet. v1 is the only way to reach them today.
-- **Fall back to v1 on purpose for the handful of products that exist in both.** 14 products (`aadhaar_ocr`, `aadhaar_qr`, `bank_verification`, `cin_mca_verification`, `digilocker`, `driving_licence`, `employment_history`, `face_match`, `gst_verification_basic`, `invoice_ocr`, `liveness`, `okyc_generate_otp`, `okyc_get_result`, `pan_detailed`) are reachable on both versions. Use v1 there only when you specifically need the raw legacy shape for an existing integration you don't want to touch; otherwise v2 is the better default even when both exist.
+- **Use v1 for the products that have no v2 endpoint yet.** These are `pan_nsdl`, `pan_all_in_one`, `mobile_profile`, `vehicle_rc`, `pennyless`, `gst_advance`, `court_check`, `credit_report`, `esign` and the DigiLocker session endpoints. Their pages say v1 and describe the v1 response shape.
+- **Prefer v2 when a product has both.** Some v2 products also have an older v1 route. Use v2 for new work; keep v1 only for an existing integration you do not want to touch. See [Migrate from v1](/migrate-from-v1).
 
 If you're unsure whether a product you need has a v2 endpoint, check that product's page directly, the path prefix (`/verify/` vs `/v2/verify/`) tells you which contract applies.

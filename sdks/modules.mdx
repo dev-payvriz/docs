@@ -1,40 +1,51 @@
 ---
 title: "SDK Modules"
-sidebarTitle: "Reference"
-description: "Module slugs you can include in a workflow template and reference in an SDK's skippable configuration."
+sidebarTitle: "Modules"
+description: "The module slugs a workflow is built from, and where each one appears in SDK callbacks and options."
 ---
 
-A workflow template is built from modules. Each module has a slug you use when configuring `skippable` (see each platform's SDK page) or when reading a step result off `onStepComplete` / `onWorkflowComplete`.
+A workflow template is an ordered list of modules. Each module has a slug. You see slugs in `step` on `onStepComplete`, as keys of `accumulated_data`, and you pass them in `pre_verified` and `skippable` (`preVerified` and `skippable` on native SDKs).
 
-## Shared modules
+Every SDK runs the same flow, so every module below works the same way on Web, Android, iOS, Flutter and React Native. Which modules run, and in what order, is set by the workflow template.
 
-These modules work identically across all 5 SDKs: Web, Android, iOS, Flutter, and React Native.
+## Identity modules
 
-| Module slug | Description |
+| Slug | What the user does |
 | --- | --- |
-| `mobile_verification` | Verifies the user's mobile number. |
-| `aadhar_verification` | Verifies an Aadhaar number. |
-| `pan_verification` | Verifies a PAN number. |
-| `face_match` | Compares a live selfie capture against a reference photo. |
-| `account_verification` | Verifies a bank account. |
+| `mobile_verification` | Confirms a mobile number with a one-time code. |
+| `aadhar_verification` | Verifies Aadhaar through DigiLocker or OTP. |
+| `pan_verification` | Captures or enters a PAN and gets it verified. |
+| `face_match` | Takes a selfie, checked for liveness and matched against a reference photo. |
 | `driving_licence` | Verifies a driving licence. |
 | `vehicle_rc` | Verifies a vehicle registration certificate. |
-| `e_sign` | Collects an electronic signature. |
-| `govt_id_selection` | Lets the user choose which government ID to submit. |
-| `name_match` | Cross-checks a reference name against document data. |
+| `account_verification` | Verifies a bank account. |
+| `address_verification` | Uploads an invoice; the address on it is read and returned. |
+| `govt_id_selection` | Chooses which government ID to verify; the workflow branches on the choice. |
+| `name_match` | Runs without a screen at the end of the flow and compares the names collected by other steps. |
 
-## Web-only modules
+## Business modules
 
-These modules are currently available only through the Web SDK's own step registry. They have not been found in any native SDK (Android, iOS, Flutter, React Native) at this time, so do not reference them in a native integration.
-
-| Module slug | Description |
+| Slug | What the user does |
 | --- | --- |
-| `address_verification` | Verifies a user's address. |
-| `business_type` | Collects and verifies business type information. |
-| `cin_verification` | Verifies a Corporate Identification Number. |
+| `business_type` | Chooses the business type; the workflow branches on the choice. |
+| `business_pan` | Verifies the business PAN. |
 | `gst_verification` | Verifies a GST registration. |
-| `business_pan` | Verifies a business PAN. |
+| `cin_verification` | Verifies a Corporate Identification Number. |
 
-<Note>
-  If your product needs one of these on a native platform, check with your idto contact before building around it, native support is not guaranteed.
-</Note>
+<Frame caption="The overview screen lists the modules of the workflow in order.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-overview.png" alt="Verification overview screen listing the workflow steps" width="390" />
+</Frame>
+
+## eSign
+
+The `e_sign` slug exists in the registry but only shows a completion screen inside the SDK. To collect a signature, use the eSign API. See [eSign](/products/esign/overview).
+
+## Reading module results
+
+Each finished module adds an entry under its slug in `accumulated_data`, and `onStepComplete` delivers the same result in `result`. Use these to update your UI. Confirm the outcome from your server before you act on it, see [Confirm a session result](/recipes/confirm-session-result).
+
+## See a business flow
+
+<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.mp4"></video>
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fmodules) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fmodules)

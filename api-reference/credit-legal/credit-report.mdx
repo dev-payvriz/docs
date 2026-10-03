@@ -1,0 +1,101 @@
+---
+title: "Fetch a credit report"
+sidebarTitle: "Credit report"
+description: "Fetch an individual's credit report from a credit bureau using name, mobile number and PAN."
+openapi: "openapi2.0.json POST /verify/credit_report"
+---
+
+Fetch an individual's credit report using their name, mobile number and PAN. Use it to assess a borrower's credit history during underwriting.
+
+<Warning>
+Collect the individual's explicit consent to pull their credit report before you call this endpoint, and keep a record of it.
+</Warning>
+
+The response carries `status` and `message`, plus `result` (the report) when `status` is `success`. When the bureau has no report for the person, `status` is `success`, `message` is "No credit report found for the provided details.", `result` is empty and the call is charged. This endpoint returns no `tranx_id` or `timestamp`; send your own `user_id` to tie each call to your records.
+
+<Warning>
+This endpoint has no idempotency support. A retried request runs the verification again and can be charged again. Retry only after you have confirmed the first call did not return a response.
+</Warning>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged call carries `"chargeble": "true"` and `"user_consent": "true"`; an uncharged call has neither field.
+
+## Outcomes
+
+| `status` | `message` | HTTP | Billed |
+|---|---|---|---|
+| `success` | Credit report fetched successfully | 200 | Yes |
+| `success` | No credit report found for the provided details. | 200 | Yes |
+| `failed` | Unable to fetch credit report. Please check the details and try again. | 200 | No |
+| `failed` | Unable to fetch credit report. Please try again. | 200 | No |
+
+A `failed` result can also carry a message asking you to retry later when the bureau is unreachable. It is not charged.
+
+## Response fields
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `success` or `failed`. |
+| `message` | string | Outcome message, see Outcomes. |
+| `result.credit_report` | object | The full bureau report. |
+| `result.credit_score` | string | The credit score, as a string. |
+| `result.mobile` | string | Mobile number sent in the request. |
+| `result.name` | string | Name sent in the request. |
+| `result.pan` | string | PAN sent in the request. |
+| `chargeble` | string | `"true"` on a charged call, absent otherwise. |
+| `user_consent` | string | `"true"` on a charged call, absent otherwise. |
+
+### Report sections
+
+`result.credit_report` is the full bureau report. Every leaf value is a string, including amounts, counts and dates. Objects such as `CAIS_Account_DETAILS` are keyed by position (`"0"`, `"1"`), not arrays. The response schema on this page lists every field.
+
+| Section | Type | Contains | Leaf fields |
+|---|---|---|---|
+| `credit_report.CAIS_Account` | object | Credit accounts (`CAIS_Account_DETAILS`, with payment history) and an account and outstanding balance summary (`CAIS_Summary`). | 106 |
+| `credit_report.CAPS` | object | Credit enquiries about the person (`CAPS_Application_Details`) and enquiry counts for the last 7, 30, 90 and 180 days. | 64 |
+| `credit_report.CreditProfileHeader` | object | Report date, time, number and version. | 4 |
+| `credit_report.Current_Application` | object | Applicant details as received for this request. | 48 |
+| `credit_report.Header` | object | Report date, time and response text. | 4 |
+| `credit_report.Match_result` | object | `Exact_match` flag for the person searched. | 1 |
+| `credit_report.NonCreditCAPS` | object | Non-credit enquiry counts for the same windows. | 4 |
+| `credit_report.SCORE` | object | `BureauScore` and `BureauScoreConfidLevel`. | 2 |
+| `credit_report.TotalCAPS_Summary` | object | Total enquiry counts for the same windows. | 4 |
+
+## Errors
+
+| Code | HTTP | When | Billed |
+|---|---|---|---|
+| `null` | 400 | *Wrapped.* Credits are insufficient, a required field is blank, or the product is not enabled for your account. | No |
+| No code | 502 | The credit bureau could not be reached. The body is not part of the contract; retry later. | No |
+| No code | 504 | The credit bureau did not respond in time. The body is not part of the contract; retry later. | No |
+| No code | 401 | Missing or invalid `X-Client-ID` or `X-API-Key`. | No |
+| No code | 403 | The client is inactive or not allowed to call this endpoint. | No |
+| No code | 422 | Body failed schema validation. Body: `{"detail": [{"loc": [...], "msg": "..."}]}`. | No |
+| No code | 500 | Unexpected failure. The body is not part of the contract; retry later. | No |
+
+`Code` is the `error_code` in the body. Errors marked *wrapped* return `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`.
+
+## Test scenarios
+
+Use these input classes in staging to exercise each outcome.
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Name, mobile and PAN of a person with a credit history | 200, `status: "success"`, `result` filled | Yes |
+| Valid details of a person with no credit history | 200, `status: "success"`, empty `result` | Yes |
+| Details the bureau rejects | 200, `status: "failed"` | No |
+| `name`, `mobile` or `pan` missing from the body | 422 | No |
+
+Questions about credit reports are answered in the [Credit and Legal FAQ](/products/credit-legal/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fcredit-legal%2Fcredit-report) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fcredit-legal%2Fcredit-report)

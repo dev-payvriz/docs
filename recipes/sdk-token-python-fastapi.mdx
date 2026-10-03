@@ -1,0 +1,103 @@
+---
+title: "SDK token with Python and FastAPI"
+description: "Mint an SDK token on your server (Python 3 and FastAPI) and open the IDTO verification flow in the browser."
+---
+
+Mint a short-lived SDK token on your server and hand it to the Web SDK in the browser. Your API key never leaves the server. Stack: Python 3 and FastAPI.
+
+<Steps>
+  <Step title="Set your credentials">
+Put your keys in environment variables. Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+  </Step>
+  <Step title="Install">
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install fastapi uvicorn requests
+```
+  </Step>
+  <Step title="Add the token endpoint">
+`POST /api/idto/token` calls `POST /auth/sdk/token` with your client ID and API key and returns only the token and its lifetime to the browser.
+
+<CodeGroup>
+
+```python app.py
+import os
+
+import requests
+from fastapi import FastAPI, HTTPException
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+app = FastAPI()
+
+
+@app.post("/api/idto/token")
+def idto_token():
+    idto = requests.post(
+        f"{BASE_URL}/auth/sdk/token",
+        json={"client_id": os.environ["IDTO_CLIENT_ID"], "client_secret": os.environ["IDTO_API_KEY"]},
+        timeout=(5, 15),
+    )
+    if not idto.ok:
+        raise HTTPException(status_code=502, detail={"error": "token request failed", "status": idto.status_code})
+    body = idto.json()
+    return {"access_token": body["access_token"], "expires_in": body["expires_in"]}
+```
+
+</CodeGroup>
+  </Step>
+  <Step title="Open the verification flow">
+The page asks your server for a token and opens the flow. Use the workflow template ID from your dashboard, and drop `env: "development"` in production.
+
+```html public/index.html
+<script src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/sdk/prod/idto.js"></script>
+<button id="verify">Verify identity</button>
+<script>
+  document.getElementById("verify").addEventListener("click", async () => {
+    const response = await fetch("/api/idto/token", { method: "POST" });
+    const { access_token } = await response.json();
+    IDtoSDK.open({
+      client_token: access_token,
+      workflow_template_id: "YOUR_WORKFLOW_TEMPLATE_ID",
+      env: "development",
+      onWorkflowComplete: (data) => console.log("session", data.session_token),
+      onError: (data) => console.error(data),
+    });
+  });
+</script>
+```
+
+Serve `public/index.html` from the same origin as the API, for example with FastAPI `StaticFiles`.
+  </Step>
+  <Step title="Run and check">
+```bash
+uvicorn app:app --port 3000
+```
+
+```bash
+curl -X POST http://localhost:3000/api/idto/token
+```
+
+```json 200
+{"access_token": "<sdk-token>", "expires_in": 900}
+```
+  </Step>
+</Steps>
+
+## Good to know
+
+- The SDK token lasts 900 seconds. Mint a new one for each verification instead of caching it.
+- Minting a token is not charged. Verifications that run inside the flow are charged as usual.
+- A `401` from `/auth/sdk/token` means the client ID or API key is wrong, or the client is inactive. Your endpoint returns `502` in that case so the browser never sees the upstream detail.
+- To confirm the result from your server after `onWorkflowComplete`, see [Confirm a session result from your server](/recipes/confirm-session-result).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fsdk-token-python-fastapi) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fsdk-token-python-fastapi)

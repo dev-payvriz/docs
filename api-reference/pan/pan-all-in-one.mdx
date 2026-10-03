@@ -1,0 +1,57 @@
+---
+title: "Full PAN record"
+sidebarTitle: "PAN All in One (v1)"
+description: "Fetch the KYC record behind a PAN with one v1 call: name, address, masked Aadhaar, contact details, gender, DOB and Aadhaar link status."
+openapi: "openapi2.0.json POST /verify/pan_all_in_one"
+---
+
+Use this endpoint to pull the record behind a PAN for prefill or cross-checks. It is a v1 endpoint: the response is a flat object, not the v2 envelope. For new integrations use [PAN Detailed](/api-reference/pan/pan-detailed), which returns the same kind of record with masked contact details, a `billed` flag and idempotent retries.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## How to read the result
+
+- `status: "success"`: the PAN is valid and the record fields are filled. This call is charged.
+- `status: "failed"`: the PAN is not valid. Returned with HTTP 200 and not charged.
+- `full_name_split` is `[first, "", last]`. `gender` is the first letter (`M`, `F`). `dob` is `YYYY-MM-DD`.
+- `category` is `person` for individuals, otherwise the holder type in lower case (for example `company`).
+- `email` and `phone_number` are `null` when the record has none. `aadhaar_linked` is passed through as the source returns it, so accept a boolean or a string.
+- `tax` is always `false` and `din_info` is always empty. Do not build logic on them.
+- Billing signal: `chargeble` and `user_consent` are present as `"true"` only on a charged call, spelled exactly as shown. There is no `billed` field on v1.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| `001` | 400 | `{"detail": {"status": "error", "message": "PAN is missing / invalid in the request", "error_code": "001", ...}}` | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "pan_number"], ...}]}` when `pan_number` is missing | No |
+| `006` | 429 | `{"detail": {"status": "error", "message": "Too many requests at the moment. Please wait and retry", "error_code": "006", ...}}` | No |
+| `004`, `005`, `006`, `008` | 401, 403, 409, 422, 502 | `{"detail": {"status": "error", "error_code": "...", ...}}`: the verification source could not complete the call; its status is passed through | No |
+| none | 500 | Body is not part of the contract; retry later. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real, valid PAN | 200, `status: "success"`, record fields filled | Yes |
+| A PAN the source reports as not valid | 200, `status: "failed"` | No |
+| `pan_number: "ABCDE12345"` | 400, error code `001` | No |
+| Empty body | 422 | No |
+
+See [Migrate from v1](/migrate-from-v1) for the move to `pan_detailed`.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/pan/pan-all-in-one) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/pan/pan-all-in-one)

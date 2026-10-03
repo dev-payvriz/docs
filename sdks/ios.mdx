@@ -1,127 +1,178 @@
 ---
 title: "iOS SDK"
 sidebarTitle: "iOS (Swift)"
-description: "Add the idto verification flow to a native iOS app via Swift Package Manager or CocoaPods, backed by IDtoConfig and a small set of lifecycle callbacks."
+description: "Run the IDTO verification flow in a native iOS app from UIKit or SwiftUI."
 ---
 
-The iOS SDK targets iOS 15.0+ with Swift 6.0 tools, and requires Xcode 16+. It enforces `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` at runtime, throwing `IDtoError.missingUsageDescription` if either is empty or missing from your app's Info.plist.
+The iOS SDK presents the IDTO verification flow modally and returns a typed result. Use `IDto.present` from UIKit with `async`/`await`, or `IDtoVerificationView` from SwiftUI.
 
-<Warning>
-  A real device is required for camera, selfie, and liveness steps. The iOS Simulator has no camera.
-</Warning>
+<Frame caption="The Aadhaar step lets the user choose how to verify.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-aadhaar-method.png" alt="Aadhaar verification method choice screen" width="390" />
+</Frame>
+
+## Requirements
+
+| Item | Value |
+| --- | --- |
+| iOS | 15.0 or later |
+| Xcode | 16 or later (Swift 6 tools) |
+| Device | A real device for document and selfie capture. The Simulator has no camera. |
+
+You also need a `client_id` and `client_secret` (kept on your server), a `workflowTemplateId`, and a backend route that mints a client token. See [Authentication](/authentication).
 
 ## Install
 
-<CodeGroup>
-```swift Swift Package Manager
-.package(url: "https://github.com/idto-ai/swift-sdk.git", from: "0.1.0")
+The package is distributed through Swift Package Manager from a private repository. Ask [tech@idto.ai](mailto:tech@idto.ai) for access. Then, in Xcode, choose **File, Add Package Dependencies** and enter:
+
+```text
+https://github.com/idto-ai/idto-swift-sdk.git
 ```
 
-```ruby CocoaPods
-pod 'IDtoSwiftSDK'
+Pin **Up to Next Major** from `0.1.0` and add the **IDto** library to your app target. In a `Package.swift`, add the package:
+
+```swift
+.package(url: "https://github.com/idto-ai/idto-swift-sdk.git", from: "0.1.0")
 ```
-</CodeGroup>
+
+Then list `.product(name: "IDto", package: "idto-swift-sdk")` in your target's dependencies.
+
+`import IDto` gives you the whole public API.
+
+## Permissions
+
+Add both keys to your app's `Info.plist`. The SDK refuses to start without them.
+
+```xml
+<key>NSCameraUsageDescription</key>
+<string>We use the camera to capture your identity documents and selfie.</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>We use the microphone during the liveness check.</string>
+```
+
+If a key is missing, `IDto.present` throws `IDtoError.missingUsageDescription(key:)`, and `IDtoVerificationView` calls `onError` with `error == "missing_usage_description"`. The SDK asks for camera access before the flow needs it. If the user declines, the flow shows its own guidance screen.
+
+## Quick start (UIKit)
+
+<Steps>
+  <Step title="Mint a client token on your server">
+    Your server calls `POST /auth/sdk/token` with `client_id` and `client_secret` and returns only `access_token` to the app. Recipes: [Node](/recipes/sdk-token-node-express), [Python](/recipes/sdk-token-python-fastapi), [Go](/recipes/sdk-token-go-gin).
+  </Step>
+  <Step title="Present the flow">
+    ```swift
+    import IDto
+
+    func startVerification(from presenter: UIViewController) {
+        Task {
+            let config = IDtoConfig(
+                clientToken: try await fetchClientToken(),
+                workflowTemplateId: "your-workflow-template-uuid",
+                businessName: "Sample Traders",
+                env: .production
+            )
+            do {
+                let result = try await IDto.present(
+                    from: presenter,
+                    config: config,
+                    onStepComplete: { step in print("step", step.step) },
+                    onError: { err in print("error", err.step, err.error) }
+                )
+                if result.status == .completed, let done = result.completed {
+                    confirmOnServer(done.sessionToken)
+                }
+            } catch {
+                print("not started", error)
+            }
+        }
+    }
+    ```
+
+    `IDto.present` throws only before the flow starts: `IDtoError.sessionAlreadyActive` when a flow is already open, or `missingUsageDescription`. Afterwards it returns an `IDtoResult` whose `status` is `.completed`, `.closed`, `.abandoned` or `.error`, with `completed` or `error` filled in.
+  </Step>
+  <Step title="Confirm the result on your server">
+    Callbacks drive your UI only. Confirm the session from your server with the [session result recipe](/recipes/confirm-session-result) or a signed [webhook](/concepts/webhooks) before you grant access.
+  </Step>
+</Steps>
+
+## Quick start (SwiftUI)
+
+`IDtoVerificationView` is driven by a `Binding<Bool>`. Set it to `true` to open the flow; the SDK sets it back to `false` when the flow ends.
+
+```swift
+import SwiftUI
+import IDto
+
+struct ContentView: View {
+    @State private var verifying = false
+    let token: String
+
+    var body: some View {
+        Button("Verify your identity") { verifying = true }
+            .background(
+                IDtoVerificationView(
+                    isPresented: $verifying,
+                    config: IDtoConfig(
+                        clientToken: token,
+                        workflowTemplateId: "your-workflow-template-uuid"
+                    ),
+                    onWorkflowComplete: { done in confirmOnServer(done.sessionToken) },
+                    onError: { err in print(err.error) }
+                )
+            )
+    }
+}
+```
+
+<Frame caption="A PAN result returned by the flow.">
+  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-result.png" alt="PAN verification result screen" width="390" />
+</Frame>
 
 ## Configuration
 
-Configuration is supplied via `IDtoConfig`.
+`IDtoConfig(clientToken:workflowTemplateId:)` is required. Every other parameter is optional.
 
-### Required fields
-
-<ParamField body="clientToken" type="String" required>
-  Field on `IDtoConfig`.
-</ParamField>
-
-<ParamField body="workflowTemplateId" type="String" required>
-  Field on `IDtoConfig`.
-</ParamField>
-
-### Optional fields
-
-| Field | Purpose |
-| --- | --- |
-| `sessionToken` | Resume a previously started verification session. |
-| `merchantUserId` | Your own identifier for this end user. |
-| `phone` | Pre-fill the user's mobile number. |
-| `startFresh` | Force a new session even if a prior one exists for this user. |
-| `preVerified` | Mark specific modules as already verified, skipping them. |
-| `accumulatedData` | Seed the session with data already collected outside the SDK. |
-| `aadhaarConfig` | Configuration for the Aadhaar verification step. |
-| `referenceName` | A name to cross-check against document data via name matching. |
-| `nameMatchConfig` | Configuration for the name-match comparison. |
-| `faceMatchReferenceImage` | Reference selfie/photo to compare against a live capture. |
-| `faceMatchConfig` | Configuration for the face-match comparison. |
-| `panConfig` | Configuration for the PAN verification step. |
-| `businessName` | Display name shown in the flow header. |
-| `logo` | Logo shown in the flow. |
-| `language` | Locale for flow copy. |
-| `theme` | Visual theme overrides. |
-| `displayMode` | Layout mode for the flow. |
-| `bottomSheet` | Whether to render as a bottom sheet. |
-| `desktopModal` | Whether to render as a centered modal on larger screens. |
-| `env` | Target environment (e.g. sandbox vs. production). |
-| `baseUrl` | Override the API base URL the SDK calls. |
-| `colors` | Color token overrides. |
-| `getToken` | Callback your app supplies to refresh `clientToken` if the session runs long. |
-| `debug` | Enable verbose SDK logging. |
-| `allowedHosts` | Restrict which hosts the embedded flow may load. |
-| `readyTimeout` | Time to wait for the flow to become ready before failing. |
-
-<ParamField body="skippable" type="[String]">
-  Module slugs (see [Modules](/sdks/modules)) the user is allowed to skip in this workflow session and complete later. This field is fully supported and functional today on every idto SDK, iOS included.
-</ParamField>
+| Parameter | Type | Purpose |
+| --- | --- | --- |
+| `sessionToken` | `String?` | Resume an earlier session. |
+| `startFresh` | `Bool?` | Start a new session even if one is in progress. |
+| `merchantUserId` | `String?` | Your own id for this user. |
+| `phone` | `String?` | Prefills the mobile number step. |
+| `preVerified` | `[String: Bool]?` | Module slugs you already verified, which the flow skips. |
+| `skippable` | `[String]?` | Module slugs the user may skip. See [Modules](/sdks/modules). |
+| `accumulatedData` | `[String: JSONValue]?` | Data you already hold, passed into the session. |
+| `referenceName` | `String?` | Name every document name is matched against. |
+| `nameMatchConfig` | `IDtoNameMatchConfig?` | `threshold`, `decisionMode` (`.all` or `.any`), `extraHonorifics`, `aliases`, `comparePairs`. |
+| `faceMatchReferenceImage` | `String?` | Reference photo for face match. |
+| `faceMatchConfig` | `IDtoFaceMatchConfig?` | `skipLiveness`, `threshold`, `livenessFailurePolicy` (`.failOpen`, `.failClosed`, `.needsReview`). |
+| `aadhaarConfig` | `IDtoAadhaarConfig?` | `digilockerMaxFailures`, `okycEnabled`. |
+| `panConfig` | `IDtoPanConfig?` | `skipContextScreen`. |
+| `businessName` | `String?` | Your name in the flow header. |
+| `logo` | `String?` | URL of your logo. |
+| `language` | `IDtoLanguage` | `.en` (default) or `.hi`. |
+| `theme` | `IDtoTheme` | `.light` (default) or `.dark`. |
+| `displayMode` | `IDtoDisplayMode` | `.fullScreen` (default) or `.bottomSheet`. |
+| `bottomSheet` | `IDtoBottomSheet?` | Sheet height limits. |
+| `desktopModal` | `IDtoDesktopModal?` | Modal size on wide screens. |
+| `env` | `IDtoEnv` | `.production` (default, `https://prod.idto.ai`) or `.development` (staging, `https://dev.idto.ai`). |
+| `baseUrl` | `String?` | Overrides the API host. |
+| `colors` | `IDtoColors?` | Colour overrides. |
+| `getToken` | `(() async throws -> String)?` | Returns a fresh client token when the current one expires. |
+| `readyTimeout` | `Double` | Milliseconds to wait for the flow to load. Default 30000. |
+| `allowedHosts` | `[String]` | Extra hostnames the flow may navigate to. |
+| `debug` | `Bool` | Prints the flow's log messages. Default `false`. |
 
 ## Callbacks
 
-<ResponseField name="onStepComplete" type="function">
-  Fires after each module finishes.
+| Callback | Payload fields |
+| --- | --- |
+| `onStepComplete(IDtoStepData)` | `step`, `result`, `accumulatedData`, `sessionToken`, `creditsDeducted`, `balanceRemaining` |
+| `onWorkflowComplete(IDtoWorkflowCompleteData)` | `allSteps`, `accumulatedData`, `sessionToken` |
+| `onError(IDtoErrorData)` | `step`, `error`, `sessionToken` |
+| `onAbandon(IDtoAbandonData)` | `atStep`, `reason`, `sessionToken` |
 
-  <Expandable title="IDtoStepData fields">
-    <ResponseField name="step" type="String">The module slug that just completed.</ResponseField>
-    <ResponseField name="result" type="Object">The step's verification result.</ResponseField>
-    <ResponseField name="accumulatedData" type="Object">All data collected across the session so far.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-    <ResponseField name="creditsDeducted" type="Number">Credits deducted for this step.</ResponseField>
-    <ResponseField name="balanceRemaining" type="Number">Your account's remaining credit balance after this step.</ResponseField>
-  </Expandable>
-</ResponseField>
+Every payload also carries `raw`, the original dictionary. `error` values other than the ones named on this page are readable messages to log, not to match on.
 
-<ResponseField name="onWorkflowComplete" type="function">
-  Fires when the whole workflow finishes.
+## See it run
 
-  <Expandable title="IDtoWorkflowCompleteData fields">
-    <ResponseField name="allSteps" type="[Object]">Every module result from the session.</ResponseField>
-    <ResponseField name="accumulatedData" type="Object">All data collected across the session.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
+<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.mp4"></video>
 
-<ResponseField name="onError" type="function">
-  Fires on a recoverable or fatal error.
-
-  <Expandable title="IDtoErrorData fields">
-    <ResponseField name="step" type="String">The module slug active when the error occurred.</ResponseField>
-    <ResponseField name="error" type="String">Error detail.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="onAbandon" type="function">
-  Fires when the user leaves the flow before completion.
-
-  <Expandable title="IDtoAbandonData fields">
-    <ResponseField name="atStep" type="String">The module slug the user was on when they left.</ResponseField>
-    <ResponseField name="reason" type="String">Why the session ended, where known.</ResponseField>
-    <ResponseField name="sessionToken" type="String">Token identifying this session.</ResponseField>
-  </Expandable>
-</ResponseField>
-
-## Integration notes
-
-<Note>
-  Only one verification session can be active at a time. Starting a second one while the first is still open throws `sessionAlreadyActive`.
-</Note>
-
-<Tip>
-  On-device callbacks are for UX only, never treat them as authoritative. Confirm the final outcome from your backend using the session token before granting access.
-</Tip>
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fios) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fios)

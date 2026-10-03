@@ -1,0 +1,48 @@
+---
+title: "Documents"
+description: "Read tax invoices and utility bills into structured data for address verification and merchant onboarding."
+---
+
+Use this module to turn an invoice or bill into data. IDTO classifies the upload, accepts tax invoices and utility bills, and returns the parties, GSTINs, line items, tax totals and printed bank details.
+
+## Endpoints
+
+| Endpoint | What it does | Billed when |
+|---|---|---|
+| [Invoice OCR](/api-reference/documents/invoice-ocr) `POST /v2/verify/invoice_ocr` | Reads a tax invoice or utility bill into structured fields. | Every 2xx, including `IDTO_202` |
+
+## How an upload is processed
+
+```mermaid
+sequenceDiagram
+    participant Server as Your server
+    participant IDTO
+    Server->>IDTO: POST /v2/verify/invoice_ocr (file)
+    IDTO->>IDTO: Classify the document
+    alt Tax invoice or utility bill with invoice details
+        IDTO-->>Server: 200, error_code null, data
+    else Other document type, or no invoice details
+        IDTO-->>Server: 200, IDTO_202
+    end
+```
+
+## Outcomes and billing
+
+`error_code: null` with `data` means the document was accepted and read. `IDTO_202` means it was read but is not an accepted type or has no invoice details; when the type is the reason, `data.document_type` tells you what was uploaded. Both are 2xx and billed. Errors such as a file over 12 MB (`IDTO_503`, 413) are never billed.
+
+Every value is what is printed on the document. To confirm a GSTIN or a bank account found on an invoice, call the matching verification endpoint.
+
+## Test scenarios
+
+| Input | Expected | Billed |
+|---|---|---|
+| GST tax invoice | 200, `error_code: null`, `document_type: TAX_INVOICE` | Yes |
+| Electricity bill | 200, `error_code: null`, `document_type: UTILITY_BILL` | Yes |
+| Bank statement | 200, `IDTO_202`, `document_type: BANK_STATEMENT` | Yes |
+| File over 12 MB | 413, `IDTO_503` | No |
+
+Common questions: [FAQ](/products/documents/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdocuments%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdocuments%2Foverview)

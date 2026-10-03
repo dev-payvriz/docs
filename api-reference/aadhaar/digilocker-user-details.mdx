@@ -1,0 +1,54 @@
+---
+title: "Get DigiLocker user details"
+sidebarTitle: "DigiLocker: user details"
+description: "Return the DigiLocker account profile for a reference key, as DigiLocker issues it."
+openapi: "openapi2.0.json POST /verify/digilocker/user_details"
+---
+
+Step 3 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Returns the DigiLocker account profile in `user`: DigiLocker id, name, date of birth (`DDMMYYYY`), gender, whether Aadhaar is linked (`eaadhaar`), mobile, email and profile photo. Values are passed through as DigiLocker returns them and are **not masked**: mask mobile and email before you store or show them. You can call it more than once while the `reference_key` is valid, and each call is charged.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`, which is every time the profile is returned. A charged JSON response also carries `"chargeble": "true"` and `"user_consent": "true"` (spelled as the API returns them).
+
+<Warning>
+This endpoint has no idempotency support. A retry after a timeout runs the call again and can be charged twice.
+</Warning>
+
+For a masked, normalised profile (`dob` as `YYYY-MM-DD`, masked mobile and email), use [DigiLocker profile](/api-reference/aadhaar/digilocker) instead.
+
+## Errors
+
+| Case | HTTP | Body | Billed |
+|---|---|---|---|
+| Missing or invalid credentials | 401 | `{"detail": "Authentication required. ..."}` | No |
+| Client or account inactive | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
+| `reference_key` empty | 400 | `{"detail": {"status": "error", "message": "reference_key is required", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
+| `reference_key` unknown | 404 | Same shape, `message` "Reference key not found" | No |
+| `reference_key` older than one hour | 410 | Same shape, `message` "Reference key expired" | No |
+| Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
+| DigiLocker rejected the request | DigiLocker's status | `{"detail": {...}}`, `message` varies | No |
+| A required field missing or of the wrong type | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
+| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A `reference_key` issued in the last hour | 200, `status: "success"`, `user` populated | Yes |
+| `{"reference_key": ""}` | 400, "reference_key is required" | No |
+| A made-up `reference_key` | 404, "Reference key not found" | No |
+| A `reference_key` older than one hour | 410, "Reference key expired" | No |
+| `{}` | 422, `{"detail": [...]}` | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/digilocker-user-details) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/digilocker-user-details)

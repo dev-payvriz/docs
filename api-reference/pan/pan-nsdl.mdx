@@ -1,0 +1,58 @@
+---
+title: "Match name and DOB against a PAN"
+sidebarTitle: "PAN Name and DOB Match (v1)"
+description: "Send a PAN with the name and date of birth you hold and learn whether they match the PAN record, plus PAN status and Aadhaar seeding."
+openapi: "openapi2.0.json POST /verify/pan_nsdl"
+---
+
+Use this endpoint when you already have a name and date of birth from the user and want a yes or no on whether they match the PAN record. It returns separate `name_match` and `dob_match` flags, the PAN status, and whether Aadhaar is seeded to the PAN. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## How to read the result
+
+- `status: "success"`: the PAN is valid. Read `name_match` and `dob_match` (booleans) to decide. This call is charged.
+- `status: "failed"`, `message: "PAN verification failed"`: the PAN is not valid. Returned with HTTP 200 and not charged.
+- `name_input` and `dob_input` echo what you sent.
+- Billing signal: `chargeble` and `user_consent` are present as `"true"` only on a charged call, spelled exactly as shown. There is no `billed` field on v1.
+- `tranx_id` identifies the call for support.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| `001` | 400 | `{"detail": {"status": "error", "message": "PAN is missing or invalid.", "error_code": "001", ...}}` | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "name"], ...}]}` when a field is missing | No |
+| `006` or `008` | 429 | `{"detail": {"status": "error", "error_code": "006", ...}}` | No |
+| `004`, `008` | 401, 403, 409, 422, 502 | `{"detail": {"status": "error", "error_code": "...", ...}}`: the verification source could not complete the call; its status is passed through | No |
+| none | 500 | Body is not part of the contract; retry later. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Valid PAN with the matching name and DOB | 200, `status: "success"`, `name_match: true`, `dob_match: true` | Yes |
+| Valid PAN with a different name | 200, `status: "success"`, `name_match: false` | Yes |
+| A PAN the source reports as not valid | 200, `status: "failed"` | No |
+| `pan_number: "ABCDE12345"` | 400, error code `001` | No |
+| Body without `dob` | 422 | No |
+
+## Moving to v2
+
+For new integrations, [PAN Validation](/api-reference/pan/pan-validation) and [PAN Detailed](/api-reference/pan/pan-detailed) give you idempotent retries, a `billed` flag and one error format. See [Migrate from v1](/migrate-from-v1).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/pan/pan-nsdl) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/pan/pan-nsdl)

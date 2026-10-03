@@ -1,0 +1,64 @@
+---
+title: "DigiLocker profile"
+sidebarTitle: "DigiLocker profile"
+description: "Exchange a DigiLocker authorization code for the holder's verified DigiLocker profile."
+openapi: "openapi2.0.json POST /v2/verify/digilocker"
+---
+
+DigiLocker is the government document wallet linked to a person's Aadhaar. With the holder's consent, this endpoint returns their DigiLocker profile: DigiLocker id, name, date of birth, gender, masked mobile and email, and whether Aadhaar is linked. Nothing is typed by the holder except their DigiLocker sign-in, so there is no OCR error to handle.
+
+## Get `code` and `code_verifier`
+
+1. Call [Start a DigiLocker session](/api-reference/aadhaar/digilocker-initiate-session) from your server with your `redirect_url`. It returns a `url`.
+2. Open the `url` in the holder's browser. They sign in to DigiLocker and consent.
+3. The browser lands on your `redirect_url` with the query parameters `code`, `codeVerifier`, `clientId` and `state`.
+4. Send `code` and `codeVerifier` to this endpoint as `code` and `code_verifier`.
+
+A `code` can be exchanged once. Use it either here or with [Get a reference key](/api-reference/aadhaar/digilocker-get-reference) (to download the e-Aadhaar XML), not both. The [DigiLocker consent recipe](/recipes/digilocker-consent-flow) and the [DigiLocker guide](/guides/digilocker-integration) walk through the whole flow.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+- 200 with `error_code: null` and `data`: the profile was returned. This is the only billed outcome. There is no `IDTO_202` result.
+- `data.dob` is `YYYY-MM-DD`. `data.gender` is as DigiLocker returns it.
+- `data.extras.mobile` and `data.extras.email` are masked. `data.extras.eaadhaar_linked` is `true` when Aadhaar is linked to the DigiLocker account.
+- An expired, reused or invalid `code` is a 400 `IDTO_001` and is not billed. Start the session again to get a new code.
+
+<Tip>
+Send an `Idempotency-Key` header. A retry with the same key and body returns the first response, which matters here because the `code` itself cannot be exchanged twice. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_001` | 400 | The authorization code is invalid, expired, or already used. Please obtain a new authorization code and try again. | No |
+| `IDTO_001` | 400 | Invalid input: code and code_verifier are required. Please check and retry. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A fresh `code` and its `codeVerifier` from the redirect | 200, `error_code: null`, `data.digilocker_id` and `data.name` filled | Yes |
+| The same `code` sent again without an `Idempotency-Key` | 400, `IDTO_001` (code already used) | No |
+| `code: ""` | 400, `IDTO_001` | No |
+| Body without `code_verifier` | 422, `IDTO_001` | No |
+
+See the [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference/aadhaar/digilocker) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference/aadhaar/digilocker)

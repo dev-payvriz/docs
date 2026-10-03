@@ -1,0 +1,123 @@
+---
+title: "Court record check"
+sidebarTitle: "Court check"
+description: "Search court records for cases against a person by name and address."
+openapi: "openapi2.0.json POST /verify/court_check"
+---
+
+Search court records for cases against a person, using their name and address, with father's name as an optional filter. Results are ranked by a weighted match score: records above 85 percent are returned in `strong_match`, the rest in `possible_match`, and records ruled out in `eliminated_data`. `totalResult` is the number of records found.
+
+A search that finds nothing is a completed search: `status` is `success`, every list is empty and the call is charged. Review `possible_match` records manually before you act on them.
+
+<Warning>
+This endpoint has no idempotency support. A retried request runs the verification again and can be charged again. Retry only after you have confirmed the first call did not return a response.
+</Warning>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged call carries `"chargeble": "true"` and `"user_consent": "true"`; an uncharged call has neither field.
+
+## Response fields
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `success` when the search completed. |
+| `result.eliminated_data` | array | Records considered and ruled out. |
+| `result.possible_match` | array | Case records with a weighted match of 85 percent or less. Review manually. |
+| `result.strong_match` | array | Case records with a weighted match above 85 percent. |
+| `result.totalResult` | number | Number of records found. |
+| `tranx_id` | string | IDTO transaction id for this call. |
+| `timestamp` | string | Time IDTO recorded the call, ISO 8601. |
+| `chargeble` | string | `"true"` on a charged call, absent otherwise. |
+| `user_consent` | string | `"true"` on a charged call, absent otherwise. |
+
+### Case record fields
+
+Each item in `strong_match` and `possible_match` carries the fields below; items in `eliminated_data` carry the subset marked Both plus their own fields. Fields whose type is `null` were empty in every response observed and are kept for compatibility.
+
+| Field | Type | In | Description |
+|---|---|---|---|
+| `address` | string | Matches only |  |
+| `addressMatchPercentage` | number | Both | Address match score. |
+| `advocateName` | null | Both |  |
+| `bothMatchPercentage` | null | Both |  |
+| `caseActType` | null | Both |  |
+| `caseCourtDetails` | string | Both |  |
+| `caseId` | string | Both |  |
+| `caseSection` | null | Both |  |
+| `case_code` | string | Both |  |
+| `case_disposed_date` | string | Both |  |
+| `category` | string | Matches only |  |
+| `courtDistid` | string | Both |  |
+| `courtId` | null | Both |  |
+| `courtStateid` | string | Both |  |
+| `data_source` | string | Both |  |
+| `fatherPercentage` | number | Both | Father's name match score. |
+| `flagged_address` | number or string | Both |  |
+| `id` | string | Both |  |
+| `link` | string | Both | Link to the case record. |
+| `name` | string | Matches only | Name sent in the request. |
+| `nameMatchPercentage` | number | Both | Name match score. |
+| `partyAddress_highlighted` | string | Both |  |
+| `partyDistid` | string | Both |  |
+| `partyDistname` | string | Both |  |
+| `partyFather` | null | Both |  |
+| `partyId` | string | Both |  |
+| `partyName_highlighted` | string | Both |  |
+| `partyStateid` | string | Both |  |
+| `partyStatename` | string | Both |  |
+| `partyType` | string | Both |  |
+| `query_type` | string | Both |  |
+| `rank` | number | Both |  |
+| `registration_year` | string | Both |  |
+| `score` | number | Both |  |
+| `solr_source` | string | Both |  |
+| `stageOfCase` | string | Both |  |
+| `suggested` | number | Both |  |
+| `weightedPercentage` | number | Both | Overall match score used to split strong and possible matches. |
+| `act_ids` | array | Eliminated only |  |
+| `act_ids[]` | string | Eliminated only |  |
+| `all_act_section` | object | Eliminated only |  |
+| `caseType` | string | Eliminated only |  |
+| `case_status` | string | Eliminated only |  |
+| `nod_excluded_by` | string | Eliminated only |  |
+| `nod_raw_text` | string | Eliminated only |  |
+| `partyAddress` | string | Eliminated only |  |
+| `partyName` | string | Eliminated only |  |
+| `section_ids` | array | Eliminated only |  |
+| `section_ids[]` | string | Eliminated only |  |
+
+## Errors
+
+| Code | HTTP | When | Billed |
+|---|---|---|---|
+| `null` | 400 | *Wrapped.* Credits are insufficient, or the product is not enabled for your account. | No |
+| No code | 401 | Missing or invalid `X-Client-ID` or `X-API-Key`. | No |
+| No code | 403 | The client is inactive or not allowed to call this endpoint. | No |
+| No code | 422 | Body failed schema validation. Body: `{"detail": [{"loc": [...], "msg": "..."}]}`. | No |
+| No code | 500 | Unexpected failure. The body is not part of the contract; retry later. | No |
+
+`Code` is the `error_code` in the body. Errors marked *wrapped* return `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`.
+
+## Test scenarios
+
+Use these input classes in staging to exercise each outcome.
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Name and address of a person with no cases | 200, empty lists, `totalResult: 0` | Yes |
+| Name and address that match recorded cases | 200, records in `strong_match` or `possible_match` | Yes |
+| `name` or `address` missing from the body | 422 | No |
+
+Questions about court checks are answered in the [Credit and Legal FAQ](/products/credit-legal/faq).
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fcredit-legal%2Fcourt-check) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fcredit-legal%2Fcourt-check)

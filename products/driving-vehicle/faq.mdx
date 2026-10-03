@@ -1,0 +1,42 @@
+---
+title: "Driving licence and vehicle FAQ"
+description: "Answers to common questions about driving licence verification, licence OCR and vehicle RC lookups."
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Which date formats does driving licence verification accept?">
+    `YYYY-MM-DD`, `DD-MM-YYYY` and `DD/MM/YYYY`. Any other format returns `IDTO_001` (400) and is not billed.
+  </Accordion>
+  <Accordion title="Am I charged when the licence is not found?">
+    Yes. A well-formed request that finds no matching record returns HTTP 200 with `error_code: "IDTO_202"` and `billed: true`, because the check ran to a definitive answer. Errors (non-2xx) are never billed.
+  </Accordion>
+  <Accordion title="Can I verify a licence from a photo alone?">
+    Read the photo with [Driving licence OCR](/api-reference/driving-vehicle/dl-ocr), then send the extracted `dl_number` and `dob` to [Verify a driving licence](/api-reference/driving-vehicle/driving-licence). OCR on its own only tells you what is printed on the card.
+  </Accordion>
+  <Accordion title="Is Vehicle RC billed the same way as the v2 endpoints?">
+    No. Vehicle RC is a v1 endpoint. It is charged only when `status` is `success`, and a charged response carries `chargeble: "true"`. It has no `billed` field and no `error_code` on success.
+  </Accordion>
+</AccordionGroup>
+
+## Technical
+
+<AccordionGroup>
+  <Accordion title="How should I format the licence number?">
+    Send it as printed. Spaces and hyphens are ignored; at least 8 letters and digits must remain. For example `KA0120200000001` and `KA01 20200000001` are both accepted.
+  </Accordion>
+  <Accordion title="Can I retry a timed-out call safely?">
+    On the two v2 endpoints, send an `Idempotency-Key` header. Replaying the same key and body within 48 hours returns the first response without a new charge. Vehicle RC has no idempotency support, so a retry can be charged twice.
+  </Accordion>
+  <Accordion title="What file size does licence OCR accept?">
+    Up to 12 MB per upload. Larger files return `IDTO_503` (413) and are not billed.
+  </Accordion>
+  <Accordion title="Why are some Vehicle RC fields null?">
+    The registry does not hold every field for every vehicle. Every documented key is always present; a value is `null` when the registry does not hold it.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdriving-vehicle%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdriving-vehicle%2Ffaq)

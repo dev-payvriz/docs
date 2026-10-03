@@ -4,11 +4,28 @@ sidebarTitle: "Quickstart"
 description: "Get credentials, make your first idto verification call, and read the response, in one pass."
 ---
 
+<Frame>
+  <video
+  controls
+  src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/quickstart-first-call.mp4"
+  poster="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/quickstart-first-call.jpg"
+  />
+</Frame>
+
+Prefer a collection? Import the [Postman collection](https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/postman/idto-api-2026-10.postman_collection.json) and set your base URL and key pair in its variables.
+
 <Steps>
 
 ### Get credentials
 
-Every call to idto needs two headers: `X-Client-ID` and `X-API-Key`. Request sandbox credentials from your idto contact. Use them against `https://dev.idto.ai` while you build, sandbox calls don't touch real verification sources and aren't billed. Switch the host to `https://prod.idto.ai` only when you're ready to go live; see [Authentication](/authentication) for the full detail on both hosts and both auth methods.
+Every call to idto needs two headers: `X-Client-ID` and `X-API-Key`. Ask your IDTO account manager for staging keys and build against `https://dev.idto.ai`. Staging calls reach live verification sources and deduct staging credits, so use only identities you are authorised to verify. Production keys come from the dashboard after go-live; then switch the base URL to `https://prod.idto.ai`.
+
+| Environment | Base URL | Notes |
+| --- | --- | --- |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+See [Environments](/environments) and [Authentication](/authentication) for the detail.
 
 ```bash
 export IDTO_CLIENT_ID="your_client_id"
@@ -17,7 +34,7 @@ export IDTO_API_KEY="your_api_key"
 
 ### Make a call
 
-`POST /v2/verify/pan_validation` is the smallest useful call: it checks whether a PAN exists and is active, and returns the name and holder category on file. Every v2 verification endpoint takes `user_consent: true` in the body, this is a hard requirement, not a formality: the call is rejected without it.
+`POST /v2/verify/pan_validation` is the smallest useful call: it checks whether a PAN exists and is active, and returns the name and holder category on file. `pan_validation` requires `user_consent: true` in the body: the call is rejected with `IDTO_005` (400) without it. Consent is required per product; each endpoint page says whether it applies.
 
 <CodeGroup>
 
@@ -82,4 +99,24 @@ Four fields drive your integration logic:
 
 This is the same four-field shape on every v2 endpoint, not just PAN. Read [Request & Response](/concepts/request-response) for the complete envelope reference, including how multipart (image upload) endpoints differ, and [Error Codes](/error-codes) for how to branch on every outcome.
 
+### Handle the other outcomes
+
+| HTTP | `error_code` | Meaning | Billed |
+| --- | --- | --- | --- |
+| 200 | `null` | Full result in `data` | Yes |
+| 200 | `IDTO_202` | No record for this PAN | Yes |
+| 400 | `IDTO_001` | PAN format is wrong | No |
+| 400 | `IDTO_005` | `user_consent` missing or not `true` | No |
+| 401 | none | Missing or wrong key pair | No |
+| 503 | `IDTO_008` | Busy, retry with backoff | No |
+
 </Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Go-live checklist" icon="list-check" href="/go-live-checklist">What to confirm before production.</Card>
+  <Card title="Error codes" icon="triangle-exclamation" href="/reference/v2-error-codes">Every code, its HTTP status and whether it bills.</Card>
+</CardGroup>
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

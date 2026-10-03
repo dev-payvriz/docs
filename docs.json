@@ -9,6 +9,16 @@
   },
   "favicon": "/favicon.svg",
   "navbar": {
+    "links": [
+      {
+        "label": "Postman collection",
+        "href": "https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/postman/idto-api-2026-10.postman_collection.json"
+      },
+      {
+        "label": "Changelog",
+        "href": "/changelog"
+      }
+    ],
     "primary": {
       "type": "button",
       "label": "Get API Access",
@@ -26,7 +36,10 @@
               "introduction",
               "quickstart",
               "authentication",
-              "error-codes"
+              "environments",
+              "go-live-checklist",
+              "migrate-from-v1",
+              "support"
             ]
           },
           {
@@ -35,7 +48,10 @@
               "concepts/api-versioning",
               "concepts/request-response",
               "concepts/billing-consent",
-              "concepts/idempotency"
+              "concepts/idempotency",
+              "concepts/rate-limits",
+              "concepts/webhooks",
+              "error-codes"
             ]
           },
           {
@@ -43,8 +59,8 @@
             "pages": [
               "guides/kyc-workflow",
               "guides/digilocker-integration",
-              "guides/async-polling",
-              "guides/esign-workflow"
+              "guides/esign-workflow",
+              "guides/dashboard"
             ]
           }
         ]
@@ -53,56 +69,160 @@
         "tab": "API Reference",
         "groups": [
           {
-            "group": "Aadhaar",
+            "group": "PAN",
             "pages": [
-              "api-reference/v2/aadhaar-ocr",
-              "api-reference/v2/aadhaar-qr",
-              "api-reference/v2/okyc-generate-otp",
-              "api-reference/v2/okyc-get-result"
+              "products/pan/overview",
+              "api-reference/pan/pan-validation",
+              "api-reference/pan/pan-detailed",
+              "api-reference/pan/pan-ocr",
+              "api-reference/pan/pan-nsdl",
+              "api-reference/pan/pan-all-in-one",
+              "products/pan/faq"
             ]
           },
           {
-            "group": "PAN",
+            "group": "Aadhaar",
             "pages": [
-              "api-reference/v2/pan-validation",
-              "api-reference/v2/pan-detailed",
-              "api-reference/v2/pan-ocr"
+              "products/aadhaar/overview",
+              "api-reference/aadhaar/okyc-generate-otp",
+              "api-reference/aadhaar/okyc-get-result",
+              "api-reference/aadhaar/aadhaar-ocr",
+              "api-reference/aadhaar/aadhaar-qr",
+              "api-reference/aadhaar/digilocker",
+              "api-reference/aadhaar/digilocker-initiate-session",
+              "api-reference/aadhaar/digilocker-get-reference",
+              "api-reference/aadhaar/digilocker-user-details",
+              "api-reference/aadhaar/digilocker-fetch-aadhaar",
+              "api-reference/aadhaar/digilocker-verify-account",
+              "products/aadhaar/faq"
             ]
           },
           {
             "group": "Business",
             "pages": [
-              "api-reference/v2/gst-verification-basic",
-              "api-reference/v2/cin-mca-verification",
-              "api-reference/v2/employment-history"
+              "products/business/overview",
+              "api-reference/business/gst-verification-basic",
+              "api-reference/business/gst-advance",
+              "api-reference/business/cin-mca-verification",
+              "api-reference/business/employment-history",
+              "products/business/faq"
             ]
           },
           {
-            "group": "Bank & Documents",
+            "group": "Credit and Legal",
             "pages": [
-              "api-reference/v2/bank-verification",
-              "api-reference/v2/digilocker",
-              "api-reference/v2/invoice-ocr"
+              "products/credit-legal/overview",
+              "api-reference/credit-legal/credit-report",
+              "api-reference/credit-legal/court-check",
+              "products/credit-legal/faq"
             ]
           },
           {
-            "group": "Driving Licence",
+            "group": "Bank",
             "pages": [
-              "api-reference/v2/driving-licence",
-              "api-reference/v2/dl-ocr"
+              "products/bank/overview",
+              "api-reference/bank/bank-verification",
+              "api-reference/bank/bank-verification-pennyless",
+              "products/bank/faq"
             ]
           },
           {
-            "group": "Face & Liveness",
+            "group": "Mobile",
             "pages": [
-              "api-reference/v2/face-match",
-              "api-reference/v2/liveness"
+              "products/mobile/overview",
+              "api-reference/mobile/mobile-profile",
+              "products/mobile/faq"
+            ]
+          },
+          {
+            "group": "Driving Licence and Vehicle",
+            "pages": [
+              "products/driving-vehicle/overview",
+              "api-reference/driving-vehicle/driving-licence",
+              "api-reference/driving-vehicle/dl-ocr",
+              "api-reference/driving-vehicle/vehicle-rc",
+              "products/driving-vehicle/faq"
+            ]
+          },
+          {
+            "group": "Face and Liveness",
+            "pages": [
+              "products/face/overview",
+              "api-reference/face/face-match",
+              "api-reference/face/liveness",
+              "products/face/faq"
+            ]
+          },
+          {
+            "group": "Documents",
+            "pages": [
+              "products/documents/overview",
+              "api-reference/documents/invoice-ocr",
+              "products/documents/faq"
+            ]
+          },
+          {
+            "group": "eSign",
+            "pages": [
+              "products/esign/overview",
+              "api-reference/esign/esign",
+              "api-reference/esign/esign-document",
+              "products/esign/faq"
+            ]
+          },
+          {
+            "group": "Integration",
+            "pages": [
+              "products/integration/overview",
+              "api-reference/integration/sdk-token",
+              "api-reference/integration/session-state",
+              "products/integration/faq"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/session-completed",
+              "api-reference/webhooks/esign-completed"
             ]
           },
           {
             "group": "Reference",
             "pages": [
-              "reference/v2-error-codes"
+              "reference/v2-error-codes",
+              "reference/input-formats"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Recipes",
+        "groups": [
+          {
+            "group": "Integrate the SDK",
+            "pages": [
+              "recipes/sdk-token-node-express",
+              "recipes/sdk-token-typescript",
+              "recipes/sdk-token-python-fastapi",
+              "recipes/sdk-token-python-flask",
+              "recipes/sdk-token-python-django",
+              "recipes/sdk-token-go-gin",
+              "recipes/sdk-token-php",
+              "recipes/sdk-token-ruby-sinatra",
+              "recipes/sdk-token-java"
+            ]
+          },
+          {
+            "group": "Verify and handle results",
+            "pages": [
+              "recipes/verify-pan-branch-on-error-code",
+              "recipes/pan-ocr-idempotent-retry",
+              "recipes/aadhaar-okyc-send-otp",
+              "recipes/verify-webhook-signatures",
+              "recipes/ocr-upload-multipart",
+              "recipes/digilocker-consent-flow",
+              "recipes/esign-and-download",
+              "recipes/confirm-session-result"
             ]
           }
         ]
@@ -111,32 +231,12 @@
         "tab": "SDKs",
         "groups": [
           {
-            "group": "Web (ReactJS)",
+            "group": "SDKs",
             "pages": [
-              "sdks/web"
-            ]
-          },
-          {
-            "group": "Android (Kotlin)",
-            "pages": [
-              "sdks/android"
-            ]
-          },
-          {
-            "group": "iOS (Swift)",
-            "pages": [
-              "sdks/ios"
-            ]
-          },
-          {
-            "group": "Flutter",
-            "pages": [
-              "sdks/flutter"
-            ]
-          },
-          {
-            "group": "React Native",
-            "pages": [
+              "sdks/web",
+              "sdks/android",
+              "sdks/ios",
+              "sdks/flutter",
               "sdks/react-native"
             ]
           },
@@ -147,12 +247,35 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "Changelog",
+        "groups": [
+          {
+            "group": "Changelog",
+            "pages": [
+              "changelog"
+            ]
+          }
+        ]
       }
     ]
   },
-  "description": "idto API documentation — verify PAN, Aadhaar, GST, bank accounts, and more via a unified REST API for Indian identity, document, and business verification.",
+  "description": "IDTO API documentation: verify PAN, Aadhaar, GST, bank accounts and more through one REST API for Indian identity, document and business verification.",
   "api": {
-    "openapi": "openapi2.0.json"
+    "openapi": "openapi2.0.json",
+    "examples": {
+      "languages": [
+        "curl",
+        "javascript",
+        "typescript",
+        "python",
+        "go",
+        "php",
+        "ruby",
+        "java"
+      ]
+    }
   },
   "appearance": {
     "default": "light"
@@ -160,5 +283,116 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
-  }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "redirects": [
+    {
+      "source": "/api-reference/v2/pan-validation",
+      "destination": "/api-reference/pan/pan-validation",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/pan-detailed",
+      "destination": "/api-reference/pan/pan-detailed",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/pan-ocr",
+      "destination": "/api-reference/pan/pan-ocr",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/okyc-generate-otp",
+      "destination": "/api-reference/aadhaar/okyc-generate-otp",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/okyc-get-result",
+      "destination": "/api-reference/aadhaar/okyc-get-result",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/aadhaar-ocr",
+      "destination": "/api-reference/aadhaar/aadhaar-ocr",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/aadhaar-qr",
+      "destination": "/api-reference/aadhaar/aadhaar-qr",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/digilocker",
+      "destination": "/api-reference/aadhaar/digilocker",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/gst-verification-basic",
+      "destination": "/api-reference/business/gst-verification-basic",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/cin-mca-verification",
+      "destination": "/api-reference/business/cin-mca-verification",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/employment-history",
+      "destination": "/api-reference/business/employment-history",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/bank-verification",
+      "destination": "/api-reference/bank/bank-verification",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/driving-licence",
+      "destination": "/api-reference/driving-vehicle/driving-licence",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/dl-ocr",
+      "destination": "/api-reference/driving-vehicle/dl-ocr",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/face-match",
+      "destination": "/api-reference/face/face-match",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/liveness",
+      "destination": "/api-reference/face/liveness",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/v2/invoice-ocr",
+      "destination": "/api-reference/documents/invoice-ocr",
+      "permanent": true
+    },
+    {
+      "source": "/guides/async-polling",
+      "destination": "/migrate-from-v1",
+      "permanent": true
+    },
+    {
+      "source": "/recipes/bank-verification-idempotent-retry",
+      "destination": "/recipes/pan-ocr-idempotent-retry",
+      "permanent": true
+    }
+  ]
 }

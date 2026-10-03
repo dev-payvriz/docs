@@ -1,0 +1,79 @@
+---
+title: "Migrate from v1"
+sidebarTitle: "Migrate from v1"
+description: "Move a v1 integration to the v2 contract: path, response shape, errors, billing signal and retries."
+---
+
+v2 is the same verification behind a stable contract. Migrating is mostly a change of path and of how you read the response. Both versions stay live, so you can migrate one product at a time.
+
+## What changes
+
+| | v1 (`/verify/*`) | v2 (`/v2/verify/*`) |
+| --- | --- | --- |
+| Response shape | Close to the source's own reply, plus `tranx_id` and `timestamp`; differs per product | One envelope on every product: `status`, `message`, `error_code`, `data`, `billed`, `tranx_id`, `timestamp` |
+| No-record result | Varies per product: an error status, a `200` with a failure status, or a `200` success with a code | Always `200`, `status: "success"`, `error_code: "IDTO_202"`, `data: null`, billed |
+| Billing signal | `chargeble` and `user_consent` added when the call was charged | Boolean `billed` on every response |
+| Schema errors | `422` with FastAPI `{"detail": [...]}` | `422` with the envelope and `IDTO_001` |
+| Other errors | `{"detail": {"status": "error", "message": ..., "error_code": ..., "data": null, "tranx_id": ..., "timestamp": ...}}` | Flat envelope with `status: "error"` and an `IDTO_*` code |
+| Retries | No idempotency; a retry runs and may bill again | `Idempotency-Key` header replays a completed call |
+| Authentication | `X-Client-ID` + `X-API-Key` | Same |
+
+## Steps
+
+<Steps>
+  <Step title="Change the path">
+    `POST /verify/<product>` becomes `POST /v2/verify/<product>`. Check the product's v2 page for the exact request fields: some v2 products renamed or tightened fields, and the [Input formats](/reference/input-formats) page lists every rule.
+  </Step>
+  <Step title="Read data from data">
+    v2 puts the result under `data` with fixed keys per product. Map your old field reads to the v2 keys shown in the product's response schema.
+  </Step>
+  <Step title="Branch on error_code">
+    Replace checks on the source's own status strings with `error_code`: `null` is a result, `IDTO_202` is a definitive no-record, anything else is in [Error codes](/reference/v2-error-codes).
+  </Step>
+  <Step title="Read billed">
+    Replace `chargeble` checks with the boolean `billed`.
+  </Step>
+  <Step title="Add an Idempotency-Key">
+    Send a unique key per logical verification and reuse it on retries. See [Idempotency](/concepts/idempotency).
+  </Step>
+  <Step title="Run both side by side">
+    Point a small share of traffic at v2 on staging, compare outcomes per input, then switch.
+  </Step>
+</Steps>
+
+## Error shapes side by side
+
+```json v1 error (shape)
+{
+  "detail": {
+    "status": "error",
+    "message": "<message>",
+    "error_code": "<code>",
+    "data": null,
+    "tranx_id": "<tranx_id>",
+    "timestamp": "<timestamp>"
+  }
+}
+```
+
+```json v2 error
+{
+  "status": "error",
+  "message": "Invalid PAN format. Please check and retry.",
+  "error_code": "IDTO_001",
+  "data": null,
+  "billed": false,
+  "chargeble": "false",
+  "user_consent": "false"
+}
+```
+
+## Products that stay on v1
+
+Some products have no v2 endpoint yet. Keep calling them on v1 and read their pages for the v1 response shape. See [API versioning](/concepts/api-versioning) for the list.
+
+## Polling endpoints
+
+Earlier docs described polling a pending v1 result by `reference_id` (`IDTO_203` pending, `IDTO_207` not found). Those endpoints are not part of the documented API. v2 endpoints return a final result in the same response.
+
+Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

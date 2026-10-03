@@ -1,0 +1,104 @@
+---
+title: "Retry safely with an idempotency key"
+description: "Send an Idempotency-Key so a retried verification returns the stored result instead of running and billing twice."
+---
+
+Networks fail after the request leaves your server. Send an `Idempotency-Key` header on every v2 verification, and reuse the same key when you retry the same request. This recipe uses PAN OCR, which reads a card image, so there is no money movement.
+
+| Situation | What IDTO returns |
+|---|---|
+| First call with a new key | The normal response |
+| Same key, same body, first call finished with a `2xx` | The stored first response, byte for byte, with the same `tranx_id` and the same `billed`. Nothing runs again and nothing new is charged |
+| Same key, first call still running | `409` with `IDTO_004`. Wait and retry with the same key |
+| Same key, different body | `422` with `IDTO_010` |
+| Same key, first call returned an error | Nothing was stored, so the retry runs the verification again |
+
+Keys are scoped to your account, can be up to 255 characters, and are kept for 48 hours.
+
+<Steps>
+<Step title="Set your credentials">
+Use `https://dev.idto.ai` (staging) while you build and `https://prod.idto.ai` (production) when you go live. Keep the client ID and API key on your server only. Never ship them to a browser or a mobile app.
+
+```bash .env
+IDTO_BASE_URL=https://dev.idto.ai
+IDTO_CLIENT_ID=your-client-id
+IDTO_API_KEY=your-api-key
+```
+
+```bash
+set -a; source .env; set +a
+```
+</Step>
+<Step title="Retry with one key per logical request">
+Generate the key once, before the first attempt, and reuse it for every retry of that request.
+
+<CodeGroup>
+
+```python idempotent_retry.py
+import os
+import sys
+import time
+import uuid
+
+import requests
+
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+HEADERS = {"X-Client-ID": os.environ["IDTO_CLIENT_ID"], "X-API-Key": os.environ["IDTO_API_KEY"]}
+
+
+def read_pan_card(image_bytes, idempotency_key):
+    return requests.post(
+        f"{BASE_URL}/v2/verify/pan_ocr",
+        headers={**HEADERS, "Idempotency-Key": idempotency_key},
+        files={"file": ("pan-card.jpg", image_bytes, "image/jpeg")},
+        timeout=(5, 60),
+    )
+
+
+def read_with_retry(image_bytes, attempts=3):
+    idempotency_key = str(uuid.uuid4())
+    for attempt in range(attempts):
+        try:
+            response = read_pan_card(image_bytes, idempotency_key)
+            if response.status_code != 409:
+                return idempotency_key, response
+        except (requests.ConnectionError, requests.Timeout):
+            pass
+        time.sleep(2 ** attempt)
+    raise RuntimeError("no response after retries")
+
+
+if __name__ == "__main__":
+    with open(sys.argv[1], "rb") as image:
+        image_bytes = image.read()
+    key, first = read_with_retry(image_bytes)
+    replay = read_pan_card(image_bytes, key)
+    print("first", first.status_code, first.json().get("error_code"), first.json().get("billed"))
+    print("replay", replay.status_code, replay.json().get("error_code"), replay.json().get("billed"))
+    print("same tranx_id", first.json().get("tranx_id") == replay.json().get("tranx_id"))
+    print("identical body", first.content == replay.content)
+```
+
+</CodeGroup>
+</Step>
+<Step title="Run it">
+```bash
+pip install requests
+python idempotent_retry.py pan-card.jpg
+```
+
+```text Output
+first 200 None True
+replay 200 None True
+same tranx_id True
+identical body True
+```
+</Step>
+</Steps>
+
+## Good to know
+
+- Use a fresh key for each new verification. Reusing a key with a different file or body returns `IDTO_010`.
+- The bank verification product derives a key automatically when you do not send one. See the bank verification reference.
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20recipes%2Fbank-verification-idempotent-retry) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20recipes%2Fbank-verification-idempotent-retry)
