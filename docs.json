@@ -108,7 +108,9 @@
           {
             "group": "Spike Group",
             "pages": [
-              "spike/spike-snippet"
+              "spike/spike-snippet",
+              "spike/openapi-endpoint",
+              "spike/openapi-webhook"
             ]
           }
         ]
@@ -158,10 +160,7 @@
   },
   "description": "idto API documentation — verify PAN, Aadhaar, GST, bank accounts, and more via a unified REST API for Indian identity, document, and business verification.",
   "api": {
-    "openapi": [
-      "openapi2.0.json",
-      "spike/tiny.json"
-    ]
+    "openapi": "https://example.com/idto-openapi.json"
   },
   "appearance": {
     "default": "light"
