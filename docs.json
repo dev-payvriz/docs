@@ -158,7 +158,10 @@
   },
   "description": "idto API documentation — verify PAN, Aadhaar, GST, bank accounts, and more via a unified REST API for Indian identity, document, and business verification.",
   "api": {
-    "openapi": "openapi2.0.json"
+    "openapi": [
+      "openapi2.0.json",
+      "spike/tiny.json"
+    ]
   },
   "appearance": {
     "default": "light"
@@ -166,5 +169,11 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
-  }
+  },
+  "redirects": [
+    {
+      "source": "/api-reference/v2/pan-validation",
+      "destination": "/introduction"
+    }
+  ]
 }
