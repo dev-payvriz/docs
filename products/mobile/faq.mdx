@@ -44,7 +44,7 @@ A charged response is HTTP 200 with `status: "success"` and carries `"chargeble"
 
 ### What does an error look like?
 
-Errors raised after authentication use `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`. A body that fails validation returns `{"detail": [...]}` with status 422. Authentication failures return `{"detail": "..."}` with 401, 403 or 404. Branch on the HTTP status, not on the text of `message`, because the wording of a no-record message can change.
+Errors raised after authentication use `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`, where `data`, `tranx_id` and `timestamp` can be absent; see [Error response shapes](/concepts/request-response#error-response-shapes). A body that fails validation returns `{"detail": [...]}` with status 422. Authentication failures return `{"detail": "..."}` with 401, 403 or 404. Branch on the HTTP status, not on the text of `message`, because the wording of a no-record message can change.
 
 ### What does the insufficient credits message mean?
 

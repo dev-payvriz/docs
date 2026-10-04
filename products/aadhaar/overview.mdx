@@ -87,7 +87,7 @@ sequenceDiagram
     else e-Aadhaar XML
         App->>idto: POST /verify/digilocker/get_reference {code, code_verifier}
         idto-->>App: reference_key, valid one hour
-        App->>idto: POST /verify/digilocker/fetch_aadhaar {reference_key}
+        App->>idto: POST /verify/digilocker/fetch_aadhaar with reference_key
         idto-->>App: e-Aadhaar XML file
     end
 ```
@@ -109,6 +109,8 @@ Each `code` can be exchanged once, so choose one branch per session. To check fi
 | No QR in the image | aadhaar_qr | 422 | `IDTO_204` | No | Ask for a clearer photo of the QR |
 | Card read | aadhaar_ocr | 200 | `null` | Yes | Use as a pre-fill, then verify by OKYC, DigiLocker or QR |
 | DigiLocker code expired or reused | digilocker | 400 | `IDTO_001` | No | Start a new DigiLocker session |
+
+Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 ## In the idto verification flow
 

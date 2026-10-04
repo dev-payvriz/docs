@@ -35,7 +35,7 @@ sequenceDiagram
 
 ## Outcomes and billing
 
-Both endpoints return the idto envelope. A 2xx response is billed whatever the decision: a failed liveness check or a non-matching face is still a completed check. Errors such as an unreadable image (`IDTO_503`, 413) or no decision (`IDTO_509` or `IDTO_609`, 500) are never billed. Face match treats a score of 70 or more as a match.
+Both endpoints return the idto envelope. A 2xx response is billed whatever the decision: a failed liveness check or a non-matching face is still a completed check. Errors such as an unreadable image (`IDTO_503`, 413) or no decision (`IDTO_509` or `IDTO_609`, 500) are never billed. Face match treats a score of 70 or more as a match. Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 ## In the hosted flow
 

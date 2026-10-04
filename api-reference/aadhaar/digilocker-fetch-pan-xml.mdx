@@ -1,11 +1,11 @@
 ---
 title: "Download the PAN XML"
 sidebarTitle: "DigiLocker: PAN XML"
-description: "Download the holder's PAN from DigiLocker as a XML file."
+description: "Download the holder's PAN from DigiLocker as an XML file."
 openapi: "openapi2.0.json POST /verify/digilocker/fetch_pan/xml"
 ---
 
-Returns the holder's PAN from their DigiLocker as a XML file, not JSON. idto looks for the issued document named "PAN Verification Record" in the holder's DigiLocker and returns it. Save the body as a file. The response carries `Content-Disposition: attachment; filename="pan.xml"`. Keep it under the same controls as any identity document copy.
+Returns the holder's PAN from their DigiLocker as an XML file, not JSON. idto looks for the issued document named "PAN Verification Record" in the holder's DigiLocker and returns it. Save the body as a file. The response carries `Content-Disposition: attachment; filename="pan.xml"`. Keep it under the same controls as any identity document copy.
 
 Needs a `reference_key` from [Get a reference key](/api-reference/aadhaar/digilocker-get-reference), valid for one hour. Get one by starting a session with [Start a DigiLocker session](/api-reference/aadhaar/digilocker-initiate-session), letting the holder sign in and consent on DigiLocker, then exchanging the returned `code`. See the [DigiLocker guide](/guides/digilocker-integration) and the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). The holder must have the PAN in their DigiLocker and consent to share it.
 

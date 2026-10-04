@@ -26,7 +26,7 @@ Ten characters: five letters, four digits, one letter, for example `ABCDE1234F`.
 
 ### Why is a correctly shaped PAN rejected with IDTO_001?
 
-The fourth character of a PAN is the holder type, and only `P`, `C`, `H`, `F`, `A`, `T`, `B`, `L`, `J` and `G` are issued. A ten character value with any other letter there passes the shape check but is rejected at lookup as an invalid PAN: HTTP 400, `IDTO_001`, `billed: false`. The sample `ABCDE1234F` used across these docs has `D` in that position, so it gets this response. Ask the user to re-check the number.
+The fourth character of a PAN is the holder type, and only `P`, `C`, `H`, `F`, `A`, `T`, `B`, `L`, `J` and `G` are issued. A ten character value with any other letter there passes the shape check and is then judged by the verification source, so it can come back as `IDTO_001` (400, not billed) or as `IDTO_202` (200, billed) depending on the source on your account. The sample `ABCDE1234F` used across these docs has `D` in that position, so do not rely on its outcome; see [Environments](/environments#what-differs-between-environments). Ask the user to re-check the number.
 
 ### What does the holder category mean?
 
@@ -62,7 +62,7 @@ Authentication failures (401, 403) are not billed either. The full list is in [E
 
 ### Why was a call inside a workflow returned with billed false?
 
-When you pass `workflow_session_token` for a workflow that already charges for the PAN step, the individual call is not charged again and `billed` is `false`.
+When you pass `workflow_session_token` of an in-progress verification session that charges for the PAN step, the individual call is not charged again and `billed` is `false`. See [Billing](/concepts/billing-consent#billing).
 
 ## Consent and data
 

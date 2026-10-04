@@ -1,23 +1,25 @@
 ---
 title: "Billing & Consent"
 sidebarTitle: "Billing & Consent"
-description: "When a v2 call is billed, when it isn't, and the exact request field that enforces user consent."
+description: "When a call is billed, when it isn't, and the exact request field that enforces user consent."
 ---
 
 ## Billing
 
-The rule for every `/v2/verify/*` product is the same: **a call is billed exactly when it returns a 2xx response with `status: "success"`.**
+One rule covers every product, v1 and v2: **a call is charged when it finishes with a 2xx response whose `status` is `"success"`, unless a verification session already pays for that step.**
 
-That covers two outcomes:
+On v2 that covers two outcomes, both HTTP 200 and both `billed: true`:
 
 - A **full match**: `error_code` is `null` and `data` is populated.
 - A **definitive no-record result**: `error_code` is `IDTO_202` and `data` is `null`. The lookup still ran to completion, it just didn't find anything, and that is a billable outcome, not a free one.
 
-Both cases carry `billed: true`. One exception: a call that carries a `workflow_session_token` for a verification session that already bills this step returns `billed: false`, because the session step is charged instead of the individual call.
+Every raised error (any non-2xx response) has `status: "error"` and is never charged. That includes `IDTO_204` (no readable Aadhaar QR, HTTP 422): it is a raised error like any other, not an exception to the rule.
 
-A **raised error** (any non-2xx response) is never billed. `status` is `"error"`, `data` is `null`, and `billed` is `false`.
+Three cases follow from the rule and are worth knowing:
 
-`IDTO_204` (no readable Aadhaar QR found in the uploaded image) is a raised 422 and follows the same rule: `billed: false`.
+1. **Session-paid step.** A call that carries the `workflow_session_token` of an in-progress verification session, for a step that session charges for, returns a 2xx `success` with `billed: false`. The session step is charged instead of the call. If the session is priced per call, or has ended or expired, the call is charged normally.
+2. **Idempotent replay.** A retry with the same `Idempotency-Key` returns a copy of the stored first response, including its `billed` value, and is not charged again. See [Idempotency](/concepts/idempotency).
+3. **v1 asynchronous results.** A v1 call that answers HTTP 202 with `status: "pending"` and `IDTO_203` is not charged at that point. The verification finishes in the background and is charged once, by the rule above, when it completes. Fetching the result from `/verify/result/{reference_id}` never charges.
 
 ```json
 {
@@ -26,12 +28,16 @@ A **raised error** (any non-2xx response) is never billed. `status` is `"error"`
   "error_code": "IDTO_202",
   "data": null,
   "billed": true,
+  "chargeble": "true",
+  "user_consent": "true",
   "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
   "timestamp": "2026-09-14T10:15:30Z"
 }
 ```
 
-`billed` is the single source of truth, and it means the same thing on every v2 product regardless of which underlying provider served the request. Every v2 body also carries `chargeble` and `user_consent` as the strings `"true"` or `"false"`. These are legacy flags kept for older integrations and simply mirror `billed`; despite its name, `user_consent` in a response does not report whether consent was given. Branch on `billed`.
+On v2, `billed` is the single source of truth, and it means the same thing on every product regardless of which underlying provider served the request. Every v2 body also carries `chargeble` and `user_consent` as the strings `"true"` or `"false"`. These are legacy flags kept for older integrations and simply mirror `billed`; despite its name, `user_consent` in a response does not report whether consent was given. Branch on `billed`.
+
+On v1 there is no `billed` field. A charged v1 call carries `chargeble: "true"` and `user_consent: "true"`; an uncharged one carries neither. Whether a no-record answer counts as `"success"` on v1 depends on the product, so read those two flags rather than assuming.
 
 ### Billing per outcome
 
@@ -40,10 +46,11 @@ A **raised error** (any non-2xx response) is never billed. `status` is `"error"`
 | Full match | 200 | `success` | `null` | `true` |
 | Definitive no record | 200 | `success` | `IDTO_202` | `true` |
 | Same call, replayed with its `Idempotency-Key` | 200 | as first response | as first response | as first response, no new charge |
-| Step already paid for by a verification session | 200 | `success` | as above | `false` |
+| Step already paid for by a verification session | 200 | `success` | `null` or `IDTO_202` | `false` |
 | Bad input, missing consent | 400 or 422 | `error` | `IDTO_001`, `IDTO_005` | `false` |
 | Source busy or failing | 429 or 503 | `error` | `IDTO_006`, `IDTO_008`, `IDTO_103`, `IDTO_403` | `false` |
 | Unreadable Aadhaar QR | 422 | `error` | `IDTO_204` | `false` |
+| Any other raised error | 4xx or 5xx | `error` | any `IDTO_*` code, or `null` | `false` |
 
 A replayed response is a copy of the stored first response, so its `billed` value describes that first charge. It is not a second one.
 
@@ -57,7 +64,7 @@ Before a standalone verification runs, idto checks that your balance covers it. 
 
 To audit charges, open **Transactions** in the dashboard. Each verification shows whether it was charged, and a call that was retried automatically shows its attempts with the one that was charged.
 
-For the full per-code billing table, see [Error Codes](/reference/v2-error-codes).
+For the full per-code billing table, see [Error Codes](/reference/v2-error-codes). For the exact body each kind of response carries, see [Error response shapes](/concepts/request-response#error-response-shapes).
 
 ## Consent
 
@@ -78,13 +85,15 @@ If `user_consent` is missing or not truthy, the request is rejected before any v
   "message": "User consent is required to proceed.",
   "error_code": "IDTO_005",
   "data": null,
-  "billed": false,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z",
   "chargeble": "false",
-  "user_consent": "false"
+  "user_consent": "false",
+  "billed": false
 }
 ```
 
-This is a raised error (HTTP 400), so it is never billed, you can correct the request and resend without losing a credit. On `pan_validation`, `pan_detailed` and `okyc_generate_otp`, only `true`, `"true"` and `"True"` are accepted; anything else, including `false`, `"yes"`, `1`, an empty string, or a missing field, triggers `IDTO_005`. `aadhaar_qr` reads the field more loosely (in a multipart form, `true`, `1` and `yes` in any letter case all count). Send the JSON boolean `true`, or the string `true` in a form, on every product so the same value works everywhere.
+This is a raised error (HTTP 400), so it is never billed: you can correct the request and resend without losing a credit. On `pan_validation`, `pan_detailed` and `okyc_generate_otp`, only `true`, `"true"` and `"True"` are accepted; anything else, including `false`, `"yes"`, `1`, an empty string, or a missing field, triggers `IDTO_005`. `aadhaar_qr` reads the field more loosely (in a multipart form, `true`, `1` and `yes` in any letter case all count). Send the JSON boolean `true`, or the string `true` in a form, on every product so the same value works everywhere.
 
 Input checks run before the consent check. On the PAN products, a missing or malformed `pan_number` returns `IDTO_001` (400) even when consent is also missing, so fix input errors first and expect `IDTO_005` only once the rest of the request is valid.
 

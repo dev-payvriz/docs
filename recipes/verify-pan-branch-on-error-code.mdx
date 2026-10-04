@@ -9,7 +9,7 @@ Every v2 verification returns the same envelope. A `2xx` response always has `st
 |---|---|---|---|---|
 | 200 | `success` | `null` | PAN verified, `data` filled | Yes |
 | 200 | `success` | `IDTO_202` | No record for this PAN, `data` is `null` | Yes |
-| 400 | `error` | `IDTO_001` | Input failed validation, for example a malformed PAN | No |
+| 400 | `error` | `IDTO_001` | Input failed validation, by idto's format check or by the source | No |
 | 400 | `error` | `IDTO_005` | `user_consent` was not `true` | No |
 
 <Steps>
@@ -42,7 +42,7 @@ import os
 
 import requests
 
-BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://dev.idto.ai")
 HEADERS = {"X-Client-ID": os.environ["IDTO_CLIENT_ID"], "X-API-Key": os.environ["IDTO_API_KEY"]}
 
 
@@ -54,11 +54,12 @@ def verify_pan(pan_number):
         timeout=(5, 30),
     )
     body = response.json()
-    if body["status"] == "success" and body["error_code"] is None:
+    status, error_code = body.get("status"), body.get("error_code")
+    if status == "success" and error_code is None:
         return "verified", body["data"]
-    if body["status"] == "success" and body["error_code"] == "IDTO_202":
+    if status == "success" and error_code == "IDTO_202":
         return "no_record", None
-    return "error", {"http": response.status_code, "error_code": body["error_code"], "message": body["message"]}
+    return "error", {"http": response.status_code, "error_code": error_code, "message": body.get("message") or body.get("detail")}
 
 
 if __name__ == "__main__":
@@ -66,7 +67,7 @@ if __name__ == "__main__":
 ```
 
 ```javascript verify_pan.mjs
-const BASE_URL = process.env.IDTO_BASE_URL ?? "https://prod.idto.ai";
+const BASE_URL = process.env.IDTO_BASE_URL ?? "https://dev.idto.ai";
 
 export async function verifyPan(panNumber) {
   const response = await fetch(`${BASE_URL}/v2/verify/pan_validation`, {
@@ -82,7 +83,7 @@ export async function verifyPan(panNumber) {
   const body = await response.json();
   if (body.status === "success" && body.error_code === null) return { outcome: "verified", data: body.data };
   if (body.status === "success" && body.error_code === "IDTO_202") return { outcome: "no_record" };
-  return { outcome: "error", http: response.status, errorCode: body.error_code, message: body.message };
+  return { outcome: "error", http: response.status, errorCode: body.error_code, message: body.message ?? body.detail };
 }
 
 console.log(await verifyPan("ABCDE1234F"));
@@ -91,13 +92,17 @@ console.log(await verifyPan("ABCDE1234F"));
 </CodeGroup>
 </Step>
 <Step title="Read the result">
-The sample PAN `ABCDE1234F` is a format placeholder, so it fails validation before any source is called:
+The sample PAN `ABCDE1234F` is a placeholder. It passes idto's format check, so the call reaches a source, and the result depends on which source serves your account. Staging hits live sources, so expect either of these:
 
-```json 400
+```json 400 Rejected by the source, not billed
 {"status": "error", "message": "Invalid PAN format. Please check and retry.", "error_code": "IDTO_001", "billed": false}
 ```
 
-With a real PAN you are authorised to verify, the same code returns `verified` with the card details, or `no_record`.
+```json 200 No record, billed
+{"status": "success", "message": "Record is invalid or does not exist.", "error_code": "IDTO_202", "data": null, "billed": true}
+```
+
+The code prints `error` for the first and `no_record` for the second. A 401 (wrong keys) has only a `detail` field, and the code reports it as `error` with that text. With a real PAN you are authorised to verify, the same code returns `verified` with the card details, or `no_record`.
 </Step>
 </Steps>
 

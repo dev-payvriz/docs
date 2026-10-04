@@ -51,7 +51,7 @@ type sdkToken struct {
 func main() {
 	baseURL := os.Getenv("IDTO_BASE_URL")
 	if baseURL == "" {
-		baseURL = "https://prod.idto.ai"
+		baseURL = "https://dev.idto.ai"
 	}
 	client := &http.Client{Timeout: 15 * time.Second}
 

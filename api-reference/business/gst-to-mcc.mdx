@@ -1,0 +1,53 @@
+---
+title: "Get merchant category codes for a GSTIN (v1)"
+sidebarTitle: "GST to MCC (v1)"
+description: "Send a GSTIN and get the merchant category codes for the goods and services it is registered for."
+openapi: "openapi2.0.json POST /verify/gst_to_mcc"
+---
+
+Use this endpoint to assign a merchant category code while onboarding a merchant, based on what its GST registration says it sells. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## How to read the result
+
+- `result` is an object: `result.business_details` lists each registered goods line (`hsncd`, `gdes`) or services line (`saccd`, `sdes`) with its `mcc_code`. `mcc_code` is empty when no MCC maps to that line.
+- `result` is a string: no data was returned, for example because the GSTIN is invalid. This is still `status: "success"` and is charged. The text varies; do not parse it.
+- `consent` must be `Y` and `consent_text` must not be empty, or the call is refused before it reaches the source.
+- Charged only when the response `status` is `success`. Billing signal: `chargeble` and `user_consent` are present as `"true"` only on a charged call, spelled exactly as shown. There is no `billed` field on v1.
+- `tranx_id` identifies the call for support.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| none | 400 | `{"detail": {"status": "error", "error_code": null, ...}}` when this product is not enabled for your account. Ask your account manager to enable it. | No |
+| none | 400 | `{"detail": {"status": "error", "message": "GST number is required", ...}}` when `gst_no` is an empty string | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Valid consent and consent_text are required", ...}}` when `consent` is not `Y` or `consent_text` is empty | No |
+| none | 400 | `{"detail": {"status": "error", ...}}` when the source rejects the input. `message` varies. | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` when no credentials are sent; `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` when the key pair is not recognised | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", ...], ...}]}` when a field is missing or has the wrong type | No |
+| none | 401 | `{"detail": {"status": "error", ...}}` (wrapped, unlike the authentication 401) when the verification source rejected the call. Not about your keys. Retry later. | No |
+| none | 403 | `{"detail": {"status": "error", ...}}` (wrapped) when the verification source refused the call. Retry later. | No |
+| none | 429 | `{"detail": {"status": "error", ...}}` when the verification source is rate limiting. Retry later. | No |
+| none | 502 | `{"detail": {"status": "error", ...}}` when the verification source failed or returned an unexpected status. `message` varies. Retry later. | No |
+| none | 502, 504 | `{"detail": {"status": "error", "message": "timeout", ...}}` on a source timeout (504), or a connection failure (502). Retry later. | No |
+| none | 500 | Our side failed. The body is not part of the contract; retry once after a few seconds (this endpoint has no Idempotency-Key). If it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+See the [Business verification FAQ](/products/business/faq) for common questions.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20api-reference%2Fbusiness%2Fgst-to-mcc) with the page link.

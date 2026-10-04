@@ -70,7 +70,7 @@ Never put your API key in a browser or mobile app. Client-side code uses an SDK 
 
 ## How a v2 call works
 
-Every v2 call is a `POST` to `/v2/verify/<product>` with your key pair in the headers. Once the request is authenticated, the response always has the same top-level fields:
+Every v2 call is a `POST` to `/v2/verify/<product>` with your key pair in the headers. Once the request is authenticated, every 2xx response has these top-level fields, and a raised error always has `status`, `message`, `error_code` and `billed`:
 
 | Field | Meaning |
 | --- | --- |
@@ -81,7 +81,7 @@ Every v2 call is a `POST` to `/v2/verify/<product>` with your key pair in the he
 | `billed` | `true` when the call was charged |
 | `tranx_id` | idto's id for the call. Store it and quote it to support |
 
-An authentication failure (401 or 403) returns a plain `detail` message instead. Branch on `error_code`, not on `status`: a no-record result is a successful, billed check. Errors are never billed. See [Request and response](/concepts/request-response) and [Billing and consent](/concepts/billing-consent).
+An authentication failure (401 or 403) returns a plain `detail` message instead. [Error response shapes](/concepts/request-response#error-response-shapes) lists exactly what each product family returns. Branch on `error_code`, not on `status`: a no-record result is a successful check. A call is charged when it finishes with a 2xx response whose `status` is `"success"`, unless a verification session already pays for that step, and errors are never charged. See [Billing and consent](/concepts/billing-consent#billing).
 
 ## A typical integration
 

@@ -61,7 +61,7 @@ No decision could be produced: `IDTO_509` for face match and `IDTO_609` for live
 
 ### Why does a check inside a workflow show billed false?
 
-When you pass `workflow_session_token` for a workflow that already charges for the face step, the call is not charged again and `billed` is `false`. This applies to both face match and liveness.
+When you pass `workflow_session_token` of an in-progress verification session that charges for the face step, the call is not charged again and `billed` is `false`. This applies to both face match and liveness.
 
 ## Retries and limits
 

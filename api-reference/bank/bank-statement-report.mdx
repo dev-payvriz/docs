@@ -1,0 +1,65 @@
+---
+title: "Download the bank statement report (v1)"
+sidebarTitle: "Bank Statement: Report (v1)"
+description: "Download the bank statement analysis as a spreadsheet or JSON."
+openapi: "openapi2.0.json POST /verify/bank_statement_pdf/report"
+---
+
+Use this endpoint once [Status](/api-reference/bank/bank-statement-status) shows a transaction. Send `report_type: "xlsx"` for a spreadsheet or leave the default `json`. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+## The flow
+
+1. [Start upload](/api-reference/bank/bank-statement-start-upload): open a session, keep `data.session_id`.
+2. [Upload](/api-reference/bank/bank-statement-upload): send each statement PDF.
+3. [Complete](/api-reference/bank/bank-statement-complete): tell idto every PDF is in.
+4. [Status](/api-reference/bank/bank-statement-status): check processing, or wait for the notification on your `txn_completed_cburl`.
+5. [Report](/api-reference/bank/bank-statement-report): download the analysis.
+
+[Cancel](/api-reference/bank/bank-statement-cancel) closes a session you no longer need. Every step takes the `session_id` from step 1; idto keeps the session for your account only.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use statements you are authorised to share. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Each step is a separate call, charged only when its response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. There is no `billed` field on v1.
+
+A source decline comes back as HTTP 200 with `status: "failed"`, a `message` and an `error_code`, and is not charged. That `error_code` is the source's own reason code (or `IDTO_008` when it gave none), not a stable idto list: branch on `status`.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## How to read the result
+
+- `report_type: "xlsx"`: the response is the file itself, `Content-Disposition: attachment; filename="bank_statement_report.xlsx"`, with no JSON body. Charged.
+- `report_type: "json"`: `status: "success"` with the report in `data.report`. The report's fields come from the verification source and are not a fixed idto contract; prefer `xlsx` if you need a stable format. Charged.
+- `status: "failed"`: the source declined the request. Not charged.
+
+## Errors
+
+Raised errors use the v1 shapes: `{"detail": {...}}` for verification failures, `{"detail": "..."}` for authentication and `{"detail": [...]}` for request validation. Wrapped `detail` objects with `"status": "error"` also carry `tranx_id` and `timestamp`; the session errors below do not.
+
+| HTTP | Body | Billed |
+|---|---|---|
+| 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| 400 | `{"detail": {"status": "error", "error_code": null, ...}}` when this product is not enabled for your account. Ask your account manager to enable it. | No |
+| 401 | `{"detail": "Could not validate credentials"}` when no credentials are sent; `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` when the key pair is not recognised | No |
+| 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| 404 | `{"detail": "Customer not found for this client"}` | No |
+| 422 | `{"detail": [{"type": "missing", "loc": ["body", ...], ...}]}` when a field is missing or has the wrong type | No |
+| 400 | `{"detail": {"status": "failed", "message": "Invalid session_id"}}` when `session_id` is not a UUID | No |
+| 404 | `{"detail": {"status": "failed", "message": "Bank statement session not found"}}` when the session does not exist for your account | No |
+| 400 | `{"detail": {"status": "failed", "message": "Report transaction is not ready. Check status first."}}` when no transaction is known for the session yet | No |
+| 502 | `{"detail": {"status": "error", "message": "Bank statement report exceeds the maximum supported size", ...}}` or `"Bank statement report could not be prepared"` for an `xlsx` report | No |
+| Any 4xx or 5xx | `{"detail": {"status": "error", "message": "Bank statement report request failed", ...}}` when the source refused the download; the source's status is passed through | No |
+| 502 | `{"detail": {"status": "error", "message": "Invalid response from ... API", ...}}` or `"... returned an empty response"` when the verification source reply is unreadable | No |
+| 500 | Our side failed. The body is not part of the contract; retry once after a few seconds (this endpoint has no Idempotency-Key). If it persists, write to tech@idto.ai with the request time. | No |
+
+Questions about this product are answered in the [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20api-reference%2Fbank%2Fbank-statement-report) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20api-reference%2Fbank%2Fbank-statement-report)

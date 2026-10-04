@@ -19,7 +19,7 @@ No. `name` is optional and is not scored. Compare `data.account_holder_name` in 
 
 ### Can I test without being charged?
 
-There is no sandbox. Staging (`https://dev.idto.ai`) reaches live bank networks and deducts credits from your staging account, so use an account you are authorised to verify. The [Test scenarios](/api-reference/bank/bank-verification#test-scenarios) table lists inputs that return each error without running a penny drop.
+There is no sandbox. Staging (`https://dev.idto.ai`) reaches live bank networks and deducts credits from your staging account, so use an account you are authorised to verify. The [Test scenarios](/api-reference/bank/bank-verification#test-scenarios) table lists the expected outcome for common inputs. The same input can give a different outcome on staging and production; see [Environments](/environments#what-differs-between-environments).
 
 ## Input and validation
 
@@ -47,7 +47,7 @@ The call is rejected before any penny drop with HTTP 400, `error_code: null` and
 
 ### Why does a call inside a workflow come back with billed false?
 
-When you pass `workflow_session_token` for a workflow that already charges for the bank step, the individual call is not charged again and `billed` is `false`.
+When you pass `workflow_session_token` of an in-progress verification session that charges for the bank step, the individual call is not charged again and `billed` is `false`. See [Billing](/concepts/billing-consent#billing).
 
 ### How do I tell a charged v1 pennyless call from an uncharged one?
 

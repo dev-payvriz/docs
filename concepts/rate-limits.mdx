@@ -4,14 +4,24 @@ sidebarTitle: "Rate limits"
 description: "What limits apply to server and SDK calls, what you receive when you hit one, and how to retry."
 ---
 
-## Server-to-server calls
+## What a 429 means
 
-Calls made with `X-Client-ID` and `X-API-Key` have no fixed per-key request quota. Capacity is protected in two other ways, and both are signalled in the response so you can back off.
+idto applies no per-key request quota to calls made with `X-Client-ID` and `X-API-Key`. A 429 from a verification call means one of three things, and the body tells you which:
+
+| Body | Meaning | Retry? |
+| --- | --- | --- |
+| `error_code: "IDTO_006"` | The verification source behind the product is limiting requests or could not take this one in time | Yes, with backoff |
+| `error_code: "IDTO_206"` | The OTP attempts for this `okyc_get_result` session are used up | No, request a new OTP |
+| `detail: "This verification session has used its allowance. Start a new session."` | An SDK token bound to one verification session has used its call allowance | No, start a new session |
+
+None of these are billed. Capacity on idto's side is protected by load shedding, which answers 503, not 429.
+
+## Server-to-server calls
 
 | HTTP | `error_code` | When | What to do |
 | --- | --- | --- | --- |
 | 503 | `IDTO_008` | idto is shedding load, or a verification source is not responding | Retry with exponential backoff and jitter |
-| 429 | `IDTO_006` | The verification source behind the product is rate limiting | Retry with backoff; spread bulk jobs over time |
+| 429 | `IDTO_006` | The verification source behind the product is limiting requests | Retry with backoff; spread bulk jobs over time |
 | 503 | `IDTO_103` or `IDTO_403` | The source could not complete this verification right now | Retry shortly |
 
 None of these are billed. For bulk jobs, run a bounded worker pool rather than firing every request at once, and treat a burst of `IDTO_008` as a signal to reduce concurrency.
@@ -34,7 +44,7 @@ On v2 the body is the standard error envelope:
 }
 ```
 
-On v1 the same condition returns 503 with the fields nested under `detail`, `status` set to `"failed"`, and a `Retry-After: 5` header. Honour `Retry-After` whenever it is present.
+On v1 the same condition returns 503 with the fields nested under `detail`, `status` set to `"failed"`, and a `Retry-After: 5` header. Honour `Retry-After` whenever it is present. On v1 a source limit is also a 429 under `detail`: usually an object with `error_code: "IDTO_006"`, and on some products only a `message` string. See [Error response shapes](/concepts/request-response#error-response-shapes).
 
 ## OTP attempts
 
@@ -59,9 +69,13 @@ with HTTP `429`. Start a new session for the user. Related session errors:
 
 None of these session errors is worth retrying unchanged. Each one means the user needs a fresh session, or your app is sending the wrong session token.
 
+## Verification links
+
+The hosted page behind a verification link is opened by your user, not by your server, and it has two limits of its own. Too many attempts from one network in a minute return 429 with `Too many attempts from this network. Wait a minute and try again.` A link whose account balance is below the minimum needed to run it also returns 429, with a message asking the user to contact your business. Recharge from **Billing** in the dashboard to clear the second one.
+
 ## Which 429 to retry
 
-Two different things return HTTP 429, and only one of them clears on its own. Branch on `error_code`, not on the status alone:
+Three different things return HTTP 429 on a verification call, and only one of them clears on its own. Branch on `error_code` or `detail`, not on the status alone:
 
 | Response | Retry? |
 | --- | --- |

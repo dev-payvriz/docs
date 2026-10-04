@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $path !== '/api/idto/token') {
 }
 
 $client = new Client([
-    'base_uri' => getenv('IDTO_BASE_URL') ?: 'https://prod.idto.ai',
+    'base_uri' => getenv('IDTO_BASE_URL') ?: 'https://dev.idto.ai',
     'timeout' => 15,
     'http_errors' => false,
 ]);

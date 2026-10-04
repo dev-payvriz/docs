@@ -33,7 +33,7 @@ curl -sS -X POST "$IDTO_BASE_URL/v2/verify/okyc_generate_otp" \
 ```
 
 ```javascript okyc.mjs
-const BASE_URL = process.env.IDTO_BASE_URL ?? "https://prod.idto.ai";
+const BASE_URL = process.env.IDTO_BASE_URL ?? "https://dev.idto.ai";
 const HEADERS = {
   "X-Client-ID": process.env.IDTO_CLIENT_ID,
   "X-API-Key": process.env.IDTO_API_KEY,
@@ -56,13 +56,13 @@ export async function sendOtp(aadhaarNumber) {
     user_consent: true,
   });
   if (body.status === "success" && body.error_code === null) return { sessionId: body.data.session_id };
-  return { http, errorCode: body.error_code, message: body.message };
+  return { http, errorCode: body.error_code, message: body.message ?? body.detail };
 }
 
 export async function submitOtp(sessionId, otp) {
   const { http, body } = await post("/v2/verify/okyc_get_result", { session_id: sessionId, otp });
   if (body.status === "success" && body.error_code === null) return { outcome: "verified", data: body.data };
-  return { outcome: "error", http, errorCode: body.error_code, message: body.message };
+  return { outcome: "error", http, errorCode: body.error_code, message: body.message ?? body.detail };
 }
 
 if (process.argv[2] === "send") console.log(await sendOtp(process.argv[3]));
@@ -83,11 +83,13 @@ Call `submitOtp(sessionId, otp)` with the OTP the holder types in. A verified re
 
 ## Test it
 
-The sample Aadhaar `999999990019` is a test placeholder. On staging it is rejected without an OTP being sent:
+The sample Aadhaar `999999990019` is a placeholder. It passes idto's format check, so the call reaches a source, and the result depends on which source serves your account. No OTP is sent to anyone in either case. A source that rejects the number answers like this, and nothing is billed:
 
-```json 400
+```json 400 Rejected by the source, not billed
 {"status": "error", "message": "Invalid input. Please check the request and try again.", "error_code": "IDTO_001", "data": null, "billed": false}
 ```
+
+A source that finds no Aadhaar record answers `200` with `error_code: "IDTO_202"` and `data: null`, and that call is billed. `sendOtp` returns the HTTP status and `error_code` for both, so branch on `error_code`.
 
 ## Good to know
 

@@ -113,6 +113,16 @@
               "api-reference/aadhaar/digilocker-v1",
               "api-reference/aadhaar/okyc-generate-otp-v1",
               "api-reference/aadhaar/okyc-get-result-v1",
+              "api-reference/aadhaar/digilocker-fetch-10thmarksheet-xml",
+              "api-reference/aadhaar/digilocker-fetch-12thmarksheet-xml",
+              "api-reference/aadhaar/digilocker-fetch-degree-xml",
+              "api-reference/aadhaar/digilocker-fetch-healthid-xml",
+              "api-reference/aadhaar/digilocker-fetch-healthid",
+              "api-reference/aadhaar/digilocker-fetch-rc-xml",
+              "api-reference/aadhaar/digilocker-fetch-rc",
+              "api-reference/aadhaar/digilocker-fetch-uan-xml",
+              "api-reference/aadhaar/digilocker-get-issued-docs-xml",
+              "api-reference/aadhaar/digilocker-org-master",
               "products/aadhaar/faq"
             ]
           },
@@ -138,6 +148,14 @@
               "api-reference/business/shop-establishment-verification",
               "api-reference/business/uan-verification",
               "api-reference/business/verify-udyam",
+              "api-reference/business/coi-advance",
+              "api-reference/business/din-to-pan",
+              "api-reference/business/fssai-verification",
+              "api-reference/business/gst-to-mcc",
+              "api-reference/business/mobile-to-gst",
+              "api-reference/business/pan-to-udyam",
+              "api-reference/business/uan-passbook-without-otp",
+              "api-reference/business/verify-result",
               "products/business/faq"
             ]
           },
@@ -160,6 +178,13 @@
               "api-reference/bank/bank-verification-v1",
               "api-reference/bank/ifsc-verification",
               "api-reference/bank/vpa-verification-v1",
+              "api-reference/bank/bank-statement-start-upload",
+              "api-reference/bank/bank-statement-upload",
+              "api-reference/bank/bank-statement-complete",
+              "api-reference/bank/bank-statement-status",
+              "api-reference/bank/bank-statement-report",
+              "api-reference/bank/bank-statement-cancel",
+              "api-reference/bank/vpa-verification-advanced",
               "products/bank/faq"
             ]
           },

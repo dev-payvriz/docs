@@ -99,11 +99,15 @@ curl --request POST \
   "message": "User consent is required to proceed.",
   "error_code": "IDTO_005",
   "data": null,
-  "billed": false,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z",
   "chargeble": "false",
-  "user_consent": "false"
+  "user_consent": "false",
+  "billed": false
 }
 ```
+
+Not every raised error carries `data`, `tranx_id` and `timestamp`. See [Error response shapes](#error-response-shapes).
 
 The full request and response schema for every v2 endpoint, including every field on `data`, lives under the API Reference tab, generated directly from the OpenAPI spec.
 
@@ -111,8 +115,8 @@ The full request and response schema for every v2 endpoint, including every fiel
 
 For every `/v2/verify/*` endpoint, the HTTP status is the first thing to branch on:
 
-- **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code: "IDTO_202"`, `data: null`). Both are `status: "success"` and both are billed. A non-null `error_code` on a 2xx is an answer, not a failure: the record does not exist or is invalid.
-- **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"`, `data` is `null`, and `billed` is `false`, with no exceptions.
+- **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code: "IDTO_202"`, `data: null`). Both are `status: "success"` and both are billed, except when a verification session already pays for that step (see [Billing](/concepts/billing-consent#billing)). A non-null `error_code` on a 2xx is an answer, not a failure: the record does not exist or is invalid.
+- **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"` and `billed` is `false`, with no exceptions.
 
 Do not branch on the `IDTO_2xx` range of the code. Some codes in that range are raised errors: `IDTO_204` (unreadable Aadhaar QR, 422), `IDTO_205` (wrong OTP, 422) and `IDTO_206` (OTP attempts used up, 429). The HTTP status, or `status`, is what separates an answer from an error.
 
@@ -123,14 +127,120 @@ In order, your handler should:
 3. On 4xx, show or log `message` and fix the request. Retrying the same body returns the same error.
 4. On 429 `IDTO_006` or on 503, retry with backoff and the same `Idempotency-Key`. See [Rate limits](/concepts/rate-limits).
 
-A request that fails schema validation (a missing required field, a wrong type) returns `IDTO_001` with HTTP 422 and a `message` naming the field. A value that is present but invalid, such as a malformed PAN, returns `IDTO_001` with HTTP 400. Treat both the same way: fix the input.
+A request that fails schema validation (a missing required field, a wrong type) returns `IDTO_001` with HTTP 422 and a `message` that starts with `Invalid request` and names each failing field. A value that is present but invalid, such as a malformed PAN, returns `IDTO_001` with HTTP 400. Treat both the same way: fix the input.
 
-Every v2 body also carries `chargeble` and `user_consent` as `"true"` or `"false"` strings. They are legacy flags that mirror `billed`; read `billed` instead. `tranx_id` identifies the call: store it, find the call by it in the dashboard under **Transactions**, and quote it when you contact support.
+Every v2 body also carries `chargeble` and `user_consent` as `"true"` or `"false"` strings. They are legacy flags that mirror `billed`; read `billed` instead. `tranx_id` identifies the call: it is on every 2xx body and on most raised errors. Store it, find the call by it in the dashboard under **Transactions**, and quote it when you contact support.
 
 The exact status code for each `IDTO_*` code is fixed and documented in the [Error Codes reference](/reference/v2-error-codes), for example `IDTO_006` is always 429.
 
-## v1 responses look different
+## Error response shapes
 
-v1 endpoints (`/verify/*`) do not use this envelope. A v1 response is close to the raw reply from whichever verification source served it, with only `tranx_id` and `timestamp` always added. There is no `error_code` field and no fixed shape across products. See [API Versioning](/concepts/api-versioning) for the full comparison.
+Every family below is what the code returns today. The values are samples.
+
+### v2 success and no-record (2xx)
+
+```json
+{
+  "status": "success",
+  "message": "Record is invalid or does not exist.",
+  "error_code": "IDTO_202",
+  "data": null,
+  "billed": true,
+  "chargeble": "true",
+  "user_consent": "true",
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z"
+}
+```
+
+All nine keys are always present. `data` is an object on a full match and `null` on `IDTO_202`.
+
+### v2 raised error (4xx, 5xx)
+
+The fields sit at the top level, not under `detail`.
+
+```json
+{
+  "status": "error",
+  "message": "Invalid IFSC code.",
+  "error_code": "IDTO_001",
+  "data": null,
+  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+  "timestamp": "2026-09-14T10:15:30Z",
+  "chargeble": "false",
+  "user_consent": "false",
+  "billed": false
+}
+```
+
+- Always present: `status` (`"error"`), `message`, `error_code`, `billed` (`false`), `chargeble` and `user_consent` (both `"false"`).
+- `error_code` is an `IDTO_*` code on every raised error except the insufficient balance 400, where it is `null`.
+- `data` (always `null` when present), `tranx_id` and `timestamp` are on most raised errors but not all. A malformed PAN can return only the always-present keys, and a 422 schema error, an `IDTO_004` or `IDTO_010` idempotency conflict and a load-shed `IDTO_008` carry `data: null` without `tranx_id`. Treat all three as optional on a raised error.
+
+### v2 schema validation (422)
+
+A missing required field or a wrong type returns HTTP 422 in the same flat shape, with `error_code: "IDTO_001"`, `data: null` and no `tranx_id`:
+
+```json
+{
+  "status": "error",
+  "message": "...",
+  "error_code": "IDTO_001",
+  "data": null,
+  "chargeble": "false",
+  "user_consent": "false",
+  "billed": false
+}
+```
+
+`message` starts with `Invalid request` and names each failing field, for example `pan_number: Field required`.
+
+### Authentication errors (v1 and v2)
+
+401 and 403 from the credential check return only a string, `{"detail": "Client is inactive"}`. See [Required headers](#required-headers).
+
+### v1 success
+
+A v1 body is shaped by the product, with no shared envelope. Most products add `tranx_id` and `timestamp`. A charged call carries `chargeble: "true"` and `user_consent: "true"`; an uncharged one carries neither. There is no `billed` field on v1.
+
+### v1 raised error
+
+FastAPI-style: the error object is nested under `detail`.
+
+```json
+{
+  "detail": {
+    "status": "error",
+    "message": "Invalid input. Please check the request and try again.",
+    "error_code": "IDTO_001",
+    "data": null,
+    "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+    "timestamp": "2026-09-14T10:15:30Z"
+  }
+}
+```
+
+`error_code` can be `null` on v1, and `data`, `tranx_id` and `timestamp` can be absent, as on v2. Some v1 products put only a message string in `detail`. A v1 load-shed 503 uses `status: "failed"` with `error_code: "IDTO_008"` under `detail` and a `Retry-After: 5` header.
+
+### v1 schema validation (422)
+
+A v1 request that fails schema validation returns `{"detail": ...}` with a description of the invalid fields, a string or a list depending on the endpoint. It has no `error_code`.
+
+### v1 asynchronous result (202)
+
+```json
+{
+  "status": "pending",
+  "message": "Verification is still in progress. Retrieve the result using reference_id.",
+  "error_code": "IDTO_203",
+  "reference_id": "avj_...",
+  "retry_after_seconds": 5,
+  "data": null
+}
+```
+
+The body is flat (no `detail`) and comes with a `Retry-After: 5` header. Poll `/verify/result/{reference_id}`; an unknown `reference_id` returns HTTP 404 with the flat body `{"status": "error", "message": "No result found for this reference_id.", "error_code": "IDTO_207", "data": null}`.
+
+See [API Versioning](/concepts/api-versioning) for the wider v1 and v2 comparison.
 
 Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Request%20%26%20Response) with the page link.

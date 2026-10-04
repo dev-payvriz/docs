@@ -8,7 +8,7 @@ Every `/v2/verify/*` response carries `status`, `error_code`, `message` and `bil
 
 ## The billing rule
 
-A call is billed exactly when it returns a 2xx response with `status: "success"`. That is a full result (`error_code: null`) or a definitive no-record result (`IDTO_202`). Every raised error has `status: "error"`, a non-2xx HTTP status and `billed: false`. There is no `"failed"` status in v2.
+A call is charged when it finishes with a 2xx response whose `status` is `"success"`, unless a verification session already pays for that step. On v2 that is a full result (`error_code: null`) or a definitive no-record result (`IDTO_202`). Every raised error has `status: "error"`, a non-2xx HTTP status and `billed: false`, `IDTO_204` included. There is no `"failed"` status in v2. The cases (session-paid steps, idempotent replays, v1 asynchronous results) are explained once in [Billing](/concepts/billing-consent#billing).
 
 ## Error body
 
@@ -17,14 +17,13 @@ A call is billed exactly when it returns a 2xx response with `status: "success"`
   "status": "error",
   "message": "Invalid PAN format. Please check and retry.",
   "error_code": "IDTO_001",
-  "data": null,
-  "billed": false,
   "chargeble": "false",
-  "user_consent": "false"
+  "user_consent": "false",
+  "billed": false
 }
 ```
 
-Branch on `error_code`. Products can return a more specific `message` than the default shown below, so do not match on message text.
+These keys are on every v2 raised error. `data: null`, `tranx_id` and `timestamp` are on most raised errors but not all; see [Error response shapes](/concepts/request-response#error-response-shapes) for every family, v1 included. Branch on `error_code`. Products can return a more specific `message` than the default shown below, so do not match on message text.
 
 Authentication failures (401, 403, 404) are returned before any verification runs, carry a `detail` string instead of an `error_code`, and are never billed. See [Authentication](/authentication). A `500` without an `error_code` is not part of the contract: treat it as retryable later and write to support with the `tranx_id` if it persists.
 
@@ -35,7 +34,7 @@ Authentication failures (401, 403, 404) are returned before any verification run
 | `IDTO_001` | 400 or 422 | Invalid input. Please check the request and try again. | No | 400 when a field fails a format rule or the `Idempotency-Key` is longer than 255 characters; 422 when the body fails schema validation. |
 | `IDTO_004` | 409 | `An identical request is already in progress; retry shortly.` or `Duplicate request. Verification ID already exists.` | No | The first message: a request with the same `Idempotency-Key` is still running; retry after it finishes. The second: the source reports this verification ID was already used. |
 | `IDTO_005` | 400 | User consent is required to proceed. | No | `user_consent` missing or not `true`. |
-| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No | The verification source is rate limiting. Retry with backoff. |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No | The verification source behind the product is limiting requests, or could not take this one in time. idto applies no per-key quota. Retry with backoff. |
 | `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No | A configuration problem on idto's side for your account. Do not retry; write to support. |
 | `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No | Load shedding or a source not responding. Retry with backoff. |
 | `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No | Aadhaar OKYC send OTP: your balance cannot cover the call, recharge. Face match, liveness and PAN detailed: the verification source reported a credit limit, retry later. Other products report a low balance as HTTP 400 with `error_code: null`. |
@@ -60,8 +59,8 @@ These codes are returned only by v1 `/verify/*` endpoints.
 
 | Code | HTTP | Message | Billed | Notes |
 | --- | --- | --- | --- | --- |
-| `IDTO_201` | 200 | Bank account is invalid or does not exist. | Yes | v1 no-record code. v2 returns `IDTO_202` for every no-record result, bank included. |
-| `IDTO_203` | 202 | Verification is still in progress. Retrieve the result using reference_id. | No | `status` is `pending`. |
+| `IDTO_201` | 200 | Bank account is invalid or does not exist. | When `status` is `success` | v1 no-record code. v1 charges by `status`, so check `chargeble`. v2 returns `IDTO_202` for every no-record result, bank included. |
+| `IDTO_203` | 202 | Verification is still in progress. Retrieve the result using reference_id. | No | `status` is `pending`. The verification is charged once when it completes, by the usual rule. |
 | `IDTO_207` | 404 | No result found for this reference_id. | No |  |
 
 Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Error%20codes) with the page link.

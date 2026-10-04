@@ -55,9 +55,9 @@ sequenceDiagram
 |---|---|---|---|---|
 | Record found or card read | 200 | `success` | `null` | Yes |
 | No record, or no PAN readable on the card | 200 | `success` | `IDTO_202` | Yes |
-| Bad input, missing consent, auth, rate limit or service error | 4xx or 5xx | `error` | `IDTO_0xx` or `IDTO_503` | No |
+| Bad input, missing consent, rate limit or service error | 4xx or 5xx | `error` | `IDTO_0xx` or `IDTO_503` | No |
 
-Every v2 response carries a boolean `billed`. On the v1 endpoints a call is charged only when `status` is `success`; there `chargeble` and `user_consent` are `"true"` on a charged call. See [Billing and consent](/concepts/billing-consent).
+Every v2 response carries a boolean `billed`. On the v1 endpoints a call is charged only when `status` is `success`; there `chargeble` and `user_consent` are `"true"` on a charged call. Authentication failures (401, 403) return only `{"detail": "..."}`. Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 ## In the SDK
 

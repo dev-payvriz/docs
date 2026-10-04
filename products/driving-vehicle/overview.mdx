@@ -37,7 +37,7 @@ sequenceDiagram
 
 ## Outcomes and billing
 
-The two v2 endpoints share the idto envelope. `error_code: null` means a record or a reading was returned; `IDTO_202` means the check ran and found nothing. Both are 2xx and billed. Every non-2xx response is an error and is never billed. Vehicle RC is a v1 endpoint: it is charged only when `status` is `success`, and the charge is marked by `chargeble: "true"`.
+The two v2 endpoints share the idto envelope. `error_code: null` means a record or a reading was returned; `IDTO_202` means the check ran and found nothing. Both are 2xx and billed. Every non-2xx response is an error and is never billed. Vehicle RC is a v1 endpoint: it is charged only when `status` is `success`, and the charge is marked by `chargeble: "true"`. Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 ## In the hosted flow
 

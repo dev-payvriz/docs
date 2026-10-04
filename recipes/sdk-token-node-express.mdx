@@ -35,7 +35,7 @@ npm install express
 import express from "express";
 
 const app = express();
-const { IDTO_BASE_URL = "https://prod.idto.ai", IDTO_CLIENT_ID, IDTO_API_KEY } = process.env;
+const { IDTO_BASE_URL = "https://dev.idto.ai", IDTO_CLIENT_ID, IDTO_API_KEY } = process.env;
 
 app.post("/api/idto/token", async (req, res) => {
   const idto = await fetch(`${IDTO_BASE_URL}/auth/sdk/token`, {

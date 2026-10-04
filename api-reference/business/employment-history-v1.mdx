@@ -33,10 +33,19 @@ For new integrations use [Employment history](/api-reference/business/employment
 Depending on how your account is configured, a different source can serve this endpoint. Fields not listed here are passed through as the source returns them and are not a fixed contract. Confirm the fields you rely on in staging before go-live.
 </Note>
 
+## Asynchronous handoff
+
+On staging (`dev.idto.ai`) this endpoint can answer HTTP 202 instead of waiting for the source. Production (`prod.idto.ai`) does not do this today and always answers directly. Handle both 200 and 202 so your integration keeps working when production switches it on.
+
+- The 202 body is `{"status": "pending", "error_code": "IDTO_203", "reference_id": "...", "retry_after_seconds": 5, "data": null}` with a `Retry-After: 5` header. It comes back when the result is not ready within about 20 seconds, or when a call with the same UAN from your account is already running.
+- Poll [Get async result](/api-reference/business/verify-result) with the `reference_id`. Once the job finishes it returns the status and body this endpoint would have returned.
+- The call is charged at most once, when the job finishes with a charged result. The 202 and the polls are not charged. Results are kept for 24 hours.
+
 ## Errors
 
 | Code | HTTP | Body | Billed |
 |---|---|---|---|
+| `IDTO_203` | 202 | Handed off on staging; see [Asynchronous handoff](#asynchronous-handoff) | No |
 | none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
 | none | 400 | `{"detail": {"status": "error", "error_code": null, ...}}` when this product is not enabled for your account. Ask your account manager to enable it. | No |
 | none | 401 | `{"detail": "Could not validate credentials"}` when no credentials are sent; `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` when the key pair is not recognised | No |

@@ -36,7 +36,7 @@ require "net/http"
 require "sinatra"
 
 set :port, 3000
-BASE_URL = ENV.fetch("IDTO_BASE_URL", "https://prod.idto.ai")
+BASE_URL = ENV.fetch("IDTO_BASE_URL", "https://dev.idto.ai")
 
 post "/api/idto/token" do
   content_type :json

@@ -38,7 +38,7 @@ import express, { Request, Response } from "express";
 type SdkToken = { access_token: string; token_type: string; expires_in: number };
 
 const app = express();
-const baseUrl = process.env.IDTO_BASE_URL ?? "https://prod.idto.ai";
+const baseUrl = process.env.IDTO_BASE_URL ?? "https://dev.idto.ai";
 
 app.post("/api/idto/token", async (_req: Request, res: Response) => {
   const idto = await fetch(`${baseUrl}/auth/sdk/token`, {

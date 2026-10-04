@@ -55,7 +55,7 @@ Work through this list before you switch your base URL to `https://prod.idto.ai`
 
 ## 5. Test every outcome on staging
 
-Run each of these against `https://dev.idto.ai` and confirm your code does the right thing. The input-error cases never reach a source and are never billed.
+Run each of these against `https://dev.idto.ai` and confirm your code does the right thing. Input errors are never billed. Staging can route a product to a different source than production, so assert on `error_code` and `billed` rather than on the outcome of a specific input. See [What differs between environments](/environments#what-differs-between-environments).
 
 - [ ] A found record: `error_code: null`, `billed: true`.
 - [ ] A no-record result: `IDTO_202`, `data: null`, `billed: true`.
@@ -64,6 +64,7 @@ Run each of these against `https://dev.idto.ai` and confirm your code does the r
 - [ ] The same request sent twice with one `Idempotency-Key`: the second returns the stored first response.
 - [ ] The same key sent with a different body: `IDTO_010` (422).
 - [ ] A wrong `X-API-Key`: HTTP 401 with a `detail` message, and your code does not retry it.
+- [ ] If you use employment history or EPF passbook: a `202` with `IDTO_203` is polled with `GET /verify/result/{reference_id}`. Staging can return it; production does not today.
 
 ## 6. Operations
 

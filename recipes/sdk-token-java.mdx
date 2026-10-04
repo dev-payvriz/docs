@@ -41,7 +41,7 @@ import java.time.Duration;
 
 public class TokenServer {
     public static void main(String[] args) throws Exception {
-        String baseUrl = System.getenv().getOrDefault("IDTO_BASE_URL", "https://prod.idto.ai");
+        String baseUrl = System.getenv().getOrDefault("IDTO_BASE_URL", "https://dev.idto.ai");
         String payload = String.format("{\"client_id\":\"%s\",\"client_secret\":\"%s\"}",
                 System.getenv("IDTO_CLIENT_ID"), System.getenv("IDTO_API_KEY"));
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();

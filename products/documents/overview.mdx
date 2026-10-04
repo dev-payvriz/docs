@@ -32,7 +32,7 @@ sequenceDiagram
 
 ## Outcomes and billing
 
-`error_code: null` with `data` means the document was accepted and read. `IDTO_202` means it was read but is not an accepted type or has no invoice details; when the type is the reason, `data.document_type` tells you what was uploaded. Both are 2xx and billed. Errors such as a file over 12 MB (`IDTO_503`, 413) are never billed.
+`error_code: null` with `data` means the document was accepted and read. `IDTO_202` means it was read but is not an accepted type or has no invoice details; when the type is the reason, `data.document_type` tells you what was uploaded. Both are 2xx and billed. Errors such as a file over 12 MB (`IDTO_503`, 413) are never billed. Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 Every value is what is printed on the document. To confirm a GSTIN or a bank account found on an invoice, call the matching verification endpoint.
 

@@ -18,7 +18,7 @@ sequenceDiagram
     S-->>B: access_token
     B->>I: idto SDK runs the verification steps
     I->>S: session.completed webhook
-    S->>I: GET /sdk/v2/session/{session_token}/state
+    S->>I: GET /sdk/v2/session/#lt;session_token#gt;/state
     I-->>S: status, outcome, steps
 ```
 
@@ -47,6 +47,8 @@ sequenceDiagram
 | `completed` | `needs_review` | A soft flag was raised, such as a low name match |
 | `completed` | `not_verified` | A check failed |
 | `abandoned` | `null` | The session was abandoned |
+
+Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 ## Test scenarios
 

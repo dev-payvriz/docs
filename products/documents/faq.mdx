@@ -33,7 +33,7 @@ Yes. A rejection by type or a document with no invoice details is HTTP 200 with 
 
 ### Why did a call inside a workflow come back with billed false?
 
-When you send `workflow_session_token` as a form field for a workflow that already charges for the address step, the individual call is not charged again and `billed` is `false`.
+When you send `workflow_session_token` as a form field of an in-progress verification session that charges for the address step, the individual call is not charged again and `billed` is `false`.
 
 ## Technical
 

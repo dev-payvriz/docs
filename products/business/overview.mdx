@@ -63,7 +63,7 @@ sequenceDiagram
 | Bad input | 400 or 422 `IDTO_001`, not billed | 400 or 422, not charged |
 | Source busy or rate limited | 503 `IDTO_008` or 429 `IDTO_006`, not billed | Error status, not charged |
 
-Every v2 response carries a boolean `billed`. Send an `Idempotency-Key` on v2 calls so a network retry is never billed twice; GST advanced has no idempotency support.
+Every v2 response carries a boolean `billed`. Send an `Idempotency-Key` on v2 calls so a network retry is never billed twice; GST advanced has no idempotency support. On staging, the v1 employment history and PF passbook endpoints can answer `202` with `IDTO_203` and a `reference_id`; see [Environments](/environments#what-differs-between-environments). Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 ## In a verification flow
 

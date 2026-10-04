@@ -1,0 +1,64 @@
+---
+title: "Verify a UPI ID with account details (v1)"
+sidebarTitle: "UPI ID Verification Advanced (v1)"
+description: "Check a UPI ID and get the registered name plus, where available, details of the linked bank account. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/vpa_verification_advanced"
+---
+
+Send a UPI ID. idto returns whether it exists, the name registered against it and, when the verification source has them, details of the bank account behind it. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+<Tip>
+If you only need the registered name, use [UPI ID verification](/api-reference/bank/vpa-verification). It gives you idempotent retries, a `billed` flag and one error format.
+</Tip>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A UPI ID that does not exist also comes back as `status: "success"` with `result.is_valid: false`, and that call is charged. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `vpa` | Required. The UPI ID, for example `rahul.sharma@upi`. |
+| `name` | Optional. The name you expect on the UPI ID. |
+| `user_id` | Optional. Your own reference for the end user. |
+
+## How to read the result
+
+- `result.is_valid: true`: the UPI ID exists and `result.vpa_holder_name` is the registered name.
+- `result.is_valid: false` with `result.vpa_holder_name: null` and `message: "VPA Not Found"`: the UPI ID does not exist.
+- `result.account_details`: the linked bank account as the source returns it, or `null`. Its fields are not a fixed contract; confirm the ones you rely on in staging.
+- `result.name_match` and `result.name_match_score` appear only when the source returns them, typically when you send `name`. Treat them as optional.
+- `tranx_id` identifies the call for support.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none or the source's result code | 400 | `{"detail": {"status": "error", ...}}`: `vpa` empty or rejected by the source | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "vpa"], ...}]}` when `vpa` is missing | No |
+| none or the source's result code | 502 | `{"detail": {"status": "error", ...}}`: the source returned an empty, unreadable or failed response | No |
+| the source's result code or none | 503, 504 or another source status | The verification source could not complete the call. Its status is passed through with the wrapped `detail` body; `message` varies. Retry later | No |
+| none | 500 | Our side failed or the source could not be reached. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+Questions about this product are answered in the [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20api-reference%2Fbank%2Fvpa-verification-advanced) with the page link.

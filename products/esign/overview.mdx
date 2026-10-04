@@ -40,6 +40,8 @@ sequenceDiagram
 | All signers signed | `signing_status: signed`, base64 PDF in `content`, plus one webhook |
 | Signed copy deleted upstream before archiving | 410; contact support |
 
+Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
+
 ## Test scenarios
 
 | Input | Expected | Billed |

@@ -44,7 +44,7 @@ sequenceDiagram
 | Rejected or failed | 200 `status: "failed"`, or 502/504, not charged | Error status, not charged |
 | Bad input | 422, not charged | 422, not charged |
 
-A charged call carries `"chargeble": "true"`. See the [FAQ](/products/credit-legal/faq) for common questions.
+A charged call carries `"chargeble": "true"`. Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing). See the [FAQ](/products/credit-legal/faq) for common questions.
 
 ---
 

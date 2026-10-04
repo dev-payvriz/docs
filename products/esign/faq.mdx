@@ -50,7 +50,7 @@ No. `POST /verify/esign` has no idempotency support, so a retry can create and c
 
 ### What do create errors look like?
 
-A body that fails validation returns 422 with `{"detail": [...]}` listing the bad fields. A rejection from the signing service keeps that service's HTTP status and returns `{"detail": {"status": "error", "message": "...", "error_code": ..., "data": null, "tranx_id": "...", "timestamp": "..."}}`. If the signing service cannot be reached, you get HTTP 500. None of these are charged.
+A body that fails validation returns 422 with `{"detail": [...]}` listing the bad fields. A rejection from the signing service keeps that service's HTTP status and returns `{"detail": {"status": "error", "message": "...", "error_code": ..., "data": null, "tranx_id": "...", "timestamp": "..."}}`, where `data`, `tranx_id` and `timestamp` can be absent; see [Error response shapes](/concepts/request-response#error-response-shapes). If the signing service cannot be reached, you get HTTP 500. None of these are charged.
 
 ### How long should my client wait on create?
 

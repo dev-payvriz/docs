@@ -51,7 +51,7 @@ Yes. An image with no readable licence returns HTTP 200 with `IDTO_202`, "No dri
 
 ### Why did a call inside a workflow come back with billed false?
 
-When you pass `workflow_session_token` for a workflow that already charges for that step, the individual call is not charged again. On the v2 endpoints `billed` is `false`; on Vehicle RC the response carries no `chargeble: "true"`.
+When you pass `workflow_session_token` of an in-progress verification session that charges for that step, the individual call is not charged again. On the v2 endpoints `billed` is `false`; on Vehicle RC the response carries no `chargeble: "true"`.
 
 ## Technical
 

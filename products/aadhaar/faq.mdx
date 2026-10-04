@@ -12,7 +12,7 @@ Use OKYC when the person has the phone linked to their Aadhaar. Use DigiLocker w
 
 ### Can I test without sending a real OTP or being charged?
 
-There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources, sends real OTPs and deducts credits from your staging account, so test with an Aadhaar whose holder has agreed to it. The Test scenarios table on each endpoint page lists inputs that return each error without reaching a source.
+There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources, sends real OTPs and deducts credits from your staging account, so test with an Aadhaar whose holder has agreed to it. The same input can give a different outcome on staging and production, so do not hardcode the result of a test input. See [Environments](/environments#what-differs-between-environments).
 
 ## Input and validation
 
@@ -36,7 +36,7 @@ On OKYC send OTP, yes: an invalid number returns 200 with `error_code: "IDTO_202
 
 ### Am I charged for a QR whose signature does not match?
 
-Yes. Every readable QR is billed, whatever the signature result, because the QR was read. Only an image with no readable QR (`IDTO_204`, 422) is free. Read `data.authentic` before you accept the card.
+Yes. Every readable QR is billed, whatever the signature result, because the QR was read. An image with no readable QR is `IDTO_204` (422), a raised error, and like every error it is not charged. Read `data.authentic` before you accept the card.
 
 ### How many times can a user retry the OTP?
 

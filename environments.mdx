@@ -4,7 +4,7 @@ sidebarTitle: "Environments"
 description: "The staging and production base URLs, how to get keys for each, and what a call costs in each."
 ---
 
-idto runs two environments. They share the same API contract, so code written against staging works against production by changing only the base URL and the key pair.
+idto runs two environments. Request and response shapes are the same in both, so code written against staging works against production by changing only the base URL and the key pair. A few behaviours differ, listed in [What differs between environments](#what-differs-between-environments); code that handles them works in both.
 
 | Environment | Base URL | Notes |
 | --- | --- | --- |
@@ -38,11 +38,21 @@ A new dashboard account opens in **Sandbox Mode**. In that mode the dashboard's 
 
 | | Staging | Production |
 | --- | --- | --- |
-| API contract | Same | Same |
+| Request and response shapes | Same | Same |
 | Verification sources | Live | Live |
+| Source per product | Set per account in each environment, so staging can route a product to a different source than production | Set per account |
+| Employment history and EPF passbook | Can return `202` with `IDTO_203` and a `reference_id` when the source takes longer than 20 seconds | Always answers in the same request |
+| Time allowed for a slow bank source | Up to 10 seconds for some sources | Up to 60 seconds |
+| Billing | Same [billing rule](/concepts/billing-consent#billing). A `202` with `IDTO_203` is not charged; the result is charged once when it completes | Same billing rule |
 | Credits | Staging account balance | Production account balance |
 | Keys | Issued by your account manager | Generated in the dashboard |
 | Webhook secret | Set separately per environment | Set separately per environment |
+
+What this means for your tests:
+
+- **The same input can give a different outcome.** Because the source can differ, a placeholder or edge-case input can come back as `IDTO_001` on one environment and `IDTO_202` on the other. Branch on `error_code` and `billed`, and never hardcode the outcome of a specific input.
+- **Handle `202` on the employment and passbook routes.** On staging, `POST /verify/employment_history`, `/verify/uan_passbook_without_otp` and `/verify/pf_employee_passbook` can answer `202` with `status: "pending"`, `error_code: "IDTO_203"`, a `reference_id` and a `Retry-After` header. Fetch the result with `GET /verify/result/{reference_id}` after the number of seconds in `Retry-After`; it returns the same `202` until the result is ready, then the final response with its own status code. A `reference_id` that is unknown, or belongs to another account, returns `404` with `IDTO_207`. Production does not return `202` on these routes today.
+- **A slow bank can time out on staging only.** Retry with the same `Idempotency-Key` before treating it as a failure.
 
 ## Check connectivity
 
@@ -56,7 +66,7 @@ curl -s "$IDTO_BASE_URL/health"
 
 Because staging reaches live sources, plan your tests so that most of them never need one.
 
-- **Input errors are free.** A malformed PAN, Aadhaar number, IFSC or GSTIN, or missing consent, is rejected with `IDTO_001` or `IDTO_005` before any source is called. These calls are never billed, so you can test every validation path as often as you like.
+- **Input errors are free.** A malformed PAN, Aadhaar number, IFSC or GSTIN, or missing consent, is rejected with `IDTO_001` or `IDTO_005` and is never billed, so you can test every validation path as often as you like. A number with the right shape that no one holds may instead reach the source and come back as a billed `IDTO_202`.
 - **Found and no-record results cost a credit each.** Test them with a small set of identities you are authorised to verify, and reuse the same ones.
 - **Retries can be tested without extra charges.** Send a request with an `Idempotency-Key`, then send it again with the same key and body: the second call returns the stored response and is not billed. See [Idempotency](/concepts/idempotency).
 - **Billing is visible in every v2 response.** Assert on the `billed` field in your tests rather than on your balance.

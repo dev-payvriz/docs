@@ -49,7 +49,7 @@ settings.configure(
     SECRET_KEY=os.environ["DJANGO_SECRET_KEY"],
 )
 
-BASE_URL = os.environ.get("IDTO_BASE_URL", "https://prod.idto.ai")
+BASE_URL = os.environ.get("IDTO_BASE_URL", "https://dev.idto.ai")
 
 
 @csrf_exempt

@@ -25,7 +25,7 @@ sequenceDiagram
     participant App as Your server
     participant idto as idto API
     participant Src as Data source
-    App->>idto: POST /verify/mobile_profile {mobile}
+    App->>idto: POST /verify/mobile_profile with mobile
     idto->>idto: Authenticate, check credits
     idto->>Src: Look up the number
     alt Profile found
@@ -45,6 +45,8 @@ sequenceDiagram
 | No profile for the number | Non-2xx, `{"detail": {...}}` | No | Continue onboarding without pre-fill, or ask for another number. |
 | `mobile` missing or empty | 422 or 400 | No | Fix the request. |
 | Not enough credits | 400 | No | Recharge your balance. |
+
+Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
 
 <Warning>
 `/verify/mobile_profile` has no idempotency support. A retry after a timeout runs the lookup again and can be charged twice.

@@ -1,0 +1,50 @@
+---
+title: "Get async result"
+sidebarTitle: "Get Async Result (v1)"
+description: "Read the result of a v1 UAN call that was handed off with HTTP 202 and a reference_id."
+openapi: "openapi2.0.json GET /verify/result/{reference_id}"
+---
+
+Use this endpoint to collect the result of a UAN call that answered HTTP 202 with `error_code: "IDTO_203"` and a `reference_id`. It applies to [Employment history (v1)](/api-reference/business/employment-history-v1), [UAN passbook without OTP](/api-reference/business/uan-passbook-without-otp) and [PF passbook (v1)](/api-reference/business/pf-employee-passbook).
+
+<Note>
+Staging (`dev.idto.ai`) hands these calls off today. Production (`prod.idto.ai`) does not: it always answers the original call directly, so you will not receive a `reference_id` there yet. Handle both 200 and 202 on the original call so your integration keeps working when production switches it on.
+</Note>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Polling is never charged. The original call is charged at most once, when its job finishes with a charged result; the finished body then carries `chargeble` and `user_consent` as `"true"`, exactly as the original endpoint would.
+
+## How to poll
+
+1. Read `reference_id` and the `Retry-After` header (5 seconds) from the 202.
+2. Call `GET /verify/result/{reference_id}` with the same `X-Client-ID` and `X-API-Key`.
+3. While the job runs you get 202 again with the same body. Wait `Retry-After` seconds and poll again.
+4. When the job finishes you get the status and body the original endpoint would have returned: 200 with the result, or the original error status with its `{"detail": {...}}` body.
+
+<Warning>
+Only the account that made the original call can read its result. Results are kept for 24 hours after the job was created; after that the `reference_id` returns 404 `IDTO_207`. A job that does not finish in time is closed with 503 `IDTO_008`; make a new call.
+</Warning>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| `IDTO_203` | 202 | `{"status": "pending", "message": "Verification is still in progress. Retrieve the result using reference_id.", "error_code": "IDTO_203", "reference_id": "...", "retry_after_seconds": 5, "data": null}` with `Retry-After: 5` | No |
+| `IDTO_207` | 404 | `{"status": "error", "message": "No result found for this reference_id.", "error_code": "IDTO_207", "data": null}`: unknown, expired or another account's `reference_id` | No |
+| `IDTO_008` | 503 | `{"detail": {"status": "failed", "message": "The verification service is momentarily busy. Please retry shortly.", "error_code": "IDTO_008", "data": null}}`: the job did not finish in time or our capacity was busy. Make a new call | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` when no credentials are sent; `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` when the key pair is not recognised | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| as the original call | 4xx or 5xx | The original endpoint's error, replayed with its `{"detail": {...}}` body | No |
+| none | 500 | Our side failed. The body is not part of the contract; make a new call later. If it persists, write to tech@idto.ai with the request time. | No |
+
+See the [Business verification FAQ](/products/business/faq) for common questions.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20api-reference%2Fbusiness%2Fverify-result) with the page link.

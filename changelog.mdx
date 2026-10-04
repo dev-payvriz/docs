@@ -173,6 +173,7 @@ Each entry is dated by the day the change reached production. Subscribe with the
 **Improved**
 
 - `invoice_ocr` returns the same output for the same image on repeat calls.
+- [`/v2/verify/aadhaar_ocr`](/api-reference/aadhaar/aadhaar-ocr) returns the full 12-digit Aadhaar number in `aadhaar_number` instead of a masked value. If the number read from the card is not 12 digits, `aadhaar_number` is `null`.
 
 </Update>
 
@@ -197,7 +198,18 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
-<Update label="July 18, 2026" tags={["Improved"]}>
+<Update label="July 20, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /v2/verify/invoice_ocr`](/api-reference/documents/invoice-ocr) reads an invoice or utility bill on v2.
+
+</Update>
+
+<Update label="July 18, 2026" tags={["Added", "Improved"]}>
+**Added**
+
+- Every v2 endpoint accepts an [`Idempotency-Key`](/concepts/idempotency) header. A retry with the same key returns the first response and is not charged again. A key longer than 255 characters returns 400 `IDTO_001`.
+
 **Improved**
 
 - Every v2 product now has one request contract, one set of response keys, one set of idto error codes and one billing rule, whichever source serves the call.
@@ -242,6 +254,13 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
+<Update label="July 14, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /v2/verify/aadhaar_qr`](/api-reference/aadhaar/aadhaar-qr) reads an Aadhaar QR code and checks its digital signature on v2.
+
+</Update>
+
 <Update label="July 13, 2026" tags={["Added"]}>
 **Added**
 
@@ -249,7 +268,11 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
-<Update label="July 12, 2026" tags={["Improved"]}>
+<Update label="July 12, 2026" tags={["Added", "Improved"]}>
+**Added**
+
+- [`POST /v2/verify/driving_licence`](/api-reference/driving-vehicle/driving-licence) verifies a driving licence on v2.
+
 **Improved**
 
 - v2 errors share one flat envelope with an idto error code, whichever upstream source served the call.
@@ -263,7 +286,11 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
-<Update label="July 9, 2026" tags={["Improved"]}>
+<Update label="July 9, 2026" tags={["Added", "Improved"]}>
+**Added**
+
+- [`POST /v2/verify/pan_validation`](/api-reference/pan/pan-validation) checks that a PAN exists and is active.
+
 **Improved**
 
 - [`/v2/verify/face_match`](/api-reference/face/face-match) and [`/v2/verify/liveness`](/api-reference/face/liveness) return canonical response keys.
@@ -303,6 +330,13 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
+<Update label="June 12, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/pf_employee_passbook`](/api-reference/business/pf-employee-passbook) reads an employee's EPF passbook.
+
+</Update>
+
 <Update label="June 10, 2026" tags={["Fixed"]}>
 **Fixed**
 
@@ -317,10 +351,28 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
-<Update label="May 29, 2026" tags={["Improved"]}>
+<Update label="May 29, 2026" tags={["Added", "Improved"]}>
+**Added**
+
+- [`POST /verify/aadhar_to_pan`](/api-reference/pan/aadhar-to-pan) tells you whether a PAN is linked to an Aadhaar number.
+
 **Improved**
 
 - Verification calls that end in an error are no longer charged.
+
+</Update>
+
+<Update label="May 20, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/fastag_toll_history`](/api-reference/driving-vehicle/fastag-toll-history) returns recent toll crossings on a vehicle's FASTag, and [`POST /verify/shop_establishment_verification`](/api-reference/business/shop-establishment-verification) checks a shop and establishment registration.
+
+</Update>
+
+<Update label="May 11, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/vehicle_rc_plus`](/api-reference/driving-vehicle/vehicle-rc-plus) adds insurance, permit, blacklist and challan details to the registration record.
 
 </Update>
 
@@ -328,6 +380,13 @@ Each entry is dated by the day the change reached production. Subscribe with the
 **Fixed**
 
 - A vehicle RC lookup with no matching record is reported as no record instead of an error.
+
+</Update>
+
+<Update label="May 4, 2026" tags={["Added"]}>
+**Added**
+
+- Aadhaar OTP verification: [`POST /verify/okyc_generate_otp`](/api-reference/aadhaar/okyc-generate-otp-v1) and [`POST /verify/okyc_get_result`](/api-reference/aadhaar/okyc-get-result-v1).
 
 </Update>
 
@@ -359,6 +418,77 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
+<Update label="February 9, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/pan_to_cin`](/api-reference/business/pan-to-cin) finds the CIN for a company PAN, and [`POST /verify/pan_to_din`](/api-reference/business/pan-to-din) finds the DIN for a person's PAN.
+
+</Update>
+
+<Update label="January 30, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/fast_tag_verification`](/api-reference/driving-vehicle/fast-tag-verification) looks up a vehicle's FASTag, and [`POST /verify/mobile_reachability`](/api-reference/mobile/mobile-reachability) returns activity and tenure signals for a mobile number.
+
+</Update>
+
+<Update label="December 26, 2025" tags={["Improved"]}>
+**Improved**
+
+- The web SDK PDF report adds an applicant summary, a result table per check and a risk rating.
+
+</Update>
+
+<Update label="December 12, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/ifsc_verification`](/api-reference/bank/ifsc-verification) returns the bank, branch and payment rails for an IFSC.
+
+</Update>
+
+<Update label="December 2, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/vpa_verification`](/api-reference/bank/vpa-verification-v1) checks a UPI ID and returns the registered name, and [`POST /verify/mobile_to_vpa`](/api-reference/mobile/mobile-to-vpa) lists the UPI IDs linked to a mobile number.
+
+</Update>
+
+<Update label="November 28, 2025" tags={["Added"]}>
+**Added**
+
+- Employment checks: [`POST /verify/employment_history`](/api-reference/business/employment-history-v1), [`POST /verify/pan_to_uan`](/api-reference/business/pan-to-uan) and [`POST /verify/mobile_to_uan`](/api-reference/business/mobile-to-uan).
+- [`POST /verify/liveness`](/api-reference/face/liveness-v1) checks a selfie for spoofing.
+
+</Update>
+
+<Update label="November 12, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/vehicle_challan`](/api-reference/driving-vehicle/vehicle-challan) returns the e-challans recorded against a vehicle.
+
+</Update>
+
+<Update label="November 11, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/aadhaar_ocr`](/api-reference/aadhaar/aadhaar-ocr-v1) reads the fields printed on an Aadhaar card image.
+
+</Update>
+
+<Update label="November 8, 2025" tags={["Added"]}>
+**Added**
+
+- The web SDK success screen lets the end user download a PDF report of the verification.
+
+</Update>
+
+<Update label="October 28, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/mobile_profile/address_intelligence`](/api-reference/mobile/mobile-profile-address-intelligence) returns the addresses linked to a mobile number.
+
+</Update>
+
 <Update label="September 22, 2025" tags={["Added"]}>
 **Added**
 
@@ -366,10 +496,32 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 </Update>
 
+<Update label="August 26, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/verify_udyam`](/api-reference/business/verify-udyam) reads an MSME's Udyam registration.
+
+</Update>
+
+<Update label="August 22, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/digilocker/doc_master`](/api-reference/aadhaar/digilocker-doc-master) lists the DigiLocker document type codes.
+
+</Update>
+
+<Update label="August 21, 2025" tags={["Added"]}>
+**Added**
+
+- More DigiLocker downloads: [`POST /verify/digilocker/fetch_dl`](/api-reference/aadhaar/digilocker-fetch-dl), [`POST /verify/digilocker/fetch_dl/xml`](/api-reference/aadhaar/digilocker-fetch-dl-xml), [`POST /verify/digilocker/fetch_pan/xml`](/api-reference/aadhaar/digilocker-fetch-pan-xml), [`POST /verify/digilocker/fetch_uan`](/api-reference/aadhaar/digilocker-fetch-uan), [`POST /verify/digilocker/fetch_10thmarksheet`](/api-reference/aadhaar/digilocker-fetch-10thmarksheet), [`POST /verify/digilocker/fetch_12thmarksheet`](/api-reference/aadhaar/digilocker-fetch-12thmarksheet) and [`POST /verify/digilocker/fetch_degree`](/api-reference/aadhaar/digilocker-fetch-degree).
+
+</Update>
+
 <Update label="August 19, 2025" tags={["Added"]}>
 **Added**
 
 - [`POST /verify/digilocker/verify_account`](/api-reference/aadhaar/digilocker-verify-account) and [`POST /verify/digilocker/fetch_aadhaar`](/api-reference/aadhaar/digilocker-fetch-aadhaar) complete the DigiLocker Aadhaar fetch.
+- [`POST /verify/digilocker/fetch_pan`](/api-reference/aadhaar/digilocker-fetch-pan) downloads the holder's PAN from DigiLocker.
 
 </Update>
 
@@ -377,6 +529,7 @@ Each entry is dated by the day the change reached production. Subscribe with the
 **Added**
 
 - [`POST /verify/bank_verification/pennyless`](/api-reference/bank/bank-verification-pennyless) verifies a bank account without a penny drop.
+- [`POST /verify/pan_verification`](/api-reference/pan/pan-verification), [`POST /verify/gst_verification`](/api-reference/business/gst-verification), [`POST /verify/cin_mca_verification`](/api-reference/business/cin-mca-verification-v1), [`POST /verify/uan_verification`](/api-reference/business/uan-verification) and [`POST /verify/voter_verification`](/api-reference/documents/voter-verification).
 
 </Update>
 
@@ -384,6 +537,7 @@ Each entry is dated by the day the change reached production. Subscribe with the
 **Added**
 
 - DigiLocker sessions: [`POST /verify/digilocker/initiate_session`](/api-reference/aadhaar/digilocker-initiate-session), [`POST /verify/digilocker/get_reference`](/api-reference/aadhaar/digilocker-get-reference) and [`POST /verify/digilocker/user_details`](/api-reference/aadhaar/digilocker-user-details).
+- [`POST /verify/digilocker/issued_docs`](/api-reference/aadhaar/digilocker-issued-docs) lists the documents in the holder's DigiLocker, [`POST /verify/digilocker/get_issued_docs`](/api-reference/aadhaar/digilocker-get-issued-docs) downloads one by its uri, and [`POST /verify/mobile_profile_advance`](/api-reference/mobile/mobile-profile-advance) adds network and porting details to the mobile profile.
 
 </Update>
 
@@ -395,13 +549,17 @@ Each entry is dated by the day the change reached production. Subscribe with the
 - [`POST /verify/mobile_profile`](/api-reference/mobile/mobile-profile) returns the profile linked to a mobile number.
 - [`POST /verify/gst_advance`](/api-reference/business/gst-advance) returns detailed GST registration data.
 - [`POST /verify/mobile/get_otp`](/api-reference/mobile/mobile-get-otp) starts OTP-based mobile number verification.
+- [`POST /verify/pan_detailed`](/api-reference/pan/pan-detailed-v1), [`POST /verify/business_pan`](/api-reference/business/business-pan) and [`POST /verify/pan_to_gst`](/api-reference/business/pan-to-gst) look up a PAN record.
+- [`POST /verify/bank_verification`](/api-reference/bank/bank-verification-v1), [`POST /verify/driving_licence`](/api-reference/driving-vehicle/driving-licence-v1) and [`POST /verify/passport`](/api-reference/documents/passport) verify a bank account, a driving licence and a passport.
+- [`POST /verify/face_match`](/api-reference/face/face-match-v1) compares a selfie with a document photo, and [`POST /verify/name_match`](/api-reference/integration/name-match) scores how closely two names match.
+- [`POST /verify/mobile/verify_otp`](/api-reference/mobile/mobile-verify-otp), [`POST /verify/mobile_to_pan`](/api-reference/mobile/mobile-to-pan) and [`POST /verify/gst_verification_basic`](/api-reference/business/gst-verification-basic-v1) complete mobile OTP verification, look up the PAN linked to a mobile number, and read a GST registration.
 
 </Update>
 
-<Update label="June 16, 2025" tags={["Added"]}>
+<Update label="July 10, 2025" tags={["Added"]}>
 **Added**
 
-- [`POST /auth/sdk/token`](/api-reference/integration/sdk-token) issues the token that opens the hosted verification flow.
+- First production release. [`POST /auth/sdk/token`](/api-reference/integration/sdk-token) issues the token that opens the hosted verification flow, [`POST /verify/ocr`](/api-reference/documents/ocr) reads the printed fields from an identity document image, and [`POST /verify/digilocker`](/api-reference/aadhaar/digilocker-v1) returns the holder's DigiLocker profile.
 
 </Update>
 

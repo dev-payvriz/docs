@@ -48,6 +48,8 @@ sequenceDiagram
 | Duplicate request still running | 409 | `IDTO_004` | No | Wait for the first response. |
 | Network busy | 503 | `IDTO_008`, `IDTO_103`, `IDTO_403` | No | Retry with backoff and an `Idempotency-Key`. |
 
+Error bodies follow [Error response shapes](/concepts/request-response#error-response-shapes), and charges follow the [billing rule](/concepts/billing-consent#billing).
+
 ## In the idto verification flow
 
 The bank step in the idto SDKs collects the account number (entered twice) and IFSC from your user, verifies the account and shows the registered name.
