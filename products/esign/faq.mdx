@@ -17,7 +17,7 @@ description: "Common questions about creating eSign dockets and downloading sign
     Only for creating a docket, and only when the response `status` is `success`. Fetching the document and receiving the webhook are free.
   </Accordion>
   <Accordion title="How long can I download the signed PDF?">
-    IDTO archives the signed PDF as soon as every signer has signed and serves it from that archive. Download it when you get the webhook and store it on your side.
+    idto archives the signed PDF as soon as every signer has signed and serves it from that archive. Download it when you get the webhook and store it on your side.
   </Accordion>
 </AccordionGroup>
 
@@ -34,7 +34,7 @@ description: "Common questions about creating eSign dockets and downloading sign
     The status or the file could not be fetched at that moment, or the signed file is not ready yet. Retry with backoff. 502 is never billed.
   </Accordion>
   <Accordion title="What does 410 mean?">
-    The signed copy was deleted upstream before IDTO archived it. It cannot be regenerated. Contact support with the `docket_id`.
+    The signed copy was deleted upstream before idto archived it. It cannot be regenerated. Contact support with the `docket_id`.
   </Accordion>
   <Accordion title="Can I retry a create call safely?">
     No. `POST /verify/esign` has no idempotency support, so a retry can create and charge a second docket.

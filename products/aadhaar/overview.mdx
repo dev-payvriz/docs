@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "Verify a person against Aadhaar by OTP, DigiLocker, the card's signed QR code, or OCR of the card."
 ---
 
-Aadhaar is India's 12-digit national identity number. IDTO gives you four ways to verify someone with it. Pick by how much assurance you need and what the person has with them.
+Aadhaar is India's 12-digit national identity number. idto gives you four ways to verify someone with it. Pick by how much assurance you need and what the person has with them.
 
 | Method | The person needs | You get | Assurance |
 |---|---|---|---|
@@ -36,18 +36,18 @@ v2 endpoints return `billed` and support `Idempotency-Key`. v1 endpoints have no
 sequenceDiagram
     participant User as Your user
     participant App as Your server
-    participant IDTO as IDTO API
-    App->>IDTO: POST /v2/verify/okyc_generate_otp {aadhaar_number, user_consent}
-    IDTO-->>User: OTP by SMS to the Aadhaar-linked mobile
-    IDTO-->>App: 200, data.session_id, billed true
+    participant idto as idto API
+    App->>idto: POST /v2/verify/okyc_generate_otp {aadhaar_number, user_consent}
+    idto-->>User: OTP by SMS to the Aadhaar-linked mobile
+    idto-->>App: 200, data.session_id, billed true
     User->>App: Types the OTP
-    App->>IDTO: POST /v2/verify/okyc_get_result {session_id, otp}
+    App->>idto: POST /v2/verify/okyc_get_result {session_id, otp}
     alt OTP correct
-        IDTO-->>App: 200, data with name, dob, address, billed true
+        idto-->>App: 200, data with name, dob, address, billed true
     else OTP wrong or expired
-        IDTO-->>App: 422 IDTO_205, billed false
+        idto-->>App: 422 IDTO_205, billed false
     else Attempt limit reached
-        IDTO-->>App: 429 IDTO_206, billed false, start again
+        idto-->>App: 429 IDTO_206, billed false, start again
     end
 ```
 
@@ -57,22 +57,22 @@ sequenceDiagram
 sequenceDiagram
     participant User as User's browser
     participant App as Your server
-    participant IDTO as IDTO API
+    participant idto as idto API
     participant DL as DigiLocker
-    App->>IDTO: POST /verify/digilocker/initiate_session {redirect_url, consent, consent_purpose}
-    IDTO-->>App: url
+    App->>idto: POST /verify/digilocker/initiate_session {redirect_url, consent, consent_purpose}
+    idto-->>App: url
     App->>User: Open url
     User->>DL: Sign in and consent
     DL-->>User: Redirect to your redirect_url with code, codeVerifier, clientId, state
     User->>App: code, codeVerifier
     alt Profile only
-        App->>IDTO: POST /v2/verify/digilocker {code, code_verifier}
-        IDTO-->>App: Masked profile, billed true
+        App->>idto: POST /v2/verify/digilocker {code, code_verifier}
+        idto-->>App: Masked profile, billed true
     else e-Aadhaar XML
-        App->>IDTO: POST /verify/digilocker/get_reference {code, code_verifier}
-        IDTO-->>App: reference_key, valid one hour
-        App->>IDTO: POST /verify/digilocker/fetch_aadhaar {reference_key}
-        IDTO-->>App: e-Aadhaar XML file
+        App->>idto: POST /verify/digilocker/get_reference {code, code_verifier}
+        idto-->>App: reference_key, valid one hour
+        App->>idto: POST /verify/digilocker/fetch_aadhaar {reference_key}
+        idto-->>App: e-Aadhaar XML file
     end
 ```
 
@@ -94,13 +94,13 @@ Each `code` can be exchanged once, so choose one branch per session. To check fi
 | Card read | aadhaar_ocr | 200 | `null` | Yes | Use as a pre-fill, then verify by OKYC, DigiLocker or QR |
 | DigiLocker code expired or reused | digilocker | 400 | `IDTO_001` | No | Start a new DigiLocker session |
 
-## In the IDTO verification flow
+## In the idto verification flow
 
-The Aadhaar step in the IDTO SDKs lets the user choose DigiLocker, an Aadhaar OTP, or an upload (scan the QR or photograph the front and back), with a consent checkbox before they continue.
+The Aadhaar step in the idto SDKs lets the user choose DigiLocker, an Aadhaar OTP, or an upload (scan the QR or photograph the front and back), with a consent checkbox before they continue.
 
-<video controls preload="metadata" style={{ width: "100%", maxWidth: "390px", borderRadius: "12px" }} src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.mp4"></video>
+<video controls preload="metadata" style={{ width: "100%", maxWidth: "390px", borderRadius: "12px" }} src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.jpg"></video>
 
-<img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-aadhaar-method.png" alt="Aadhaar step offering DigiLocker, Aadhaar OTP and upload, with a consent checkbox" style={{ maxWidth: "390px" }} />
+<img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-aadhaar-method.png" alt="Aadhaar step offering DigiLocker, Aadhaar OTP and upload, with a consent checkbox" style={{ maxWidth: "390px" }} />
 
 See [SDK modules](/sdks/modules) to add the Aadhaar step to a workflow.
 

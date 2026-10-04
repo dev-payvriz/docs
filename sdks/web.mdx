@@ -1,20 +1,20 @@
 ---
 title: "Web SDK"
 sidebarTitle: "Web"
-description: "Open the IDTO verification flow in any web app with one script tag. No bundler, npm install or CSS file needed."
+description: "Open the idto verification flow in any web app with one script tag. No bundler, npm install or CSS file needed."
 ---
 
-The Web SDK is a single script that opens the IDTO verification flow over your page. It renders inside a shadow root, so your page styles never reach the flow and the flow's styles never reach your page. It works with any frontend stack, React included, because it is a plain script tag.
+The Web SDK is a single script that opens the idto verification flow over your page. It renders inside a shadow root, so your page styles never reach the flow and the flow's styles never reach your page. It works with any frontend stack, React included, because it is a plain script tag.
 
 <Frame caption="The flow opens with an overview of the steps in your workflow.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-overview.png" alt="Verification overview screen listing the workflow steps" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-overview.png" alt="Verification overview screen listing the workflow steps" width="390" />
 </Frame>
 
 ## Before you start
 
 You need:
 
-- A `client_id` and `client_secret` from the IDTO dashboard. The secret stays on your server.
+- A `client_id` and `client_secret` from the idto dashboard. The secret stays on your server.
 - A `workflow_template_id`: the UUID of the workflow that decides which steps run and in what order.
 - A backend route that mints a short-lived client token. See [Authentication](/authentication) and the [Node and Express recipe](/recipes/sdk-token-node-express).
 
@@ -67,7 +67,7 @@ The script defines `window.IDtoSDK` with two methods, `open(config)` and `close(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_token: d.session_token }),
           }),
-          onError: (d) => console.error("IDTO error", d.step, d.error),
+          onError: (d) => console.error("idto error", d.step, d.error),
           onAbandon: (d) => console.warn("abandoned at", d.at_step),
           onClose: () => console.log("closed"),
         });
@@ -81,7 +81,7 @@ The script defines `window.IDtoSDK` with two methods, `open(config)` and `close(
 </Steps>
 
 <Frame caption="A PAN capture step inside the flow.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-capture.png" alt="PAN card capture screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-capture.png" alt="PAN card capture screen" width="390" />
 </Frame>
 
 ## Environments
@@ -194,7 +194,7 @@ The token must come from the same environment the flow points at. Staging runs r
 </ResponseField>
 
 <Frame caption="The completion screen shown after the last step.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="Workflow complete screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="Workflow complete screen" width="390" />
 </Frame>
 
 ## Methods
@@ -206,6 +206,6 @@ The token must come from the same environment the flow points at. Staging runs r
 
 ## See it run
 
-<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.mp4"></video>
+<video controls width="100%" src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.jpg"></video>
 
 Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fweb) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fweb)

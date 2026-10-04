@@ -3,7 +3,7 @@ title: "Bank overview"
 description: "Confirm a bank account exists and get the name registered on it, with or without a penny drop."
 ---
 
-IDTO bank verification confirms that an Indian bank account exists and returns the name the bank holds for it. Use it before you send a payout, refund or loan disbursal, so money only goes to an account that belongs to your user.
+idto bank verification confirms that an Indian bank account exists and returns the name the bank holds for it. Use it before you send a payout, refund or loan disbursal, so money only goes to an account that belongs to your user.
 
 ## Endpoints
 
@@ -19,18 +19,18 @@ Start with `/v2/verify/bank_verification` for new integrations.
 ```mermaid
 sequenceDiagram
     participant App as Your server
-    participant IDTO as IDTO API
+    participant idto as idto API
     participant Bank as Bank network
-    App->>IDTO: POST /v2/verify/bank_verification {account_number, ifsc}
-    IDTO->>IDTO: Validate format, check credits, lock identical request
-    IDTO->>Bank: Credit a small deposit to the account
-    Bank-->>IDTO: Registered name, or account invalid
+    App->>idto: POST /v2/verify/bank_verification {account_number, ifsc}
+    idto->>idto: Validate format, check credits, lock identical request
+    idto->>Bank: Credit a small deposit to the account
+    Bank-->>idto: Registered name, or account invalid
     alt Account valid
-        IDTO-->>App: 200, error_code null, data.account_holder_name, billed true
+        idto-->>App: 200, error_code null, data.account_holder_name, billed true
     else Account invalid or closed
-        IDTO-->>App: 200, error_code IDTO_202, data null, billed true
+        idto-->>App: 200, error_code IDTO_202, data null, billed true
     else Network busy or input rejected
-        IDTO-->>App: 4xx or 5xx error, billed false
+        idto-->>App: 4xx or 5xx error, billed false
     end
 ```
 
@@ -44,18 +44,18 @@ sequenceDiagram
 | Duplicate request still running | 409 | `IDTO_004` | No | Wait for the first response. |
 | Network busy | 503 | `IDTO_008`, `IDTO_103`, `IDTO_403` | No | Retry with backoff and an `Idempotency-Key`. |
 
-## In the IDTO verification flow
+## In the idto verification flow
 
-The bank step in the IDTO SDKs collects the account number (entered twice) and IFSC from your user, verifies the account and shows the registered name.
+The bank step in the idto SDKs collects the account number (entered twice) and IFSC from your user, verifies the account and shows the registered name.
 
-<video controls muted playsInline src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-bank.mp4"></video>
+<video controls muted playsInline src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-bank.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-bank.jpg"></video>
 
 <CardGroup cols={2}>
   <Card title="Account details entry">
-    <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-entry.png" alt="Bank step asking for account number and IFSC" />
+    <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-entry.png" alt="Bank step asking for account number and IFSC" />
   </Card>
   <Card title="Verified result">
-    <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-verified.png" alt="Bank verified screen showing account holder name, masked account number and IFSC" />
+    <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-verified.png" alt="Bank verified screen showing account holder name, masked account number and IFSC" />
   </Card>
 </CardGroup>
 

@@ -19,29 +19,29 @@ Use this module to onboard drivers, delivery partners and vehicle owners. Verify
 sequenceDiagram
     participant App as Your app
     participant Server as Your server
-    participant IDTO
+    participant idto
     App->>Server: Licence photo or number + date of birth
     opt Read the card first
-        Server->>IDTO: POST /v2/verify/dl_ocr (file)
-        IDTO-->>Server: data.dl_number, data.dob
+        Server->>idto: POST /v2/verify/dl_ocr (file)
+        idto-->>Server: data.dl_number, data.dob
     end
-    Server->>IDTO: POST /v2/verify/driving_licence
-    IDTO-->>Server: error_code null + data, or IDTO_202
+    Server->>idto: POST /v2/verify/driving_licence
+    idto-->>Server: error_code null + data, or IDTO_202
     Server-->>App: Approve, ask again, or review
 ```
 
 ## Outcomes and billing
 
-The two v2 endpoints share the IDTO envelope. `error_code: null` means a record or a reading was returned; `IDTO_202` means the check ran and found nothing. Both are 2xx and billed. Every non-2xx response is an error and is never billed. Vehicle RC is a v1 endpoint: it is charged only when `status` is `success`, and the charge is marked by `chargeble: "true"`.
+The two v2 endpoints share the idto envelope. `error_code: null` means a record or a reading was returned; `IDTO_202` means the check ran and found nothing. Both are 2xx and billed. Every non-2xx response is an error and is never billed. Vehicle RC is a v1 endpoint: it is charged only when `status` is `success`, and the charge is marked by `chargeble: "true"`.
 
 ## In the hosted flow
 
-The driving licence step of the IDTO verification flow collects the licence details from the user and shows the verified result.
+The driving licence step of the idto verification flow collects the licence details from the user and shows the verified result.
 
-<video controls muted playsInline src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-driving-licence.mp4" aria-label="Driving licence step in the IDTO verification flow"></video>
+<video controls muted playsInline src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-driving-licence.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-driving-licence.jpg" aria-label="Driving licence step in the idto verification flow"></video>
 
 <Frame>
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-dl-result.png" alt="Driving licence result screen in the IDTO verification flow" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-dl-result.png" alt="Driving licence result screen in the idto verification flow" width="390" />
 </Frame>
 
 ## Test scenarios

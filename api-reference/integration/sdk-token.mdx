@@ -1,11 +1,11 @@
 ---
 title: "Mint an SDK token"
 sidebarTitle: "Mint SDK token"
-description: "Exchange your client ID and API key for a 15 minute bearer token to hand to the IDTO SDK."
+description: "Exchange your client ID and API key for a 15 minute bearer token to hand to the idto SDK."
 openapi: "openapi2.0.json POST /auth/sdk/token"
 ---
 
-Your API key must never reach a browser or a mobile app. Call this endpoint from your server, then pass only the returned `access_token` to the IDTO SDK. The token expires after 900 seconds; mint a fresh one for each verification flow you open.
+Your API key must never reach a browser or a mobile app. Call this endpoint from your server, then pass only the returned `access_token` to the idto SDK. The token expires after 900 seconds; mint a fresh one for each verification flow you open.
 
 <Steps>
   <Step title="Your server calls this endpoint">
@@ -15,7 +15,7 @@ Your API key must never reach a browser or a mobile app. Call this endpoint from
     Send only `access_token` to your web page or app.
   </Step>
   <Step title="Open the flow">
-    Initialise the IDTO SDK with the token. See the [SDK guides](/sdks/web).
+    Initialise the idto SDK with the token. See the [SDK guides](/sdks/web).
   </Step>
 </Steps>
 
@@ -24,7 +24,7 @@ Your API key must never reach a browser or a mobile app. Call this endpoint from
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 Use the key pair issued for the environment you call: staging keys do not work on production and the other way round.
 
@@ -35,7 +35,7 @@ Use the key pair issued for the environment you call: staging keys do not work o
 | Client ID and API key do not match | 401 | `{"detail": "Invalid client credentials"}` | No |
 | Client is inactive | 401 | `{"detail": "Client is inactive"}` | No |
 | `client_id` or `client_secret` missing | 422 | `{"detail": [...]}` | No |
-| Unexpected failure | 500 | Not part of the contract; retry later | No |
+| Unexpected failure | 500 | Our side failed. Retry after a few seconds; if it persists, write to tech@idto.ai with the request time. | No |
 
 Working server examples in nine stacks: [Node Express](/recipes/sdk-token-node-express), [TypeScript](/recipes/sdk-token-typescript), [FastAPI](/recipes/sdk-token-python-fastapi), [Flask](/recipes/sdk-token-python-flask), [Django](/recipes/sdk-token-python-django), [Go](/recipes/sdk-token-go-gin), [PHP](/recipes/sdk-token-php), [Ruby](/recipes/sdk-token-ruby-sinatra), [Java](/recipes/sdk-token-java).
 

@@ -10,30 +10,26 @@ Every SDK runs the same flow, so every module below works the same way on Web, A
 
 ## Identity modules
 
-| Slug | What the user does |
-| --- | --- |
-| `mobile_verification` | Confirms a mobile number with a one-time code. |
-| `aadhar_verification` | Verifies Aadhaar through DigiLocker or OTP. |
-| `pan_verification` | Captures or enters a PAN and gets it verified. |
-| `face_match` | Takes a selfie, checked for liveness and matched against a reference photo. |
-| `driving_licence` | Verifies a driving licence. |
-| `vehicle_rc` | Verifies a vehicle registration certificate. |
-| `account_verification` | Verifies a bank account. |
-| `address_verification` | Uploads an invoice; the address on it is read and returned. |
-| `govt_id_selection` | Chooses which government ID to verify; the workflow branches on the choice. |
-| `name_match` | Runs without a screen at the end of the flow and compares the names collected by other steps. |
+- `mobile_verification`: Confirms a mobile number with a one-time code.
+- `aadhar_verification`: Verifies Aadhaar through DigiLocker or OTP.
+- `pan_verification`: Captures or enters a PAN and gets it verified.
+- `face_match`: Takes a selfie, checked for liveness and matched against a reference photo.
+- `driving_licence`: Verifies a driving licence.
+- `vehicle_rc`: Verifies a vehicle registration certificate.
+- `account_verification`: Verifies a bank account.
+- `address_verification`: Uploads an invoice; the address on it is read and returned.
+- `govt_id_selection`: Chooses which government ID to verify; the workflow branches on the choice.
+- `name_match`: Runs without a screen at the end of the flow and compares the names collected by other steps.
 
 ## Business modules
 
-| Slug | What the user does |
-| --- | --- |
-| `business_type` | Chooses the business type; the workflow branches on the choice. |
-| `business_pan` | Verifies the business PAN. |
-| `gst_verification` | Verifies a GST registration. |
-| `cin_verification` | Verifies a Corporate Identification Number. |
+- `business_type`: Chooses the business type; the workflow branches on the choice.
+- `business_pan`: Verifies the business PAN.
+- `gst_verification`: Verifies a GST registration.
+- `cin_verification`: Verifies a Corporate Identification Number.
 
 <Frame caption="The overview screen lists the modules of the workflow in order.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-overview.png" alt="Verification overview screen listing the workflow steps" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-overview.png" alt="Verification overview screen listing the workflow steps" width="390" />
 </Frame>
 
 ## eSign
@@ -46,6 +42,6 @@ Each finished module adds an entry under its slug in `accumulated_data`, and `on
 
 ## See a business flow
 
-<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.mp4"></video>
+<video controls width="100%" src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.jpg"></video>
 
 Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fmodules) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fmodules)

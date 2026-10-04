@@ -5,7 +5,7 @@ description: "Check that a selfie shows a live person in front of the camera, no
 openapi: "openapi2.0.json POST /v2/verify/liveness"
 ---
 
-Send one selfie as base64 in `person`. IDTO checks it for signs of a presentation attack, such as a photo of a screen or a printout, and for capture problems such as closed eyes, blur or low light. Run it before [Face match](/api-reference/face/face-match) so you only compare faces from a live capture.
+Send one selfie as base64 in `person`. idto checks it for signs of a presentation attack, such as a photo of a screen or a printout, and for capture problems such as closed eyes, blur or low light. Run it before [Face match](/api-reference/face/face-match) so you only compare faces from a live capture.
 
 Every response has the same shape whichever source serves the call. Branch on `error_code` and `data.is_live`:
 
@@ -18,7 +18,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Input rules
 
@@ -26,7 +26,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 |---|---|
 | `person` | Required. Base64 of a JPEG or PNG selfie, at most 10 MB. A `data:image/jpeg;base64,` prefix is accepted. |
 | `user_id` | Optional. Your own reference for the end user. |
-| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
 
 ## Response fields
 

@@ -18,7 +18,7 @@ When the call is made from a browser with an SDK session token, `directors_brief
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Errors
 
@@ -30,7 +30,7 @@ When the call is made from a browser with an SDK session token, `directors_brief
 | `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
 | `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
 | `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
-| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `null` | 400 | Insufficient credits for this operation. (your idto balance is too low; recharge and retry) | No |
 | `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
 | `IDTO_008` | 503 or 504 | The verification service is momentarily busy. Please retry shortly. | No |
 

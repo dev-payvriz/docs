@@ -17,7 +17,7 @@ Optional, before step 1 of the [DigiLocker flow](/products/aadhaar/overview#digi
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -36,7 +36,7 @@ This endpoint has no idempotency support. A retry after a timeout runs the call 
 | Client has no account | 404 | `{"detail": "Customer not found for this client"}` | No |
 | `mobile_number` missing or empty | 400 | `{"detail": {"status": "error", "message": "Mobile number invalid/missing.", "error_code": "3000", "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
 | Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
-| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+| Failure on idto's side | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 ## Test scenarios
 

@@ -9,7 +9,7 @@ idto runs two environments. They share the same API contract, so code written ag
 | Environment | Base URL | Notes |
 | --- | --- | --- |
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 <Warning>
   There is no sandbox that returns canned results. Every staging call reaches a live verification source, exactly as in production. Test only with identities you have permission to verify, such as your own team's documents with their consent.
@@ -19,7 +19,7 @@ idto runs two environments. They share the same API contract, so code written ag
 
 Each environment has its own `X-Client-ID` and `X-API-Key` pair, and a pair from one environment does not authenticate against the other.
 
-- **Staging:** ask your IDTO account manager. Staging keys are issued by hand.
+- **Staging:** ask your idto account manager. Staging keys are issued by hand.
 - **Production:** generate them in the dashboard under **API Credentials** once your account has completed go-live. See the [Go-live checklist](/go-live-checklist).
 
 ```bash

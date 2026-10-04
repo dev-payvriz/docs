@@ -12,7 +12,7 @@ Step 3 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Ret
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -37,7 +37,7 @@ This endpoint has no idempotency support. A retry after a timeout runs the call 
 | Aadhaar not linked to the DigiLocker account | 404 | Same shape, `message` "Aadhaar is not linked in this user's DigiLocker account.", `error_code` `"2007"` | No |
 | DigiLocker could not return the file | DigiLocker's status | Same shape, `error_code` `"2009"`; retry, or ask for another KYC document | No |
 | A required field missing or of the wrong type | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
-| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+| Failure on idto's side | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 ## Test scenarios
 

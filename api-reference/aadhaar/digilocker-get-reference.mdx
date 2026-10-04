@@ -12,7 +12,7 @@ Step 2 of the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). Sen
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -34,7 +34,7 @@ If you only need the holder's profile, use [DigiLocker profile](/api-reference/a
 | Code rejected (expired, already used, or not matching the verifier) | 400 | `{"detail": {"status": "error", "message": "No access_token received", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
 | Not enough credits | 400 | Same shape, `message` "Insufficient credits for this operation." | No |
 | A required field missing or of the wrong type | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
-| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+| Failure on idto's side | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 ## Test scenarios
 

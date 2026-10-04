@@ -5,7 +5,7 @@ description: "Send an Idempotency-Key so a retried verification returns the stor
 
 Networks fail after the request leaves your server. Send an `Idempotency-Key` header on every v2 verification, and reuse the same key when you retry the same request. This recipe uses PAN OCR, which reads a card image, so there is no money movement.
 
-| Situation | What IDTO returns |
+| Situation | What idto returns |
 |---|---|
 | First call with a new key | The normal response |
 | Same key, same body, first call finished with a `2xx` | The stored first response, byte for byte, with the same `tranx_id` and the same `billed`. Nothing runs again and nothing new is charged |

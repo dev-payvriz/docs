@@ -1,13 +1,13 @@
 ---
 title: "iOS SDK"
 sidebarTitle: "iOS (Swift)"
-description: "Run the IDTO verification flow in a native iOS app from UIKit or SwiftUI."
+description: "Run the idto verification flow in a native iOS app from UIKit or SwiftUI."
 ---
 
-The iOS SDK presents the IDTO verification flow modally and returns a typed result. Use `IDto.present` from UIKit with `async`/`await`, or `IDtoVerificationView` from SwiftUI.
+The iOS SDK presents the idto verification flow modally and returns a typed result. Use `IDto.present` from UIKit with `async`/`await`, or `IDtoVerificationView` from SwiftUI.
 
 <Frame caption="The Aadhaar step lets the user choose how to verify.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-aadhaar-method.png" alt="Aadhaar verification method choice screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-aadhaar-method.png" alt="Aadhaar verification method choice screen" width="390" />
 </Frame>
 
 ## Requirements
@@ -28,7 +28,7 @@ The package is distributed through Swift Package Manager from a private reposito
 https://github.com/idto-ai/idto-swift-sdk.git
 ```
 
-Pin **Up to Next Major** from `0.1.0` and add the **IDto** library to your app target. In a `Package.swift`, add the package:
+Pin **Up to Next Major** from `0.1.0` and add the `IDto` library to your app target. In a `Package.swift`, add the package:
 
 ```swift
 .package(url: "https://github.com/idto-ai/idto-swift-sdk.git", from: "0.1.0")
@@ -123,7 +123,7 @@ struct ContentView: View {
 ```
 
 <Frame caption="A PAN result returned by the flow.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-result.png" alt="PAN verification result screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-result.png" alt="PAN verification result screen" width="390" />
 </Frame>
 
 ## Configuration
@@ -173,6 +173,6 @@ Every payload also carries `raw`, the original dictionary. `error` values other 
 
 ## See it run
 
-<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.mp4"></video>
+<video controls width="100%" src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-aadhaar-okyc.jpg"></video>
 
 Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fios) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fios)

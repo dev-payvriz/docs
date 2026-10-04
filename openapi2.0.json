@@ -16,7 +16,7 @@
     },
     {
       "url": "https://dev.idto.ai",
-      "description": "Staging: keys on request from your IDTO account manager. Calls reach live sources and deduct staging credits."
+      "description": "Staging: keys on request from your idto account manager. Calls reach live sources and deduct staging credits."
     }
   ],
   "tags": [
@@ -95,18 +95,18 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-Client-ID",
-        "description": "Your client ID from the IDTO dashboard (API credentials). Send it on every server-to-server request together with X-API-Key. Staging and production client IDs are different."
+        "description": "Your client ID from the idto dashboard (API credentials). Send it on every server-to-server request together with X-API-Key. Staging and production client IDs are different."
       },
       "ApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "Your API key from the IDTO dashboard (API credentials). Keep it on your server; never ship it in a browser or mobile app. Send it on every server-to-server request together with X-Client-ID."
+        "description": "Your API key from the idto dashboard (API credentials). Keep it on your server; never ship it in a browser or mobile app. Send it on every server-to-server request together with X-Client-ID."
       },
       "SdkSessionToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Short-lived SDK token (15 minutes) returned by POST /auth/sdk/token. Mint it on your server with your client ID and secret, then pass it to the IDTO SDK or send it as `Authorization: Bearer <token>` to the SDK session endpoints."
+        "description": "Short-lived SDK token (15 minutes) returned by POST /auth/sdk/token. Mint it on your server with your client ID and secret, then pass it to the idto SDK or send it as `Authorization: Bearer <token>` to the SDK session endpoints."
       }
     },
     "schemas": {
@@ -1533,7 +1533,7 @@
         }
       },
       "InsufficientCredits402": {
-        "description": "`IDTO_009`, not billed. On Aadhaar OKYC send OTP it means your IDTO balance cannot cover the call: recharge from the dashboard and retry. On face match, liveness and PAN detailed it means the verification source reported a credit limit: retry later or write to tech@idto.ai.",
+        "description": "`IDTO_009`, not billed. On Aadhaar OKYC send OTP it means your idto balance cannot cover the call: recharge from the dashboard and retry. On face match, liveness and PAN detailed it means the verification source reported a credit limit: retry later or write to tech@idto.ai.",
         "content": {
           "application/json": {
             "schema": {
@@ -1812,7 +1812,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Only when the call is made inside an IDTO workflow session."
+                    "description": "Only when the call is made inside an idto workflow session."
                   }
                 },
                 "required": [
@@ -2244,7 +2244,7 @@
           "Bank Account"
         ],
         "summary": "Verify a bank account (penny drop)",
-        "description": "Confirms that a bank account exists and can receive money, and returns the name registered on it. A valid account returns `error_code: null` with `data`. An invalid, closed or non-existent account returns HTTP 200 with `error_code: \"IDTO_202\"` and `data: null`. Both are billed. Any other failure is a non-2xx error and is never billed.\n\nWhen you do not send an `Idempotency-Key`, IDTO still blocks a second identical request (same body) while the first is running: the second gets `IDTO_004` (409). Once the first finishes, an identical request runs again and is billed again. Send an `Idempotency-Key` to have retries replay the stored result instead.",
+        "description": "Confirms that a bank account exists and can receive money, and returns the name registered on it. A valid account returns `error_code: null` with `data`. An invalid, closed or non-existent account returns HTTP 200 with `error_code: \"IDTO_202\"` and `data: null`. Both are billed. Any other failure is a non-2xx error and is never billed.\n\nWhen you do not send an `Idempotency-Key`, idto still blocks a second identical request (same body) while the first is running: the second gets `IDTO_004` (409). Once the first finishes, an identical request runs again and is billed again. Send an `Idempotency-Key` to have retries replay the stored result instead.",
         "security": [
           {
             "ClientIdAuth": [],
@@ -2296,7 +2296,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Optional. Set only when this call runs inside an IDTO workflow session. If that session is priced per workflow, the call is free and `billed` is `false`."
+                    "description": "Optional. Set only when this call runs inside an idto workflow session. If that session is priced per workflow, the call is free and `billed` is `false`."
                   }
                 },
                 "required": [
@@ -2385,7 +2385,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string",
@@ -2659,7 +2659,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Optional. Set only when this call runs inside an IDTO workflow session; a per-workflow priced session covers the charge."
+                    "description": "Optional. Set only when this call runs inside an idto workflow session; a per-workflow priced session covers the charge."
                   }
                 },
                 "required": [
@@ -2732,7 +2732,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string",
@@ -2875,9 +2875,6 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError422"
-          },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not billed."
           }
         }
       }
@@ -3169,7 +3166,7 @@
                   "workflow_session_token": {
                     "type": "string",
                     "maxLength": 64,
-                    "description": "Session token when the call is part of an IDTO workflow session. Omit for standalone calls."
+                    "description": "Session token when the call is part of an idto workflow session. Omit for standalone calls."
                   }
                 },
                 "required": [
@@ -3678,7 +3675,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id for this call."
+                      "description": "idto transaction id for this call."
                     },
                     "timestamp": {
                       "type": "string",
@@ -3906,10 +3903,50 @@
             }
           },
           "401": {
-            "description": "Missing or invalid `X-Client-ID` or `X-API-Key`. Not billed."
+            "description": "Missing or invalid `X-Client-ID` or `X-API-Key`. Not billed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "missing_keys": {
+                    "summary": "Credentials missing or invalid",
+                    "value": {
+                      "detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."
+                    }
+                  }
+                }
+              }
+            }
           },
           "403": {
-            "description": "The client is inactive or not allowed to call this endpoint. Not billed."
+            "description": "The client is inactive or not allowed to call this endpoint. Not billed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "inactive": {
+                    "summary": "Inactive client",
+                    "value": {
+                      "detail": "Client is inactive"
+                    }
+                  }
+                }
+              }
+            }
           },
           "422": {
             "description": "The request body failed schema validation, for example a required field is missing. Not billed.",
@@ -3938,9 +3975,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Unexpected failure. Not billed. The body is not part of the contract; retry later."
           }
         }
       }
@@ -5333,10 +5367,50 @@
             }
           },
           "401": {
-            "description": "Missing or invalid `X-Client-ID` or `X-API-Key`. Not billed."
+            "description": "Missing or invalid `X-Client-ID` or `X-API-Key`. Not billed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "missing_keys": {
+                    "summary": "Credentials missing or invalid",
+                    "value": {
+                      "detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."
+                    }
+                  }
+                }
+              }
+            }
           },
           "403": {
-            "description": "The client is inactive or not allowed to call this endpoint. Not billed."
+            "description": "The client is inactive or not allowed to call this endpoint. Not billed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "inactive": {
+                    "summary": "Inactive client",
+                    "value": {
+                      "detail": "Client is inactive"
+                    }
+                  }
+                }
+              }
+            }
           },
           "422": {
             "description": "The request body failed schema validation, for example a required field is missing. Not billed.",
@@ -5365,15 +5439,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Unexpected failure. Not billed. The body is not part of the contract; retry later."
-          },
-          "502": {
-            "description": "The credit bureau could not be reached. Not billed. Retry later."
-          },
-          "504": {
-            "description": "The credit bureau did not respond in time. Not billed. Retry later."
           }
         }
       }
@@ -5609,7 +5674,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Only when the call is made inside an IDTO workflow session."
+                    "description": "Only when the call is made inside an idto workflow session."
                   }
                 }
               },
@@ -5809,9 +5874,6 @@
               }
             }
           },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not charged."
-          },
           "422": {
             "$ref": "#/components/responses/ValidationError422"
           }
@@ -5899,7 +5961,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string"
@@ -6006,9 +6068,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not charged."
           },
           "422": {
             "$ref": "#/components/responses/ValidationError422"
@@ -6127,7 +6186,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string"
@@ -6235,9 +6294,6 @@
               }
             }
           },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not charged."
-          },
           "422": {
             "$ref": "#/components/responses/ValidationError422"
           }
@@ -6277,7 +6333,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Only when the call is made inside an IDTO workflow session."
+                    "description": "Only when the call is made inside an idto workflow session."
                   }
                 }
               },
@@ -6333,7 +6389,7 @@
                         },
                         "reference_key": {
                           "type": "string",
-                          "description": "DigiLocker's own reference, not the IDTO `reference_key`."
+                          "description": "DigiLocker's own reference, not the idto `reference_key`."
                         },
                         "sub": {
                           "type": "string"
@@ -6356,7 +6412,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string"
@@ -6524,9 +6580,6 @@
               }
             }
           },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not charged."
-          },
           "422": {
             "$ref": "#/components/responses/ValidationError422"
           }
@@ -6620,7 +6673,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string"
@@ -6745,9 +6798,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not charged."
           }
         }
       }
@@ -7462,7 +7512,7 @@
                   "workflow_session_token": {
                     "type": "string",
                     "maxLength": 64,
-                    "description": "Session token when the call is part of an IDTO workflow session. Omit for standalone calls."
+                    "description": "Session token when the call is part of an idto workflow session. Omit for standalone calls."
                   }
                 },
                 "required": [
@@ -7651,7 +7701,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id for this call."
+                      "description": "idto transaction id for this call."
                     },
                     "timestamp": {
                       "type": "string",
@@ -7868,9 +7918,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "The signing platform could not be reached. Not billed. The body is not part of the contract; retry later."
           }
         }
       }
@@ -8094,7 +8141,7 @@
             }
           },
           "410": {
-            "description": "The signed document was deleted by our eSign provider before IDTO archived a copy. It cannot be recovered; contact support with the `docket_id`.",
+            "description": "The signed document was deleted by our eSign provider before idto archived a copy. It cannot be recovered; contact support with the `docket_id`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8532,7 +8579,7 @@
         },
         "responses": {
           "200": {
-            "description": "The GSTIN was found. Charged. The GST profile is returned alongside the fields below; its field names depend on how the product is configured for your account, so ask your IDTO account manager for your field list.",
+            "description": "The GSTIN was found. Charged. The GST profile is returned alongside the fields below; its field names depend on how the product is configured for your account, so ask your idto account manager for your field list.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8547,7 +8594,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id for this call."
+                      "description": "idto transaction id for this call."
                     },
                     "timestamp": {
                       "type": "string",
@@ -8672,9 +8719,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Unexpected failure. Not billed. The body is not part of the contract; retry later."
           }
         }
       }
@@ -9018,7 +9062,7 @@
                   "workflow_session_token": {
                     "type": "string",
                     "maxLength": 64,
-                    "description": "Session token when the call is part of an IDTO workflow session. Omit for standalone calls."
+                    "description": "Session token when the call is part of an idto workflow session. Omit for standalone calls."
                   }
                 },
                 "required": [
@@ -9719,7 +9763,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id. Quote it to support."
+                      "description": "idto transaction id. Quote it to support."
                     },
                     "timestamp": {
                       "type": "string",
@@ -9871,15 +9915,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/V1WrappedError"
+                },
+                "examples": {
+                  "no_profile": {
+                    "summary": "No profile found",
+                    "value": {
+                      "detail": {
+                        "status": "error",
+                        "message": "Error fetching Mobile data",
+                        "error_code": null,
+                        "data": null,
+                        "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
+                        "timestamp": "2026-09-14T10:15:30.123456+00:00"
+                      }
+                    }
+                  }
                 }
               }
             }
           },
           "422": {
             "$ref": "#/components/responses/ValidationError422"
-          },
-          "500": {
-            "description": "The call failed on IDTO's side. The body is not part of the contract; retry later. Not billed."
           }
         }
       }
@@ -10705,7 +10761,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id for this call."
+                      "description": "idto transaction id for this call."
                     },
                     "timestamp": {
                       "type": "string",
@@ -10910,9 +10966,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "The verification could not complete. The body is not part of the contract; retry later. Not billed."
           },
           "502": {
             "description": "The verification source could not complete the call. Its HTTP status is passed through (for example 401, 403, 409, 422 or 502) with the wrapped `detail` body; `error_code` and `message` vary. Retry later. Not billed.",
@@ -11366,7 +11419,7 @@
                     },
                     "tranx_id": {
                       "type": "string",
-                      "description": "IDTO transaction id for this call."
+                      "description": "idto transaction id for this call."
                     },
                     "timestamp": {
                       "type": "string",
@@ -11531,9 +11584,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "The verification could not complete. The body is not part of the contract; retry later. Not billed."
           },
           "502": {
             "description": "The verification source could not complete the call. Its HTTP status is passed through (for example 401, 403, 409, 422 or 502) with the wrapped `detail` body; `error_code` and `message` vary. Retry later. Not billed.",
@@ -11795,7 +11845,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Set only when the call is made inside an IDTO workflow session."
+                    "description": "Set only when the call is made inside an idto workflow session."
                   }
                 },
                 "required": [
@@ -12129,7 +12179,7 @@
         ],
         "summary": "Mint an SDK token",
         "operationId": "mintSdkToken",
-        "description": "Exchanges your client ID and API key for a bearer token that expires in 15 minutes (`expires_in` 900). Call it from your server, never from a browser or app, and hand only the returned token to the IDTO SDK. The API key stays on your server. This endpoint takes the credentials in the JSON body and needs no auth headers. Not billed.",
+        "description": "Exchanges your client ID and API key for a bearer token that expires in 15 minutes (`expires_in` 900). Call it from your server, never from a browser or app, and hand only the returned token to the idto SDK. The API key stays on your server. This endpoint takes the credentials in the JSON body and needs no auth headers. Not billed.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -12232,9 +12282,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Unexpected failure. The body is not part of the contract; retry later."
           }
         }
       }
@@ -12605,9 +12652,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Unexpected failure. The body is not part of the contract; retry later."
           }
         }
       }
@@ -12646,7 +12690,7 @@
                   },
                   "workflow_session_token": {
                     "type": "string",
-                    "description": "Pass only when the call is part of an IDTO workflow session. Optional."
+                    "description": "Pass only when the call is part of an idto workflow session. Optional."
                   }
                 }
               },
@@ -13290,9 +13334,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Server error. Body is not part of the contract; retry later. Not charged."
           }
         }
       }
@@ -13306,7 +13347,7 @@
         ],
         "summary": "eSign completed",
         "operationId": "esignCompletedWebhook",
-        "description": "Sent to your webhook URL once every signer of a document has signed and IDTO has archived the signed PDF. It carries no PDF: call `POST /verify/esign/document` with the `docket_id` and `document_id` to download it.",
+        "description": "Sent to your webhook URL once every signer of a document has signed and idto has archived the signed PDF. It carries no PDF: call `POST /verify/esign/document` with the `docket_id` and `document_id` to download it.",
         "parameters": [
           {
             "name": "X-Idto-Event-Id",
@@ -13322,7 +13363,7 @@
             "name": "X-Idto-Timestamp",
             "in": "header",
             "required": true,
-            "description": "Unix time in seconds when IDTO signed this delivery. Reject deliveries older than 300 seconds.",
+            "description": "Unix time in seconds when idto signed this delivery. Reject deliveries older than 300 seconds.",
             "schema": {
               "type": "string"
             },
@@ -13437,7 +13478,7 @@
             "name": "X-Idto-Timestamp",
             "in": "header",
             "required": true,
-            "description": "Unix time in seconds when IDTO signed this delivery. Reject deliveries older than 300 seconds.",
+            "description": "Unix time in seconds when idto signed this delivery. Reject deliveries older than 300 seconds.",
             "schema": {
               "type": "string"
             },

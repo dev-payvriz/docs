@@ -4,14 +4,14 @@ sidebarTitle: "Overview"
 description: "Collect legally valid electronic signatures on PDFs and download the signed copy."
 ---
 
-eSign sends one or more PDFs to the people who must sign them, collects their signatures (Aadhaar-based or electronic, as you set per signer), and gives you the signed PDF back through the IDTO API. IDTO archives every signed PDF as soon as signing completes, so you can download it later.
+eSign sends one or more PDFs to the people who must sign them, collects their signatures (Aadhaar-based or electronic, as you set per signer), and gives you the signed PDF back through the idto API. idto archives every signed PDF as soon as signing completes, so you can download it later.
 
 ## How it works
 
 ```mermaid
 sequenceDiagram
     participant S as Your server
-    participant I as IDTO
+    participant I as idto
     participant U as Signer
     S->>I: POST /verify/esign (PDFs, signers)
     I-->>S: docket_id, document_id

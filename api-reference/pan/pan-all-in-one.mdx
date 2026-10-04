@@ -12,7 +12,7 @@ Use this endpoint to pull the record behind a PAN for prefill or cross-checks. I
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 <Warning>
 This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
@@ -39,7 +39,7 @@ This endpoint has no `Idempotency-Key` support. A retried call runs again and ca
 | none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "pan_number"], ...}]}` when `pan_number` is missing | No |
 | `006` | 429 | `{"detail": {"status": "error", "message": "Too many requests at the moment. Please wait and retry", "error_code": "006", ...}}` | No |
 | `004`, `005`, `006`, `008` | 401, 403, 409, 422, 502 | `{"detail": {"status": "error", "error_code": "...", ...}}`: the verification source could not complete the call; its status is passed through | No |
-| none | 500 | Body is not part of the contract; retry later. | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
 

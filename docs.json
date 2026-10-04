@@ -12,7 +12,7 @@
     "links": [
       {
         "label": "Postman collection",
-        "href": "https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/postman/idto-api-2026-10.postman_collection.json"
+        "href": "https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/postman/idto-api-2026-10.postman_collection.json"
       },
       {
         "label": "Changelog",
@@ -261,7 +261,7 @@
       }
     ]
   },
-  "description": "IDTO API documentation: verify PAN, Aadhaar, GST, bank accounts and more through one REST API for Indian identity, document and business verification.",
+  "description": "idto API documentation: verify PAN, Aadhaar, GST, bank accounts and more through one REST API for Indian identity, document and business verification.",
   "api": {
     "openapi": "openapi2.0.json",
     "examples": {

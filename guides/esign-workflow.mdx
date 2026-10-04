@@ -120,7 +120,7 @@ Once every signer on the document has signed:
 `content` is the base64-encoded signed PDF. A docket with multiple documents needs `document_id` on the request to pick a specific one, otherwise the first is returned.
 
 <Note>
-  IDTO archives a copy of every signed document as soon as all its signers finish, and serves later downloads from that archive. Download the PDF when the completion webhook arrives and keep your own copy.
+  idto archives a copy of every signed document as soon as all its signers finish, and serves later downloads from that archive. Download the PDF when the completion webhook arrives and keep your own copy.
 </Note>
 
 If the underlying eSign provider has already deleted its copy of the document before idto could archive it, `POST /verify/esign/document` returns:
@@ -137,7 +137,7 @@ If the underlying eSign provider has already deleted its copy of the document be
 That's an HTTP `410`. If this happens, the only path forward is contacting idto support with the `docket_id`, the document cannot be regenerated from idto's side once the provider's copy is gone and no archive was made in time.
 
 <Warning>
-  IDTO watches a docket for completion for 90 days after the `POST /verify/esign` call. A docket that is not fully signed by then sends no completion webhook. Treat a docket that has not completed within your normal business window (days, not months) as abandoned and create a new one.
+  idto watches a docket for completion for 90 days after the `POST /verify/esign` call. A docket that is not fully signed by then sends no completion webhook. Treat a docket that has not completed within your normal business window (days, not months) as abandoned and create a new one.
 </Warning>
 
 ## Step 4: The completion webhook

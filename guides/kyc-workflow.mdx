@@ -14,7 +14,7 @@ A real onboarding check is rarely one call. You need mobile verification, a PAN 
 
 <Steps>
 
-### Build the workflow and mint a link (dashboard)
+<Step title="Build the workflow and mint a link (dashboard)">
 
 In the dashboard's workflow builder, pick the modules that should run, in order, for example `mobile_verification`, `pan_validation`, `aadhaar_verification`, `bank_verification`, `face_match`. This becomes a workflow template. From there, mint a **verification link** against that template: give it a label, a run budget (`max_runs`), and an expiry (`expires_in_days`, capped per your account). The dashboard returns a shareable URL:
 
@@ -36,11 +36,15 @@ In the dashboard's workflow builder, pick the modules that should run, in order,
 
 A link is `active` until it turns `expired` (past `expires_at`), `spent` (`runs_used` reaches `max_runs`), or `revoked`. Revoking is immediate and permanent, even a session already in progress is cut off. Letting a link expire or run out of runs only blocks *new* sessions, one already under way can still finish.
 
-### Send the link to your end customer
+</Step>
+
+<Step title="Send the link to your end customer">
 
 Send the `url` to whoever needs to complete the check, by SMS, email, WhatsApp, wherever makes sense for your product. Opening it runs the hosted flow in their browser, no SDK integration required on your side for this path.
 
-### The end customer's browser drives the flow
+</Step>
+
+<Step title="The end customer's browser drives the flow">
 
 These three endpoints have no dashboard-session or API-key auth. They are called directly by the end customer's browser using the opaque link token as the credential, and are rate-limited per IP address instead.
 
@@ -107,7 +111,9 @@ curl --request POST \
   If you call these three endpoints from your own backend on the end customer's behalf, for example to embed the link inside your own app shell, set the `X-idto-End-Customer-IP` header to the real end customer's IP. Otherwise every one of your customers is rate-limited as if they shared one IP address, your server's.
 </Note>
 
-### Get the combined result
+</Step>
+
+<Step title="Get the combined result">
 
 Configure a webhook URL and signing secret for your account in the dashboard (**Webhooks** section). Set the secret first: until one exists, deliveries fail. When the session finishes, whatever the outcome, idto POSTs a signed payload to that URL:
 
@@ -154,11 +160,13 @@ def verify_idto_webhook(secret, raw_body, timestamp, signature_header):
 
 Retry your signing secret against both the current and, during a rotation window, the previous secret, since a rotation does not invalidate deliveries already in flight.
 
+</Step>
+
 </Steps>
 
 ## What this guide is not
 
-The SDKs talk to IDTO through their own session protocol once a `client_token` is in hand, and that protocol is not a public API. Two pieces of it are documented for server use: [Mint an SDK token](/api-reference/integration/sdk-token) and [Get session state](/api-reference/integration/session-state). If you are embedding verification in your own app rather than sending customers to a hosted link, integrate the relevant [SDK](/sdks/web). The full completion payload and its headers are on [Session completed](/api-reference/webhooks/session-completed).
+The SDKs talk to idto through their own session protocol once a `client_token` is in hand, and that protocol is not a public API. Two pieces of it are documented for server use: [Mint an SDK token](/api-reference/integration/sdk-token) and [Get session state](/api-reference/integration/session-state). If you are embedding verification in your own app rather than sending customers to a hosted link, integrate the relevant [SDK](/sdks/web). The full completion payload and its headers are on [Session completed](/api-reference/webhooks/session-completed).
 
 <Warning>
   `mobile_verification` can never be included in a link's `skippable` list, it's how the end customer is identified for the session. Any other module in the sequence can be marked skippable if your workflow allows completing it later.

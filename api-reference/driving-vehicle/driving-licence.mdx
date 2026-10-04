@@ -5,7 +5,7 @@ description: "Check a driving licence number and date of birth against the issui
 openapi: "openapi2.0.json POST /v2/verify/driving_licence"
 ---
 
-Send a licence number and the holder's date of birth. IDTO looks up the licence with the issuing authority and returns the holder name, address, validity dates and the vehicle classes the holder may drive. Use it to onboard drivers and delivery partners, or before handing over a rental vehicle.
+Send a licence number and the holder's date of birth. idto looks up the licence with the issuing authority and returns the holder name, address, validity dates and the vehicle classes the holder may drive. Use it to onboard drivers and delivery partners, or before handing over a rental vehicle.
 
 Every response has the same shape whichever source serves the call. Branch on `error_code`, never on `status`:
 
@@ -18,7 +18,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Input rules
 
@@ -27,7 +27,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | `licence_number` | Required. At least 8 letters and digits once spaces and hyphens are removed, for example `KA0120200000001` or `KA01 20200000001`. |
 | `dob` | Required. `YYYY-MM-DD`, `DD-MM-YYYY` or `DD/MM/YYYY`. |
 | `user_id` | Optional. Your own reference for the end user. |
-| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
 
 ## Response fields
 
@@ -43,7 +43,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | `data.vehicle_classes` | Classes of vehicle the holder may drive. |
 | `data.blood_group`, `data.photo` | Present when the issuer returns them; `photo` is base64. |
 | `billed` | `true` when this call was charged. |
-| `tranx_id` | IDTO transaction id. Quote it to support. |
+| `tranx_id` | idto transaction id. Quote it to support. |
 
 ## Retries and duplicate protection
 
@@ -57,7 +57,7 @@ Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. 
 | `IDTO_001` | 400 | Invalid input: Driving licence number is required. Please check and retry. | No |
 | `IDTO_001` | 400 | Invalid input: A valid date of birth is required. Please check and retry. | No |
 | `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
-| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `null` | 400 | Insufficient credits for this operation. (your idto balance is too low; recharge and retry) | No |
 | `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
 | `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
 | `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |

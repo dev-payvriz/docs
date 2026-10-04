@@ -1,13 +1,13 @@
 ---
 title: "Flutter SDK"
 sidebarTitle: "Flutter"
-description: "Run the IDTO verification flow in a Flutter app on Android and iOS with one awaited call."
+description: "Run the idto verification flow in a Flutter app on Android and iOS with one awaited call."
 ---
 
-The Flutter package `idto_flutter` pushes a full-screen route that runs the IDTO verification flow, reports each step to your callbacks, and returns a typed result when the user is done.
+The Flutter package `idto_flutter` pushes a full-screen route that runs the idto verification flow, reports each step to your callbacks, and returns a typed result when the user is done.
 
 <Frame caption="The bank account step.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-entry.png" alt="Bank account entry screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-entry.png" alt="Bank account entry screen" width="390" />
 </Frame>
 
 ## Requirements
@@ -93,7 +93,7 @@ await [Permission.camera, Permission.microphone].request();
 </Steps>
 
 <Frame caption="The bank account result.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-verified.png" alt="Bank account verified screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-bank-verified.png" alt="Bank account verified screen" width="390" />
 </Frame>
 
 ## `IDto.open` parameters
@@ -154,6 +154,6 @@ The returned `IDtoResult` has `status` (`completed`, `closed`, `abandoned` or `e
 
 ## See it run
 
-<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-bank.mp4"></video>
+<video controls width="100%" src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-bank.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-bank.jpg"></video>
 
 Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fflutter) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fflutter)

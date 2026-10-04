@@ -12,13 +12,13 @@ Returns `signing_status` for a docket's document and, once every signer has sign
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Behaviour
 
-- `document_id` is optional. Without it, IDTO uses the document returned when the docket was created. Send it for a docket with more than one document.
+- `document_id` is optional. Without it, idto uses the document returned when the docket was created. Send it for a docket with more than one document.
 - On `pending`, `document_id` echoes what you sent, so it is `null` if you sent none.
-- Once all signers have signed, IDTO keeps an archived copy and serves it from there, so later calls keep returning the PDF.
+- Once all signers have signed, idto keeps an archived copy and serves it from there, so later calls keep returning the PDF.
 - The call is read-only and not billed, so you can repeat it. Poll no more than once a minute; the webhook is the faster signal.
 
 ## Errors

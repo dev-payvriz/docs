@@ -3,7 +3,7 @@ title: "Webhooks"
 description: "Receive session and eSign completion events, verify their signatures, and handle retries."
 ---
 
-IDTO sends two events to one HTTPS URL per account:
+idto sends two events to one HTTPS URL per account:
 
 | Event | When | Page |
 |---|---|---|
@@ -19,7 +19,7 @@ Webhook settings live in the dashboard, under **Webhooks**. There is no API for 
     Enter an `https://` endpoint. Plain `http` is refused.
   </Step>
   <Step title="Generate a signing secret">
-    Click rotate to create the secret. It is shown once, so store it in your secret manager straight away. **Until a secret exists, IDTO does not send events**: each attempt fails and the event is dropped after 5 attempts.
+    Click rotate to create the secret. It is shown once, so store it in your secret manager straight away. **Until a secret exists, idto does not send events**: each attempt fails and the event is dropped after 5 attempts.
   </Step>
   <Step title="Verify every delivery">
     Check the signature as below before trusting the body.
@@ -27,7 +27,7 @@ Webhook settings live in the dashboard, under **Webhooks**. There is no API for 
 </Steps>
 
 <Frame>
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-webhooks.png" alt="Webhooks page in the IDTO dashboard with the URL field and the rotate secret button" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-webhooks.png" alt="Webhooks page in the idto dashboard with the URL field and the rotate secret button" />
 </Frame>
 
 ## Verify the signature
@@ -37,10 +37,10 @@ Each delivery carries three headers:
 | Header | Value |
 |---|---|
 | `X-Idto-Event-Id` | The event's `event_id` |
-| `X-Idto-Timestamp` | Unix seconds when IDTO signed it |
+| `X-Idto-Timestamp` | Unix seconds when idto signed it |
 | `X-Idto-Signature` | `sha256=` plus the hex HMAC-SHA256 of `<timestamp>.<raw body>`, keyed with your secret |
 
-Compute the HMAC over the raw request bytes, not over re-serialised JSON, compare in constant time, and reject a timestamp more than 300 seconds from your clock. IDTO does not enforce that window for you, so the check on your side is what stops a replayed delivery.
+Compute the HMAC over the raw request bytes, not over re-serialised JSON, compare in constant time, and reject a timestamp more than 300 seconds from your clock. idto does not enforce that window for you, so the check on your side is what stops a replayed delivery.
 
 ```python
 import hashlib
@@ -60,7 +60,7 @@ Node, TypeScript, Go, PHP, Ruby and Java versions: [Verify webhook signatures](/
 ## Delivery and retries
 
 - Return any 2xx within 10 seconds. Anything else, a timeout or a connection error counts as a failed attempt.
-- IDTO makes up to 5 attempts. The wait before a retry is `10 x 2^n` seconds after attempt `n`, capped at one hour: about 20 s, 40 s, 80 s and 160 s.
+- idto makes up to 5 attempts. The wait before a retry is `10 x 2^n` seconds after attempt `n`, capped at one hour: about 20 s, 40 s, 80 s and 160 s.
 - The same event can arrive more than once. Deduplicate on `X-Idto-Event-Id`.
 - Events are not ordered. Acknowledge first, then process asynchronously.
 - After the last failed attempt the event is not resent. Recover the state with [Get session state](/api-reference/integration/session-state) or [Download the signed document](/api-reference/esign/esign-document).

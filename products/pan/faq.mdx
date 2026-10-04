@@ -43,7 +43,7 @@ description: "Answers to common questions about PAN validation, PAN detailed, PA
     Most fields can be missing for a given PAN, depending on what the record holds. `gender`, `email`, `phone_number`, `masked_aadhaar` and `dob` can be `null`; `bank_details` can be an empty list. Write your code to treat each field as optional.
   </Accordion>
   <Accordion title="Why are email, phone and account numbers masked?">
-    PAN Detailed masks personal data before it leaves IDTO: email keeps the first two characters of the local part, phone keeps the last two digits, Aadhaar and bank account numbers keep the last four digits.
+    PAN Detailed masks personal data before it leaves idto: email keeps the first two characters of the local part, phone keeps the last two digits, Aadhaar and bank account numbers keep the last four digits.
   </Accordion>
   <Accordion title="What files does PAN OCR accept?">
     JPEG, PNG or PDF in a multipart field named `file`. Keep it under 5 MB; larger files can return `IDTO_503` (413). Other types or an empty file return `IDTO_001` (400).

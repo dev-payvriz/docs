@@ -28,10 +28,10 @@ description: "Common questions about SDK tokens, session state and completion we
     No. It takes `Authorization: Bearer <SDK token>`. Mint a token from your server first.
   </Accordion>
   <Accordion title="Why do I get 403 on session state?">
-    The session belongs to another IDTO account. Any client of the owning account can read it.
+    The session belongs to another idto account. Any client of the owning account can read it.
   </Accordion>
   <Accordion title="Why is my webhook not arriving?">
-    Check that a signing secret exists: until you generate one in the dashboard, IDTO does not send events. Also check that the URL is `https://` and returns a 2xx within 10 seconds.
+    Check that a signing secret exists: until you generate one in the dashboard, idto does not send events. Also check that the URL is `https://` and returns a 2xx within 10 seconds.
   </Accordion>
   <Accordion title="What is partial?">
     `partial` is `true` when at least one step was skipped or fell back to an alternative.

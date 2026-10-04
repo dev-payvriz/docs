@@ -10,7 +10,7 @@ Calls made with `X-Client-ID` and `X-API-Key` have no fixed per-key request quot
 
 | HTTP | `error_code` | When | What to do |
 | --- | --- | --- | --- |
-| 503 | `IDTO_008` | IDTO is shedding load, or a verification source is not responding | Retry with exponential backoff and jitter |
+| 503 | `IDTO_008` | idto is shedding load, or a verification source is not responding | Retry with exponential backoff and jitter |
 | 429 | `IDTO_006` | The verification source behind the product is rate limiting | Retry with backoff; spread bulk jobs over time |
 | 503 | `IDTO_103` or `IDTO_403` | The source could not complete this verification right now | Retry shortly |
 

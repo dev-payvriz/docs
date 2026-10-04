@@ -1,7 +1,7 @@
 ---
 title: "Aadhaar FAQ"
 sidebarTitle: "FAQ"
-description: "Answers to common questions about Aadhaar OKYC, DigiLocker, Aadhaar QR and Aadhaar OCR on IDTO."
+description: "Answers to common questions about Aadhaar OKYC, DigiLocker, Aadhaar QR and Aadhaar OCR on idto."
 ---
 
 ## General
@@ -34,7 +34,7 @@ description: "Answers to common questions about Aadhaar OKYC, DigiLocker, Aadhaa
     A wrong or expired OTP returns `IDTO_205`, and the user can retry with the same `session_id` until the attempt limit for that session is reached. After that you get `IDTO_206` (429) and must call `okyc_generate_otp` again for a new `session_id`. A malformed OTP (not 6 digits) is rejected with `IDTO_001` and does not use up an attempt.
   </Accordion>
   <Accordion title="Why is dob null when year_of_birth is set?">
-    Some Aadhaar records release only the year of birth. IDTO then returns the year in `year_of_birth` and leaves `dob` null rather than inventing a day and month.
+    Some Aadhaar records release only the year of birth. idto then returns the year in `year_of_birth` and leaves `dob` null rather than inventing a day and month.
   </Accordion>
   <Accordion title="Where do I get code_verifier for /v2/verify/digilocker?">
     Start the session with `/verify/digilocker/initiate_session`. After the user consents, your `redirect_url` receives `code` and `codeVerifier` as query parameters. Send them as `code` and `code_verifier`. See the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow).

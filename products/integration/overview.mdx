@@ -4,7 +4,7 @@ sidebarTitle: "Overview"
 description: "Mint SDK tokens, open the hosted verification flow, and confirm results from your server."
 ---
 
-Integration endpoints connect your server to the IDTO verification flow. Your server mints a short-lived SDK token, your front end opens the flow with it, and your server learns the result from the session completed webhook or by reading the session state. None of these calls are billed; the verifications inside the flow are.
+Integration endpoints connect your server to the idto verification flow. Your server mints a short-lived SDK token, your front end opens the flow with it, and your server learns the result from the session completed webhook or by reading the session state. None of these calls are billed; the verifications inside the flow are.
 
 ## How it works
 
@@ -12,18 +12,18 @@ Integration endpoints connect your server to the IDTO verification flow. Your se
 sequenceDiagram
     participant B as Your front end
     participant S as Your server
-    participant I as IDTO
+    participant I as idto
     S->>I: POST /auth/sdk/token (client_id, API key)
     I-->>S: access_token, 900 s
     S-->>B: access_token
-    B->>I: IDTO SDK runs the verification steps
+    B->>I: idto SDK runs the verification steps
     I->>S: session.completed webhook
     S->>I: GET /sdk/v2/session/{session_token}/state
     I-->>S: status, outcome, steps
 ```
 
 <Frame>
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="IDTO SDK completion screen at the end of a verification flow" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-workflow-complete.png" alt="idto SDK completion screen at the end of a verification flow" width="390" />
 </Frame>
 
 ## Endpoints

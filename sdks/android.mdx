@@ -1,13 +1,13 @@
 ---
 title: "Android SDK"
 sidebarTitle: "Android"
-description: "Run the IDTO verification flow in a native Android app, from Kotlin or Java."
+description: "Run the idto verification flow in a native Android app, from Kotlin or Java."
 ---
 
-The Android SDK opens the IDTO verification flow in its own screen and reports each result to a typed listener. It is a Kotlin library that Java apps use as is: every listener method has a default, so you override only the callbacks you need.
+The Android SDK opens the idto verification flow in its own screen and reports each result to a typed listener. It is a Kotlin library that Java apps use as is: every listener method has a default, so you override only the callbacks you need.
 
 <Frame caption="The mobile number step, with the one-time code field.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-mobile-otp.png" alt="Mobile number verification screen with OTP entry" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-mobile-otp.png" alt="Mobile number verification screen with OTP entry" width="390" />
 </Frame>
 
 ## Requirements
@@ -115,7 +115,7 @@ The library declares `CAMERA` and `RECORD_AUDIO` in its own manifest, so they me
 `IDto.open(context, config, listener, tokenProvider)` works from any `Context`. `IDto.close()` closes the flow and `IDto.isOpen()` tells you whether one is open. Only one flow runs at a time: a second `open` while one is active calls the new listener's `onError` with `step = "init"` and `error = "session_active"` and opens nothing.
 
 <Frame caption="The selfie step. The flow picks the front camera.">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-face-capture.png" alt="Selfie capture screen" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-face-capture.png" alt="Selfie capture screen" width="390" />
 </Frame>
 
 ## Token refresh
@@ -169,6 +169,6 @@ Pass an `IDtoTokenProvider` as the fourth argument to `IDto.open`. When the clie
 
 ## See it run
 
-<video controls width="100%" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.mp4"></video>
+<video controls width="100%" src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.jpg"></video>
 
 Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20sdks%2Fandroid) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20sdks%2Fandroid)

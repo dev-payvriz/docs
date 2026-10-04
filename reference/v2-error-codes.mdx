@@ -36,7 +36,7 @@ Authentication failures (401, 403, 404) are returned before any verification run
 | `IDTO_004` | 409 | `An identical request is already in progress; retry shortly.` or `Duplicate request. Verification ID already exists.` | No | The first message: a request with the same `Idempotency-Key` is still running; retry after it finishes. The second: the source reports this verification ID was already used. |
 | `IDTO_005` | 400 | User consent is required to proceed. | No | `user_consent` missing or not `true`. |
 | `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No | The verification source is rate limiting. Retry with backoff. |
-| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No | A configuration problem on IDTO's side for your account. Do not retry; write to support. |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No | A configuration problem on idto's side for your account. Do not retry; write to support. |
 | `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No | Load shedding or a source not responding. Retry with backoff. |
 | `IDTO_009` | 402 | Insufficient credits or balance. Please recharge and try again. | No | Aadhaar OKYC send OTP: your balance cannot cover the call, recharge. Face match, liveness and PAN detailed: the verification source reported a credit limit, retry later. Other products report a low balance as HTTP 400 with `error_code: null`. |
 | `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No | Reuse a key only with the identical body. |

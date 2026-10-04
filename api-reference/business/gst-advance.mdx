@@ -18,7 +18,7 @@ This endpoint has no idempotency support. A retried request runs the verificatio
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -31,13 +31,13 @@ When no GST record exists for the GSTIN, `status` is not `success` and you are n
 | Field | Type | Description |
 |---|---|---|
 | `status` | string | `success` when the GSTIN was found. |
-| `tranx_id` | string | IDTO transaction id for this call. |
-| `timestamp` | string | Time IDTO recorded the call, ISO 8601. |
+| `tranx_id` | string | idto transaction id for this call. |
+| `timestamp` | string | Time idto recorded the call, ISO 8601. |
 | `chargeble` | string | `"true"` on a charged call, absent otherwise. |
 | `user_consent` | string | `"true"` on a charged call, absent otherwise. |
 
 <Note>
-The payload carries the fields listed plus the GST profile. The profile's field names depend on how this product is configured for your account; ask your IDTO account manager for your field list before you parse it.
+The payload carries the fields listed plus the GST profile. The profile's field names depend on how this product is configured for your account; ask your idto account manager for your field list before you parse it.
 </Note>
 
 ## Errors
@@ -49,7 +49,7 @@ The payload carries the fields listed plus the GST profile. The profile's field 
 | No code | 401 | Missing or invalid `X-Client-ID` or `X-API-Key`. | No |
 | No code | 403 | The client is inactive or not allowed to call this endpoint. | No |
 | No code | 422 | Body failed schema validation. Body: `{"detail": [{"loc": [...], "msg": "..."}]}`. | No |
-| No code | 500 | Unexpected failure. The body is not part of the contract; retry later. | No |
+| No code | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 `Code` is the `error_code` in the body. Errors marked *wrapped* return `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`.
 

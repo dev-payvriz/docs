@@ -18,13 +18,13 @@ Use this module to bind a person to an identity document. Liveness confirms that
 sequenceDiagram
     participant App as Your app
     participant Server as Your server
-    participant IDTO
+    participant idto
     App->>Server: Selfie
-    Server->>IDTO: POST /v2/verify/liveness (person)
-    IDTO-->>Server: data.is_live
+    Server->>idto: POST /v2/verify/liveness (person)
+    idto-->>Server: data.is_live
     alt is_live true
-        Server->>IDTO: POST /v2/verify/face_match (image1 selfie, image2 ID photo)
-        IDTO-->>Server: data.is_match, data.match_score
+        Server->>idto: POST /v2/verify/face_match (image1 selfie, image2 ID photo)
+        idto-->>Server: data.is_match, data.match_score
         Server-->>App: Approve or send to review
     else is_live false
         Server-->>App: Ask for a new selfie
@@ -33,16 +33,16 @@ sequenceDiagram
 
 ## Outcomes and billing
 
-Both endpoints return the IDTO envelope. A 2xx response is billed whatever the decision: a failed liveness check or a non-matching face is still a completed check. Errors such as an unreadable image (`IDTO_503`, 413) or no decision (`IDTO_509` or `IDTO_609`, 500) are never billed. Face match treats a score of 70 or more as a match.
+Both endpoints return the idto envelope. A 2xx response is billed whatever the decision: a failed liveness check or a non-matching face is still a completed check. Errors such as an unreadable image (`IDTO_503`, 413) or no decision (`IDTO_509` or `IDTO_609`, 500) are never billed. Face match treats a score of 70 or more as a match.
 
 ## In the hosted flow
 
-The face step of the IDTO verification flow guides the user through the selfie capture.
+The face step of the idto verification flow guides the user through the selfie capture.
 
-<video controls muted playsInline src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.mp4" aria-label="Face capture step in the IDTO verification flow"></video>
+<video controls muted playsInline src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-face.jpg" aria-label="Face capture step in the idto verification flow"></video>
 
 <Frame>
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-face-capture.png" alt="Selfie capture screen in the IDTO verification flow" width="390" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-face-capture.png" alt="Selfie capture screen in the idto verification flow" width="390" />
 </Frame>
 
 ## Test scenarios

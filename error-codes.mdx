@@ -40,7 +40,7 @@ Treat this as a distinct, expected outcome in your application, alongside "match
 
 ## Raised errors
 
-Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status tells you the category: `400` or `422` for a request to fix, `401`, `403` or `404` for credentials, `409` for a duplicate or in-flight request, `429` for rate limiting, `503` for a transient condition worth retrying, and `500` for a problem on IDTO's side.
+Anything that isn't a full match or a valid no-record result is a raised, non-2xx response: `status: "error"`, `data: null`, `billed: false`. The HTTP status tells you the category: `400` or `422` for a request to fix, `401`, `403` or `404` for credentials, `409` for a duplicate or in-flight request, `429` for rate limiting, `503` for a transient condition worth retrying, and `500` for a problem on idto's side.
 
 ```json
 {
@@ -66,7 +66,7 @@ Anything that isn't a full match or a valid no-record result is a raised, non-2x
 | Rate limited | `IDTO_006` | Yes, with backoff | See [Rate limits](/concepts/rate-limits) |
 | Transient | `IDTO_008`, `IDTO_103`, `IDTO_403` | Yes, with backoff | Same key, same body |
 | Image | `IDTO_503`, `IDTO_204` | After a new image | Ask for a clearer, smaller image |
-| IDTO side | `IDTO_007`, `IDTO_509`, `IDTO_609` | `IDTO_509` and `IDTO_609` once | Write to support with the `tranx_id` if it repeats |
+| idto side | `IDTO_007`, `IDTO_509`, `IDTO_609` | `IDTO_509` and `IDTO_609` once | Write to support with the `tranx_id` if it repeats |
 
 ```python
 def handle(response):

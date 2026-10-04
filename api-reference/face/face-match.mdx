@@ -5,7 +5,7 @@ description: "Compare a selfie with the photo on an ID document and get a 0 to 1
 openapi: "openapi2.0.json POST /v2/verify/face_match"
 ---
 
-Send two images as `multipart/form-data`: the live selfie in `image1` and the reference photo, usually the face on an ID card, in `image2`. If the reference is already hosted, pass `image2_url` instead of uploading it. IDTO compares the two faces and returns a score and a decision.
+Send two images as `multipart/form-data`: the live selfie in `image1` and the reference photo, usually the face on an ID card, in `image2`. If the reference is already hosted, pass `image2_url` instead of uploading it. idto compares the two faces and returns a score and a decision.
 
 Every response has the same shape whichever source serves the call. Branch on `error_code` and `data.is_match`:
 
@@ -18,7 +18,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Input rules
 
@@ -27,7 +27,7 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | `image1` | Required file. The selfie or live capture. At most 10 MB. |
 | `image2` | File. The reference photo. At most 10 MB. Send this or `image2_url`. |
 | `image2_url` | A public `https` URL that returns the reference image. Send this or `image2`. |
-| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
 
 ## How the decision is made
 

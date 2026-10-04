@@ -1,7 +1,7 @@
 ---
 title: "Dashboard guide"
 sidebarTitle: "Dashboard"
-description: "A tour of the IDTO dashboard: keys, webhooks, workflows, verification links, transactions, billing, team and going live."
+description: "A tour of the idto dashboard: keys, webhooks, workflows, verification links, transactions, billing, team and going live."
 ---
 
 The dashboard is where you manage everything that is not an API call: keys, webhook settings, verification workflows, links, usage and billing. The sidebar groups these as **Home**, **Analytics**, **Transactions**, **Workflow**, **Verification**, **Billing**, **API Testing**, **API Credentials**, **Branding**, **Settings** and **Team**.
@@ -15,7 +15,7 @@ A new account opens in **Sandbox Mode**, shown by a banner at the top of the das
 Create the `X-Client-ID` and `X-API-Key` pair your backend sends. The key is shown masked; copy it when you create it and store it in a secret manager. To replace a key, delete it and create a new one, then roll your backend over to the new pair.
 
 <Frame caption="API Credentials">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-api-credentials.png" alt="API Credentials" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-api-credentials.png" alt="API Credentials" />
 </Frame>
 
 ## Webhooks
@@ -23,7 +23,7 @@ Create the `X-Client-ID` and `X-API-Key` pair your backend sends. The key is sho
 Set the URL that receives completion events, and set a signing secret. Set the secret **before** you expect deliveries: until a secret exists, deliveries fail. See [Webhooks](/concepts/webhooks).
 
 <Frame caption="Webhook settings">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-webhooks.png" alt="Webhook settings" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-webhooks.png" alt="Webhook settings" />
 </Frame>
 
 ## Workflow
@@ -31,7 +31,7 @@ Set the URL that receives completion events, and set a signing secret. Set the s
 Build a verification flow from steps such as PAN, Aadhaar, bank account and face. The SDKs and verification links run the workflow you build here.
 
 <Frame caption="Workflow builder">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-workflow-builder.png" alt="Workflow builder" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-workflow-builder.png" alt="Workflow builder" />
 </Frame>
 
 ## Verification links
@@ -39,7 +39,7 @@ Build a verification flow from steps such as PAN, Aadhaar, bank account and face
 Send a user a link to a hosted verification flow instead of building the screens yourself. Each link runs one of your workflows.
 
 <Frame caption="Verification links">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-verification-links.png" alt="Verification links" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-verification-links.png" alt="Verification links" />
 </Frame>
 
 ## Transactions
@@ -47,7 +47,7 @@ Send a user a link to a hosted verification flow instead of building the screens
 Every verification call, with its outcome and `tranx_id`. Use the `tranx_id` from an API response to find the call here, and quote it when you write to support.
 
 <Frame caption="Transactions">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-transactions.png" alt="Transactions" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-transactions.png" alt="Transactions" />
 </Frame>
 
 ## Billing
@@ -55,7 +55,7 @@ Every verification call, with its outcome and `tranx_id`. Use the `tranx_id` fro
 Your balance and usage. A call your balance cannot cover is rejected before any verification runs and is not billed, so keep an eye on the balance and recharge before it runs out.
 
 <Frame caption="Billing">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-billing.png" alt="Billing" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-billing.png" alt="Billing" />
 </Frame>
 
 ## Team
@@ -63,7 +63,7 @@ Your balance and usage. A call your balance cannot cover is rejected before any 
 Invite teammates to your account and manage who has access.
 
 <Frame caption="Team">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-users.png" alt="Team" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-users.png" alt="Team" />
 </Frame>
 
 ## Switch to Production
@@ -71,7 +71,7 @@ Invite teammates to your account and manage who has access.
 When your integration is ready, complete **Switch to Production**: company basics, authorised signatory and bank account. The flow runs on desktop only. Then create production keys under **API Credentials**. See the [Go-live checklist](/go-live-checklist).
 
 <Frame caption="Switch to Production">
-  <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-switch-to-production.png" alt="Switch to Production" />
+  <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-switch-to-production.png" alt="Switch to Production" />
 </Frame>
 
 Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.

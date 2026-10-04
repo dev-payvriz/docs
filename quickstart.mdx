@@ -7,23 +7,23 @@ description: "Get credentials, make your first idto verification call, and read 
 <Frame>
   <video
   controls
-  src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/quickstart-first-call.mp4"
-  poster="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/quickstart-first-call.jpg"
+  src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/quickstart-first-call.mp4"
+  poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/quickstart-first-call.jpg"
   />
 </Frame>
 
-Prefer a collection? Import the [Postman collection](https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/postman/idto-api-2026-10.postman_collection.json) and set your base URL and key pair in its variables.
+Prefer a collection? Import the [Postman collection](https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/postman/idto-api-2026-10.postman_collection.json) and set your base URL and key pair in its variables.
 
 <Steps>
 
-### Get credentials
+<Step title="Get credentials">
 
-Every call to idto needs two headers: `X-Client-ID` and `X-API-Key`. Ask your IDTO account manager for staging keys and build against `https://dev.idto.ai`. Staging calls reach live verification sources and deduct staging credits, so use only identities you are authorised to verify. Production keys come from the dashboard after go-live; then switch the base URL to `https://prod.idto.ai`.
+Every call to idto needs two headers: `X-Client-ID` and `X-API-Key`. Ask your idto account manager for staging keys and build against `https://dev.idto.ai`. Staging calls reach live verification sources and deduct staging credits, so use only identities you are authorised to verify. Production keys come from the dashboard after go-live; then switch the base URL to `https://prod.idto.ai`.
 
 | Environment | Base URL | Notes |
 | --- | --- | --- |
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 See [Environments](/environments) and [Authentication](/authentication) for the detail.
 
@@ -32,7 +32,9 @@ export IDTO_CLIENT_ID="your_client_id"
 export IDTO_API_KEY="your_api_key"
 ```
 
-### Make a call
+</Step>
+
+<Step title="Make a call">
 
 `POST /v2/verify/pan_validation` is the smallest useful call: it checks whether a PAN exists and is active, and returns the name and holder category on file. `pan_validation` requires `user_consent: true` in the body: the call is rejected with `IDTO_005` (400) without it. Consent is required per product; each endpoint page says whether it applies.
 
@@ -67,7 +69,9 @@ print(response.json())
 
 </CodeGroup>
 
-### Read the response
+</Step>
+
+<Step title="Read the response">
 
 A match returns HTTP `200` with the PAN holder's name and status:
 
@@ -99,7 +103,9 @@ Four fields drive your integration logic:
 
 This is the same four-field shape on every v2 endpoint, not just PAN. Read [Request & Response](/concepts/request-response) for the complete envelope reference, including how multipart (image upload) endpoints differ, and [Error Codes](/error-codes) for how to branch on every outcome.
 
-### Handle the other outcomes
+</Step>
+
+<Step title="Handle the other outcomes">
 
 | HTTP | `error_code` | Meaning | Billed |
 | --- | --- | --- | --- |
@@ -109,6 +115,8 @@ This is the same four-field shape on every v2 endpoint, not just PAN. Read [Requ
 | 400 | `IDTO_005` | `user_consent` missing or not `true` | No |
 | 401 | none | Missing or wrong key pair | No |
 | 503 | `IDTO_008` | Busy, retry with backoff | No |
+
+</Step>
 
 </Steps>
 

@@ -18,7 +18,7 @@ This endpoint has no idempotency support. A retried request runs the verificatio
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -33,8 +33,8 @@ Charged only when the response `status` is `success`. A charged call carries `"c
 | `result.possible_match` | array | Case records with a weighted match of 85 percent or less. Review manually. |
 | `result.strong_match` | array | Case records with a weighted match above 85 percent. |
 | `result.totalResult` | number | Number of records found. |
-| `tranx_id` | string | IDTO transaction id for this call. |
-| `timestamp` | string | Time IDTO recorded the call, ISO 8601. |
+| `tranx_id` | string | idto transaction id for this call. |
+| `timestamp` | string | Time idto recorded the call, ISO 8601. |
 | `chargeble` | string | `"true"` on a charged call, absent otherwise. |
 | `user_consent` | string | `"true"` on a charged call, absent otherwise. |
 
@@ -102,7 +102,7 @@ Each item in `strong_match` and `possible_match` carries the fields below; items
 | No code | 401 | Missing or invalid `X-Client-ID` or `X-API-Key`. | No |
 | No code | 403 | The client is inactive or not allowed to call this endpoint. | No |
 | No code | 422 | Body failed schema validation. Body: `{"detail": [{"loc": [...], "msg": "..."}]}`. | No |
-| No code | 500 | Unexpected failure. The body is not part of the contract; retry later. | No |
+| No code | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 `Code` is the `error_code` in the body. Errors marked *wrapped* return `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`.
 

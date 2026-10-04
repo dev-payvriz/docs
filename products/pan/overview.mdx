@@ -4,14 +4,14 @@ sidebarTitle: "Overview"
 description: "Verify a PAN, pull the record behind it, read a PAN card image, or match a name and DOB against it."
 ---
 
-PAN is the starting point of most Indian KYC flows. IDTO gives you four ways to work with it, from a quick existence check to a full record lookup, plus OCR to prefill the number from a photo of the card.
+PAN is the starting point of most Indian KYC flows. idto gives you four ways to work with it, from a quick existence check to a full record lookup, plus OCR to prefill the number from a photo of the card.
 
 <video
   controls
-  src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.mp4"
+  src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-pan.jpg"
 ></video>
 
-The recording shows the PAN step in the IDTO web SDK, using sample data.
+The recording shows the PAN step in the idto web SDK, using sample data.
 
 ## Which endpoint to use
 
@@ -31,7 +31,7 @@ A common pattern is OCR first to prefill, then validation on the number the user
 sequenceDiagram
     participant U as End user
     participant S as Your server
-    participant I as IDTO
+    participant I as idto
     participant R as PAN source
     U->>S: PAN and consent
     S->>I: POST /v2/verify/pan_validation (X-Client-ID, X-API-Key, Idempotency-Key)
@@ -58,14 +58,14 @@ Every v2 response carries a boolean `billed`. On the v1 endpoints a call is char
 
 ## In the SDK
 
-The PAN step in the IDTO SDKs handles capture and shows the result to the user. See [SDKs](/sdks/web) to embed it.
+The PAN step in the idto SDKs handles capture and shows the result to the user. See [SDKs](/sdks/web) to embed it.
 
 <CardGroup cols={2}>
   <Card title="Card capture">
-    <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-capture.png" alt="PAN card capture screen in the IDTO SDK" />
+    <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-capture.png" alt="PAN card capture screen in the idto SDK" />
   </Card>
   <Card title="Verified result">
-    <img src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-result.png" alt="PAN result screen in the IDTO SDK" />
+    <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/sdk-pan-result.png" alt="PAN result screen in the idto SDK" />
   </Card>
 </CardGroup>
 

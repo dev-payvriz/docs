@@ -5,18 +5,18 @@ description: "Sent once every signer of a document has signed and the signed PDF
 openapi: "openapi2.0.json webhook esign.completed"
 ---
 
-IDTO checks open eSign dockets in the background. When every signer of a document has signed, IDTO archives the signed PDF and then POSTs this event once per document. It carries no PDF bytes: call [Download the signed document](/api-reference/esign/esign-document) with `docket_id` and `document_id` to get it.
+idto checks open eSign dockets in the background. When every signer of a document has signed, idto archives the signed PDF and then POSTs this event once per document. It carries no PDF bytes: call [Download the signed document](/api-reference/esign/esign-document) with `docket_id` and `document_id` to get it.
 
 - `tranx_id` is the `tranx_id` of the `POST /verify/esign` call that created the docket.
 - `event_id` has the form `evt_esign_<tranx_id>_<document_id>_signed`.
-- IDTO watches a docket for 90 days after it was created. A docket not fully signed by then sends no event.
+- idto watches a docket for 90 days after it was created. A docket not fully signed by then sends no event.
 
 ## Headers
 
 | Header | Value |
 |---|---|
 | `X-Idto-Event-Id` | Same as `event_id` in the body. Stable across retries, so use it to drop duplicates. |
-| `X-Idto-Timestamp` | Unix seconds when IDTO signed the delivery. |
+| `X-Idto-Timestamp` | Unix seconds when idto signed the delivery. |
 | `X-Idto-Signature` | `sha256=<hex>`: HMAC-SHA256 of `<timestamp>.<raw body>` keyed with your signing secret. |
 
 Verify the signature over the exact bytes you received before parsing the JSON, and reject a timestamp more than 300 seconds old. Code for seven languages: [Verify webhook signatures](/recipes/verify-webhook-signatures). Setup, retries and secret rotation: [Webhooks](/concepts/webhooks).

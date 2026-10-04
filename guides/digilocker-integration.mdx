@@ -4,13 +4,13 @@ sidebarTitle: "DigiLocker"
 description: "Run the DigiLocker consent flow from your server: start a session, exchange the code, read the user's details and fetch their Aadhaar."
 ---
 
-DigiLocker lets a user share government-issued records with you after they consent on the DigiLocker screen. IDTO hosts the consent step and the token exchange, so your server only makes five calls, all with your `X-Client-ID` and `X-API-Key`.
+DigiLocker lets a user share government-issued records with you after they consent on the DigiLocker screen. idto hosts the consent step and the token exchange, so your server only makes five calls, all with your `X-Client-ID` and `X-API-Key`.
 
 ```mermaid
 sequenceDiagram
   participant S as Your server
   participant U as User browser
-  participant I as IDTO
+  participant I as idto
   S->>I: POST /verify/digilocker/verify_account (optional)
   S->>I: POST /verify/digilocker/initiate_session
   I-->>S: url
@@ -72,7 +72,7 @@ These are v1 endpoints: responses use the v1 shape, there is no `Idempotency-Key
     }
     ```
 
-    Redirect the user's browser to `url`. IDTO generates the PKCE pair for the DigiLocker authorisation and hands the verifier back to you on the callback.
+    Redirect the user's browser to `url`. idto generates the PKCE pair for the DigiLocker authorisation and hands the verifier back to you on the callback.
   </Step>
 
   <Step title="Handle the callback">

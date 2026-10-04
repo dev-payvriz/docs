@@ -12,7 +12,7 @@ Creates an eSign docket: one or more PDFs, the people who must sign them, and wh
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Request rules
 
@@ -44,7 +44,7 @@ This endpoint has no idempotency support. If a call times out and you retry it, 
 | Customer not found for this client | 404 | `{"detail": "<message>"}` | No |
 | Body validation failed (missing field, not base64, over 10 MB, unknown `appearance`) | 422 | `{"detail": [{"loc": [...], "msg": "..."}]}` | No |
 | Signing request rejected upstream | 4xx | `{"detail": {"status": "error", "message", "error_code", "data": null, "tranx_id", "timestamp"}}` | No |
-| Signing platform unreachable | 500 | Not part of the contract; retry later | No |
+| Signing platform unreachable | 500 | Our eSign provider could not be reached. A retry can create a second docket, so retry once; if it persists, write to tech@idto.ai with the request time. | No |
 
 ## Response
 
@@ -54,7 +54,7 @@ This endpoint has no idempotency support. If a call times out and you retry it, 
 | `document_id` | Identifier of the document in the docket. |
 | `signer_info[]` | One entry per signer: `signer_ref_id` (yours), `signer_id`, `reference_doc_id`, `document_id`, and `invitation_link`, the signer's signing link. |
 | `response_time_stamp` | Time the signing platform accepted the request. |
-| `tranx_id`, `timestamp` | IDTO transaction id and recorded time. |
+| `tranx_id`, `timestamp` | idto transaction id and recorded time. |
 
 See the [eSign workflow guide](/guides/esign-workflow), the [eSign and download recipe](/recipes/esign-and-download) and the [eSign FAQ](/products/esign/faq).
 

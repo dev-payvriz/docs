@@ -16,7 +16,7 @@ Authenticate with an SDK token, not the API key pair. Mint one with [Mint an SDK
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Errors
 
@@ -25,7 +25,7 @@ Authenticate with an SDK token, not the API key pair. Mint one with [Mint an SDK
 | Token missing, invalid, revoked or expired | 401 | `{"detail": "SDK session token expired"}` and similar | No |
 | Session belongs to another account | 403 | `{"detail": "Client does not own this session"}` | No |
 | Unknown session token | 404 | `{"detail": "Session not found"}` | No |
-| Unexpected failure | 500 | Not part of the contract; retry later | No |
+| Unexpected failure | 500 | Our side failed. Retry after a few seconds; if it persists, write to tech@idto.ai with the request time. | No |
 
 For a push instead of a poll, use the [session completed webhook](/api-reference/webhooks/session-completed). Full example: [confirm a session result](/recipes/confirm-session-result).
 

@@ -33,7 +33,7 @@ Because these headers work in any request, this method is for calls your own bac
 | Environment | Base URL | Notes |
 | --- | --- | --- |
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 Staging and production keys are separate pairs. A staging `X-Client-ID` and `X-API-Key` won't authenticate against `prod.idto.ai`, and vice versa. See [Environments](/environments).
 
@@ -43,7 +43,7 @@ The idto SDKs (web, Android, iOS, Flutter, React Native) run in an environment y
 
 <Steps>
 
-### Your backend requests a token
+<Step title="Your backend requests a token">
 
 ```bash
 curl --request POST \
@@ -57,7 +57,9 @@ curl --request POST \
 
 `client_id` and `client_secret` are the same values as your `X-Client-ID` and `X-API-Key`.
 
-### idto returns a bearer token
+</Step>
+
+<Step title="idto returns a bearer token">
 
 ```json
 {
@@ -71,9 +73,13 @@ The token is valid for 900 seconds (15 minutes). It is a short-lived, client-sid
 
 Errors: wrong credentials return `401` with `{"detail": "Invalid client credentials"}`, and an inactive client returns `401` with `{"detail": "Client is inactive"}`.
 
-### Your backend passes the token to the SDK
+</Step>
+
+<Step title="Your backend passes the token to the SDK">
 
 Hand `access_token` to the SDK at init time as its client token. If a user takes longer than 15 minutes, the web SDK calls its `getToken` option on a `401`, so point that at an endpoint on your backend that mints a fresh token the same way. Never move the exchange to the client.
+
+</Step>
 
 </Steps>
 

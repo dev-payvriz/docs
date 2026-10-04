@@ -12,7 +12,7 @@ description: "Answers to common questions about invoice and utility bill OCR, ac
   <Accordion title="Am I charged when the document is rejected?">
     Yes. A rejection by type or a document with no invoice details is HTTP 200 with `IDTO_202` and `billed: true`, because the document was read. Errors (non-2xx) are never billed.
   </Accordion>
-  <Accordion title="Does IDTO verify the GSTIN or bank account on the invoice?">
+  <Accordion title="Does idto verify the GSTIN or bank account on the invoice?">
     No. Invoice OCR returns what is printed. Verify a GSTIN or a bank account with the matching verification endpoint.
   </Accordion>
 </AccordionGroup>

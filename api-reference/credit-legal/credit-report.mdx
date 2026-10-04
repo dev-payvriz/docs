@@ -22,7 +22,7 @@ This endpoint has no idempotency support. A retried request runs the verificatio
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -74,12 +74,12 @@ A `failed` result can also carry a message asking you to retry later when the bu
 | Code | HTTP | When | Billed |
 |---|---|---|---|
 | `null` | 400 | *Wrapped.* Credits are insufficient, a required field is blank, or the product is not enabled for your account. | No |
-| No code | 502 | The credit bureau could not be reached. The body is not part of the contract; retry later. | No |
-| No code | 504 | The credit bureau did not respond in time. The body is not part of the contract; retry later. | No |
+| No code | 502 | The credit bureau could not be reached or sent an unreadable reply. Retry after a few seconds; if it persists, write to tech@idto.ai with the request time. | No |
+| No code | 504 | The credit bureau did not respond in time. Retry after a few seconds; if it persists, write to tech@idto.ai with the request time. | No |
 | No code | 401 | Missing or invalid `X-Client-ID` or `X-API-Key`. | No |
 | No code | 403 | The client is inactive or not allowed to call this endpoint. | No |
 | No code | 422 | Body failed schema validation. Body: `{"detail": [{"loc": [...], "msg": "..."}]}`. | No |
-| No code | 500 | Unexpected failure. The body is not part of the contract; retry later. | No |
+| No code | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 `Code` is the `error_code` in the body. Errors marked *wrapped* return `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`.
 

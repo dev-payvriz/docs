@@ -94,6 +94,12 @@ The hosted page redirects to your `redirect_url` with `code` and `codeVerifier` 
 
 - Identity: `POST /v2/verify/digilocker` with `code` and `code_verifier`, as in the callback route above.
 - Documents: `POST /verify/digilocker/get_reference` with `code` and `code_verifier`, then `POST /verify/digilocker/user_details` or `POST /verify/digilocker/fetch_aadhaar` with the returned `reference_key`.
+
+With the identity exchange, your callback route returns the verified profile:
+
+```json 200
+{"http": 200, "error_code": null, "data": {"digilocker_id": "<digilocker-id>", "name": "RAHUL SHARMA", "dob": "1990-01-01", "gender": "M", "extras": {"mobile": "XXXXXXXX99", "email": "ra***@example.com", "eaadhaar_linked": true}}}
+```
 </Step>
 </Steps>
 

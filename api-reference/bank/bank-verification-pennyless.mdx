@@ -5,14 +5,14 @@ description: "Check a bank account by account number and IFSC without sending a 
 openapi: "openapi2.0.json POST /verify/bank_verification/pennyless"
 ---
 
-Send an account number and IFSC. IDTO checks the account without crediting a deposit to it, so the account holder sees no transaction. This is a v1 endpoint: the verification fields come back as the bank network returns them, plus IDTO's `tranx_id`, `timestamp` and billing flags.
+Send an account number and IFSC. idto checks the account without crediting a deposit to it, so the account holder sees no transaction. This is a v1 endpoint: the verification fields come back as the bank network returns them, plus idto's `tranx_id`, `timestamp` and billing flags.
 
 ## Environments
 
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Billing
 
@@ -34,7 +34,7 @@ This endpoint has no idempotency support. A retry after a timeout runs the check
 | `result.failure_reason` | string or null | Why the account is not valid. `null` when it is valid. |
 | `result.npci_error_code` | string | Response code from the bank network. Can be empty. |
 | `result.user` | null | Always `null`. |
-| `tranx_id` | string | IDTO transaction id. Quote it to support. |
+| `tranx_id` | string | idto transaction id. Quote it to support. |
 | `timestamp` | string | Time of the call, ISO 8601. |
 
 <Warning>
@@ -74,7 +74,7 @@ The fields above are the ones returned in production for this endpoint. Some acc
 | Body fails validation (`account_number` or `ifsc` missing) | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` | No |
 | Not enough credits | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}` | No |
 | Check failed at the bank network | Non-2xx | Same `{"detail": {...}}` shape; the status and `message` come from the bank network | No |
-| Failure on IDTO's side | 500 | Body is not part of the contract; retry later | No |
+| Failure on idto's side | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 Quote the `tranx_id` from `detail` to support when it is present.
 

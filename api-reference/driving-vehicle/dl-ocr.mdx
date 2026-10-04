@@ -5,7 +5,7 @@ description: "Upload a photo or scan of a driving licence and get the licence nu
 openapi: "openapi2.0.json POST /v2/verify/dl_ocr"
 ---
 
-Upload an image of the licence as `multipart/form-data` in the `file` field. IDTO reads the card and returns its fields. Pair it with [Verify a driving licence](/api-reference/driving-vehicle/driving-licence) to confirm the extracted number against the issuing record.
+Upload an image of the licence as `multipart/form-data` in the `file` field. idto reads the card and returns its fields. Pair it with [Verify a driving licence](/api-reference/driving-vehicle/driving-licence) to confirm the extracted number against the issuing record.
 
 Every response has the same shape whichever source serves the call. Branch on `error_code`, never on `status`:
 
@@ -18,14 +18,14 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Input rules
 
 | Field | Rule |
 |---|---|
 | `file` | Required. One image of the licence, at most 12 MB. Larger uploads return `IDTO_503` (413). |
-| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
 
 `data.dl_number` is returned only when the text read matches two letters followed by 11 to 14 digits; otherwise it is `null`. Check every field before you rely on it, OCR reads what is printed and can misread a worn card.
 
@@ -41,7 +41,7 @@ Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. 
 | `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
 | `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
 | `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
-| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `null` | 400 | Insufficient credits for this operation. (your idto balance is too low; recharge and retry) | No |
 | `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
 | `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
 | `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |

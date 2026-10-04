@@ -1,6 +1,6 @@
 ---
 title: "Mobile FAQ"
-description: "Answers to common questions about IDTO mobile profile lookups and the SDK mobile step."
+description: "Answers to common questions about idto mobile profile lookups and the SDK mobile step."
 ---
 
 ## General
@@ -10,7 +10,7 @@ description: "Answers to common questions about IDTO mobile profile lookups and 
     No. When no profile is linked to the number, `/verify/mobile_profile` returns a non-2xx error and you are not charged. You are charged only when the response `status` is `success`.
   </Accordion>
   <Accordion title="Does the profile lookup send an OTP to the user?">
-    No. `/verify/mobile_profile` is a server-side lookup and the user receives nothing. To prove a user owns the number, use the mobile step in the IDTO SDK flow, which sends a 6-digit OTP.
+    No. `/verify/mobile_profile` is a server-side lookup and the user receives nothing. To prove a user owns the number, use the mobile step in the idto SDK flow, which sends a 6-digit OTP.
   </Accordion>
   <Accordion title="Which numbers can I look up?">
     Indian mobile numbers. Send the 10-digit number without `+91`.

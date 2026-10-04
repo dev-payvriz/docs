@@ -5,7 +5,7 @@ description: "Look up a vehicle registration number and get the registration, ow
 openapi: "openapi2.0.json POST /verify/vehicle_rc"
 ---
 
-Send a registration number. IDTO looks it up in the vehicle registry and returns the record: registration and expiry dates, chassis and engine numbers, make and model, insurance, tax, pollution certificate, permit, financer and blacklist details. Use it for fleet onboarding, vehicle loans and insurance underwriting.
+Send a registration number. idto looks it up in the vehicle registry and returns the record: registration and expiry dates, chassis and engine numbers, make and model, insurance, tax, pollution certificate, permit, financer and blacklist details. Use it for fleet onboarding, vehicle loans and insurance underwriting.
 
 This is a v1 endpoint. It does not use the v2 envelope: there is no `error_code` on success and no `billed` field.
 
@@ -22,7 +22,7 @@ This endpoint has no idempotency support. A retry after a timeout runs a new loo
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Request
 
@@ -30,7 +30,7 @@ This endpoint has no idempotency support. A retry after a timeout runs a new loo
 |---|---|
 | `vehicle_number` | Required. Registration number as printed on the RC, for example `KA01AB1234`. |
 | `user_id` | Optional. Your own reference for the end user. |
-| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
 
 ## Response fields
 
@@ -54,7 +54,7 @@ More than one registry source can serve this endpoint. The fields below are pres
 | `result.rc_financer` | Financer with a hypothecation on the vehicle. |
 | `result.is_commercial`, `result.blacklist_status`, `result.blacklist_details`, `result.challan_details`, `result.noc_details` | Commercial flag, blacklist, challan and NOC information. |
 | `chargeble`, `user_consent` | `"true"` when the call was charged. |
-| `tranx_id`, `timestamp` | IDTO transaction id and time. Quote `tranx_id` to support. |
+| `tranx_id`, `timestamp` | idto transaction id and time. Quote `tranx_id` to support. |
 
 ## Errors
 
@@ -65,7 +65,7 @@ More than one registry source can serve this endpoint. The fields below are pres
 | none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
 | none | 404 | `{"detail": "Customer not found for this client"}` | No |
 | none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "vehicle_number"], "msg": "Field required"}]}` | No |
-| none | 500 | Body is not part of the contract; retry later. | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
 
 Other failures during the lookup use the same `{"detail": {...}}` shape as the 400 row, with the HTTP status and message of the failure. Read `detail.message` and `tranx_id` from it.
 

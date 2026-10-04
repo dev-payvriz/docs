@@ -3,7 +3,7 @@ title: "Documents"
 description: "Read tax invoices and utility bills into structured data for address verification and merchant onboarding."
 ---
 
-Use this module to turn an invoice or bill into data. IDTO classifies the upload, accepts tax invoices and utility bills, and returns the parties, GSTINs, line items, tax totals and printed bank details.
+Use this module to turn an invoice or bill into data. idto classifies the upload, accepts tax invoices and utility bills, and returns the parties, GSTINs, line items, tax totals and printed bank details.
 
 ## Endpoints
 
@@ -16,13 +16,13 @@ Use this module to turn an invoice or bill into data. IDTO classifies the upload
 ```mermaid
 sequenceDiagram
     participant Server as Your server
-    participant IDTO
-    Server->>IDTO: POST /v2/verify/invoice_ocr (file)
-    IDTO->>IDTO: Classify the document
+    participant idto
+    Server->>idto: POST /v2/verify/invoice_ocr (file)
+    idto->>idto: Classify the document
     alt Tax invoice or utility bill with invoice details
-        IDTO-->>Server: 200, error_code null, data
+        idto-->>Server: 200, error_code null, data
     else Other document type, or no invoice details
-        IDTO-->>Server: 200, IDTO_202
+        idto-->>Server: 200, IDTO_202
     end
 ```
 

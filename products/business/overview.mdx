@@ -6,7 +6,7 @@ description: "Verify GST registrations, companies and employment history for KYB
 
 Business verification covers know-your-business and employment checks: confirm a GSTIN, read a company's registry record, and fetch a person's EPFO employment history.
 
-<video controls preload="metadata" src="https://idto-sdk-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.mp4" style={{ width: "100%", maxWidth: "390px", borderRadius: "12px" }}></video>
+<video controls preload="metadata" src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.mp4" poster="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/video/flow-kyb.jpg" style={{ width: "100%", maxWidth: "390px", borderRadius: "12px" }}></video>
 
 ## Endpoints
 
@@ -22,20 +22,20 @@ Business verification covers know-your-business and employment checks: confirm a
 ```mermaid
 sequenceDiagram
     participant App as Your server
-    participant IDTO as IDTO API
+    participant idto as idto API
     participant Src as Government registry
-    App->>IDTO: POST /v2/verify/gst_verification_basic (X-Client-ID, X-API-Key)
-    IDTO->>IDTO: Validate input format
+    App->>idto: POST /v2/verify/gst_verification_basic (X-Client-ID, X-API-Key)
+    idto->>idto: Validate input format
     alt Input malformed
-        IDTO-->>App: 400 IDTO_001, not billed
+        idto-->>App: 400 IDTO_001, not billed
     else Input valid
-        IDTO->>Src: Look up registration
+        idto->>Src: Look up registration
         alt Record found
-            IDTO-->>App: 200 success, error_code null, billed
+            idto-->>App: 200 success, error_code null, billed
         else No record
-            IDTO-->>App: 200 success, IDTO_202, billed
+            idto-->>App: 200 success, IDTO_202, billed
         else Source busy
-            IDTO-->>App: 503 IDTO_008, not billed
+            idto-->>App: 503 IDTO_008, not billed
         end
     end
 ```
@@ -53,7 +53,7 @@ Every v2 response carries a boolean `billed`. Send an `Idempotency-Key` on v2 ca
 
 ## In a verification flow
 
-GST and company checks are available as steps in an IDTO workflow, so your customer enters their GSTIN or CIN in the hosted flow and you receive the result with the session. The recording above shows that step. See the [FAQ](/products/business/faq) for common questions.
+GST and company checks are available as steps in an idto workflow, so your customer enters their GSTIN or CIN in the hosted flow and you receive the result with the session. The recording above shows that step. See the [FAQ](/products/business/faq) for common questions.
 
 ---
 

@@ -22,16 +22,16 @@ Neither endpoint supports idempotency. A retried request runs again and can be c
 ```mermaid
 sequenceDiagram
     participant App as Your server
-    participant IDTO as IDTO API
+    participant idto as idto API
     participant Src as Credit bureau or court records
-    App->>IDTO: POST /verify/credit_report (X-Client-ID, X-API-Key)
-    IDTO->>Src: Request report
+    App->>idto: POST /verify/credit_report (X-Client-ID, X-API-Key)
+    idto->>Src: Request report
     alt Report found
-        IDTO-->>App: 200 status success with result, charged
+        idto-->>App: 200 status success with result, charged
     else No report on file
-        IDTO-->>App: 200 status success with empty result, charged
+        idto-->>App: 200 status success with empty result, charged
     else Details rejected or source failed
-        IDTO-->>App: 200 status failed, not charged
+        idto-->>App: 200 status failed, not charged
     end
 ```
 

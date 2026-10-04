@@ -5,7 +5,7 @@ description: "Upload a tax invoice or utility bill and get the buyer and seller 
 openapi: "openapi2.0.json POST /v2/verify/invoice_ocr"
 ---
 
-Upload the document as `multipart/form-data` in the `file` field. IDTO classifies it, rejects document types that cannot prove an address, and returns the parties, invoice details, line items, tax totals and payment details. Use it for address verification and for supplier or merchant onboarding.
+Upload the document as `multipart/form-data` in the `file` field. idto classifies it, rejects document types that cannot prove an address, and returns the parties, invoice details, line items, tax totals and payment details. Use it for address verification and for supplier or merchant onboarding.
 
 Every response has the same shape whichever source serves the call. Branch on `error_code`, never on `status`:
 
@@ -18,14 +18,14 @@ Every response has the same shape whichever source serves the call. Branch on `e
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Input rules
 
 | Field | Rule |
 |---|---|
 | `file` | Required. One file of the invoice or bill, at most 12 MB. Larger uploads return `IDTO_503` (413). |
-| `workflow_session_token` | Optional. Pass only when the call is part of an IDTO workflow session. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
 
 ## Accepted documents
 
@@ -60,7 +60,7 @@ Send an `Idempotency-Key` header (at most 255 characters) to make retries safe. 
 | `IDTO_001` | 400 | Invalid input. Please check the request and try again. | No |
 | `IDTO_503` | 413 | The image could not be processed. Please try a clearer, smaller image. | No |
 | `IDTO_001` | 422 | Invalid input. Please check the request and try again. (a required field is missing or has the wrong type) | No |
-| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `null` | 400 | Insufficient credits for this operation. (your idto balance is too low; recharge and retry) | No |
 | `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
 | `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
 | `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |

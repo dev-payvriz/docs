@@ -5,7 +5,7 @@ description: "Confirm a bank account exists and can receive money, and get the n
 openapi: "openapi2.0.json POST /v2/verify/bank_verification"
 ---
 
-Send an account number and IFSC. IDTO runs a penny drop against the account and returns the name the bank holds for it. Use it before a payout, a refund or a loan disbursal to make sure the money lands in the right account.
+Send an account number and IFSC. idto runs a penny drop against the account and returns the name the bank holds for it. Use it before a payout, a refund or a loan disbursal to make sure the money lands in the right account.
 
 Every response has the same shape whichever bank network path serves the call. Branch on `error_code`, never on `status`:
 
@@ -18,7 +18,7 @@ Every response has the same shape whichever bank network path serves the call. B
 | Environment | Base URL | Notes |
 |---|---|---|
 | Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
-| Staging | `https://dev.idto.ai` | Keys on request from your IDTO account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
 
 ## Name check
 
@@ -30,7 +30,7 @@ Every response has the same shape whichever bank network path serves the call. B
 Penny drops move real money, so this endpoint protects you from duplicates even without an `Idempotency-Key`. While a request is running, a second request with the identical body gets `IDTO_004` (409) and nothing is charged. Once the first finishes, an identical request runs again and is billed again.
 </Note>
 
-To make retries safe after a timeout, send an `Idempotency-Key` header (at most 255 characters). Replaying the same key with the same body within 48 hours returns the stored first result, byte for byte, without a new penny drop or a new charge. The same key with a different body returns `IDTO_010` (422). If the first call returned an error, nothing is stored and the retry runs the check again. See [Idempotency](/concepts/idempotency) and the [idempotent retry recipe](/recipes/bank-verification-idempotent-retry).
+To make retries safe after a timeout, send an `Idempotency-Key` header (at most 255 characters). Replaying the same key with the same body within 48 hours returns the stored first result, byte for byte, without a new penny drop or a new charge. The same key with a different body returns `IDTO_010` (422). If the first call returned an error, nothing is stored and the retry runs the check again. See [Idempotency](/concepts/idempotency) and the [idempotent retry recipe](/recipes/pan-ocr-idempotent-retry).
 
 ## Response fields
 
@@ -43,7 +43,7 @@ To make retries safe after a timeout, send an `Idempotency-Key` header (at most 
 | `data.utr` | Reference of the penny drop transfer, when the bank network returns one. |
 | `data.failure_reason` | Extra detail from the bank network, usually `null`. |
 | `billed` | `true` when this call was charged. |
-| `tranx_id` | IDTO transaction id. Quote it to support. |
+| `tranx_id` | idto transaction id. Quote it to support. |
 
 ## Errors
 
@@ -56,7 +56,7 @@ To make retries safe after a timeout, send an `Idempotency-Key` header (at most 
 | `IDTO_102` | 400 | A required parameter is missing from the request. | No |
 | `IDTO_401` | 400 | The account number provided is invalid. | No |
 | `IDTO_402` | 400 | The IFSC code provided is invalid. | No |
-| `null` | 400 | Insufficient credits for this operation. (your IDTO balance is too low; recharge and retry) | No |
+| `null` | 400 | Insufficient credits for this operation. (your idto balance is too low; recharge and retry) | No |
 | `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
 | `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
 | `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
