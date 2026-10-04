@@ -6,38 +6,84 @@ description: "Answers to common questions about GST, company and employment hist
 
 ## General
 
-<AccordionGroup>
-<Accordion title="Which GST product should I use?">
+### Which GST product should I use?
+
 Use GST basic to confirm that a GSTIN is registered and read its name, status and principal place of business. Use GST advanced when you also need return filing history, goods and services and every place of business.
-</Accordion>
-<Accordion title="Am I charged when the GSTIN or CIN does not exist?">
-On the v2 products, yes. A definitive no-record answer returns HTTP 200 with `error_code` `IDTO_202` and `billed: true`, because the registry was searched. On GST advanced, a missing record returns 404 and is not charged.
-</Accordion>
-<Accordion title="Does the CIN product accept an LLPIN?">
+
+### What does GST basic return?
+
+`gst_number`, `legal_name`, `trade_name`, `taxpayer_type`, `business_constitution`, `nature_of_business`, `register_date`, `gst_status`, `state_jurisdiction` and `primary_business_address`, plus an `extras` object with secondary details such as the cancellation date and e-invoice status when the record carries them. Check `gst_status` before you accept the business: a GSTIN that was registered can since have been cancelled.
+
+### What does the CIN product return?
+
+The company's `cin`, `company_name`, `company_category`, `class_of_company`, `date_of_incorporation`, `registered_address`, `company_status`, `roc_code`, `registration_number`, `listed_status` and `directors_brief`, plus `extras`. Read `company_status` to confirm the company is active.
+
+### Does the CIN product accept an LLPIN?
+
 Yes. Send the LLPIN in `id_number`. Any identifier up to 25 characters is looked up.
-</Accordion>
-<Accordion title="What does is_current_employment mean?">
+
+### What does is_current_employment mean?
+
 It is `true` when the employment record has no exit date in the EPF record. It shows the EPF account is open with that establishment, not that the person is on its payroll today.
-</Accordion>
-</AccordionGroup>
+
+## Input and validation
+
+### Do I need to format the GSTIN before sending it?
+
+No. Leading and trailing spaces are removed and letters are upper-cased. The value must then be a valid 15-character GSTIN or the call returns `IDTO_001` (400), "Invalid GSTIN format", and is not billed.
+
+### Which field carries the GSTIN?
+
+On GST basic and CIN, the identifier goes in `id_number`; employment history takes `uan`. GST advanced is a v1 endpoint and takes it in `gst_number`. Sending the wrong field name returns a 422.
+
+### What does employment history need?
+
+The person's 12-digit UAN in `uan`, digits only. Anything else returns `IDTO_001` (400), "Invalid UAN. Please provide a valid 12-digit UAN.", and is not billed. A value longer than 12 characters is rejected by request validation with `IDTO_001` and HTTP 422.
+
+### What happens with a CIN longer than 25 characters?
+
+It returns `IDTO_001` (400), "Invalid CIN format", without a lookup. A CIN has 21 characters and an LLPIN has 8, so a longer value is a typing or copy error.
+
+## Billing
+
+### Am I charged when the GSTIN or CIN does not exist?
+
+On the v2 products, yes. A definitive no-record answer returns HTTP 200 with `error_code` `IDTO_202` and `billed: true`, because the registry was searched. On GST advanced, a missing record returns 404 and is not charged.
+
+### Am I charged when a UAN has no employment record?
+
+Yes. HTTP 200 with `IDTO_202`, "No EPFO employment record found for the provided UAN.", `data: null` and `billed: true`.
+
+### How do I know whether a GST advanced call was charged?
+
+It is charged only when `status` is `"success"`, and a charged response carries `"chargeble": "true"`. GST advanced has no `billed` field.
 
 ## Technical
 
-<AccordionGroup>
-<Accordion title="Should I branch on status or error_code?">
+### Should I branch on status or error_code?
+
 On `error_code`. Every 2xx v2 response has `status: "success"`, including no-record results, which carry `IDTO_202`.
-</Accordion>
-<Accordion title="How do I retry safely after a timeout?">
+
+### How do I retry safely after a timeout?
+
 On v2 products, send the same `Idempotency-Key` with the same body. You get the stored result and are not billed again. GST advanced has no idempotency support, so a retry can be charged again.
-</Accordion>
-<Accordion title="Why are directors missing from a CIN response?">
-Calls made from a browser with an SDK session token do not receive `directors_brief` or `extras`. Call from your server with your API key pair.
-</Accordion>
-<Accordion title="Do I need to format the GSTIN before sending it?">
-No. Leading and trailing spaces are removed and letters are upper-cased. The value must then be a valid 15-character GSTIN or the call returns `IDTO_001` and is not billed.
-</Accordion>
-</AccordionGroup>
 
----
+### Which errors should I retry?
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fbusiness%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fbusiness%2Ffaq)
+`IDTO_006` (429) means the registry is rate limiting and `IDTO_008` (503) means it is not responding or idto is shedding load. Retry both with backoff and the same `Idempotency-Key`. Do not retry `IDTO_001`; fix the input. Contact support on `IDTO_007` (500).
+
+### Why are directors missing from a CIN response?
+
+Calls made from a browser with an SDK session token do not receive `directors_brief` or `extras`, and the company email is left out. Call from your server with your API key pair.
+
+### Can I run bulk KYB checks?
+
+Yes, from your server. Run a bounded pool of workers rather than sending every request at once, send an `Idempotency-Key` with each call, and lower the concurrency when you see `IDTO_006` or `IDTO_008`. See [Rate limits](/concepts/rate-limits).
+
+## End users
+
+### What should I tell a business whose GSTIN is not found?
+
+Ask them to check the number against their GST registration certificate. `IDTO_202` means the registry has no record of that exact GSTIN. If they confirm the number is right and it still returns `IDTO_202`, hold the application for manual review rather than retrying.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Business%20verification%20FAQ) with the page link.

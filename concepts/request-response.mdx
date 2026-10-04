@@ -24,6 +24,17 @@ Every call to `/verify/*` (v1) or `/v2/verify/*` (v2) needs both of these on eve
 | `X-Client-ID` | Your client identifier |
 | `X-API-Key` | Your secret API key |
 | `Content-Type` | `application/json` for JSON-bodied endpoints |
+| `Idempotency-Key` | Optional, v2 only. Makes a retry safe; see [Idempotency](/concepts/idempotency) |
+
+Endpoints that take a document image, such as the OCR products and `face_match`, take `multipart/form-data` instead of JSON. `aadhaar_qr` takes either: JSON with the decoded QR text, or `multipart/form-data` with the image. Let your HTTP client set the multipart `Content-Type` with its boundary; do not set it by hand.
+
+Authentication is checked before anything else, and its failures do not use the v2 envelope. They return a plain `detail` string:
+
+| HTTP | `detail` | Cause |
+| --- | --- | --- |
+| 401 | `Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token.` | A header is missing, or the key does not match the client id |
+| 403 | `Client is inactive` | The key was deleted in the dashboard or disabled |
+| 403 | `Customer is inactive` | The account has been disabled |
 
 ## Request and response bodies
 
@@ -57,6 +68,8 @@ curl --request POST \
     "category": "individual"
   },
   "billed": true,
+  "chargeble": "true",
+  "user_consent": "true",
   "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
   "timestamp": "2026-09-14T10:15:30Z"
 }
@@ -71,6 +84,8 @@ curl --request POST \
   "error_code": "IDTO_202",
   "data": null,
   "billed": true,
+  "chargeble": "true",
+  "user_consent": "true",
   "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
   "timestamp": "2026-09-14T10:15:30Z"
 }
@@ -96,11 +111,26 @@ The full request and response schema for every v2 endpoint, including every fiel
 
 For every `/v2/verify/*` endpoint, the HTTP status is the first thing to branch on:
 
-- **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code` set to an `IDTO_2xx` code). Both are `status: "success"` and both are billed. Never treat `error_code` being non-null as a failure by itself, check whether the code falls in the `IDTO_2xx` range.
-- **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"`, `data` is `null`, and `billed` is `false` in every case except `IDTO_204`, which is the one raised error that is also unbilled by design rather than an exception to the unbilled rule.
+- **2xx**: the call ran to completion. This covers both a full match (`error_code: null`) and a definitive no-record outcome (`error_code: "IDTO_202"`, `data: null`). Both are `status: "success"` and both are billed. A non-null `error_code` on a 2xx is an answer, not a failure: the record does not exist or is invalid.
+- **4xx / 5xx**: the call was raised as an error before or during processing (bad input, missing consent, rate limiting, a downstream failure). `status` is `"error"`, `data` is `null`, and `billed` is `false`, with no exceptions.
+
+Do not branch on the `IDTO_2xx` range of the code. Some codes in that range are raised errors: `IDTO_204` (unreadable Aadhaar QR, 422), `IDTO_205` (wrong OTP, 422) and `IDTO_206` (OTP attempts used up, 429). The HTTP status, or `status`, is what separates an answer from an error.
+
+In order, your handler should:
+
+1. Check the HTTP status. On 401 or 403, read `detail` and fix credentials; do not retry.
+2. On 2xx, read `error_code`. `null` means use `data`; `IDTO_202` means a definitive no-record answer.
+3. On 4xx, show or log `message` and fix the request. Retrying the same body returns the same error.
+4. On 429 `IDTO_006` or on 503, retry with backoff and the same `Idempotency-Key`. See [Rate limits](/concepts/rate-limits).
+
+A request that fails schema validation (a missing required field, a wrong type) returns `IDTO_001` with HTTP 422 and a `message` naming the field. A value that is present but invalid, such as a malformed PAN, returns `IDTO_001` with HTTP 400. Treat both the same way: fix the input.
+
+Every v2 body also carries `chargeble` and `user_consent` as `"true"` or `"false"` strings. They are legacy flags that mirror `billed`; read `billed` instead. `tranx_id` identifies the call: store it, find the call by it in the dashboard under **Transactions**, and quote it when you contact support.
 
 The exact status code for each `IDTO_*` code is fixed and documented in the [Error Codes reference](/reference/v2-error-codes), for example `IDTO_006` is always 429.
 
 ## v1 responses look different
 
 v1 endpoints (`/verify/*`) do not use this envelope. A v1 response is close to the raw reply from whichever verification source served it, with only `tranx_id` and `timestamp` always added. There is no `error_code` field and no fixed shape across products. See [API Versioning](/concepts/api-versioning) for the full comparison.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Request%20%26%20Response) with the page link.

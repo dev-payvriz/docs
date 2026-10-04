@@ -1,0 +1,47 @@
+---
+title: "Find the DIN for a director's PAN (v1)"
+sidebarTitle: "PAN to DIN (v1)"
+description: "Send an individual PAN and get the Director Identification Number allotted to that person, if any."
+openapi: "openapi2.0.json POST /verify/pan_to_din"
+---
+
+Use this endpoint to check whether a person holds a Director Identification Number, for example while onboarding a company's directors. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## How to read the result
+
+- `result.din_found: true`: `result.din` holds the DIN.
+- `result.din_found: false`: no DIN is allotted to this PAN. This is still `status: "success"` and is charged.
+- Charged only when the response `status` is `success`. Billing signal: `chargeble` and `user_consent` are present as `"true"` only on a charged call, spelled exactly as shown. There is no `billed` field on v1.
+- `tranx_id` identifies the call for support.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| none | 400 | `{"detail": {"status": "error", "error_code": null, ...}}` when this product is not enabled for your account. Ask your account manager to enable it. | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` when no credentials are sent; `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` when the key pair is not recognised | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", ...], ...}]}` when a field is missing or has the wrong type | No |
+| none | 400 | `{"detail": "PAN number is required"}` (not wrapped) when `pan_number` is an empty string | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Invalid PAN format", ...}}` | No |
+| `IDTO_006`, `IDTO_008`, `IDTO_009` or none | Any 4xx or 5xx | The verification source could not complete the call. Its status is passed through with the wrapped `detail` body; `message` varies. Retry later. | No |
+| none | 500 | Our side failed. The body is not part of the contract; retry once after a few seconds (this endpoint has no Idempotency-Key). If it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+See the [Business verification FAQ](/products/business/faq) for common questions.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Find%20the%20DIN%20for%20a%20director%27s%20PAN%20%28v1%29) with the page link.

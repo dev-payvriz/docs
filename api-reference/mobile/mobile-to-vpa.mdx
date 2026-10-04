@@ -1,0 +1,65 @@
+---
+title: "Find UPI IDs for a mobile number"
+sidebarTitle: "Mobile to UPI ID (v1)"
+description: "List the UPI IDs linked to a mobile number with the name on each. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/mobile_to_vpa"
+---
+
+Send a mobile number and get back the UPI IDs linked to it, each with the registered name. Use it to pre-fill a payout UPI ID or to cross-check the name a user gave you. Collect the user's consent before you call it. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`, including when no UPI ID is linked to the number. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `mobile_number` | Required. 10-digit Indian mobile number. |
+| `user_id` | Optional. Your own reference for the end user. |
+
+## How to read the result
+
+- `status: "success"`: the lookup ran. `data.upi_account_info` lists the UPI IDs linked to the number; each entry has `upi_id`, `name` and `status`.
+- An empty `data.upi_account_info` means no UPI ID is linked. It is still charged.
+- `data.message` is a human-readable summary; do not branch on its text.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "Mobile number is required" when `mobile_number` is empty | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A mobile number with UPI IDs | 200, `data.upi_account_info` has entries | Yes |
+| A mobile number with no UPI ID | 200, `data.upi_account_info: []` | Yes |
+| `mobile_number: ""` | 400 | No |
+| Body without `mobile_number` | 422 | No |
+
+Questions about this product are answered in the [Mobile FAQ](/products/mobile/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Find%20UPI%20IDs%20for%20a%20mobile%20number) with the page link.

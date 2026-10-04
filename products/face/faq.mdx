@@ -3,40 +3,90 @@ title: "Face and liveness FAQ"
 description: "Answers to common questions about face match scores, liveness decisions, image limits and billing."
 ---
 
-## General
+## Decisions and scores
 
-<AccordionGroup>
-  <Accordion title="What score counts as a match?">
-    `is_match` is `true` when `match_score` is 70 or more. `confidence` is `HIGH` at 85 or more, `MEDIUM` from 60 to below 85 and `LOW` below 60.
-  </Accordion>
-  <Accordion title="Am I charged when faces do not match or liveness fails?">
-    Yes. A 2xx response with `is_match: false` or `is_live: false` is a completed check and is billed. Only non-2xx errors are free.
-  </Accordion>
-  <Accordion title="Should I run liveness before face match?">
-    Yes. Face match compares any two images, including a photo of a photo. Running liveness first makes sure the selfie came from a live person.
-  </Accordion>
-  <Accordion title="What do I do with a MEDIUM confidence non-match?">
-    Scores from 60 to below 70 are `MEDIUM` but not a match. Send them to manual review instead of rejecting the user.
-  </Accordion>
-</AccordionGroup>
+### What score counts as a match?
 
-## Technical
+`match_score` runs from 0 to 100 with up to two decimals. `is_match` is `true` when `match_score` is 70 or more. `confidence` is `HIGH` at 85 or more, `MEDIUM` from 60 to below 85 and `LOW` below 60. The threshold is the same whichever source scored the pair, so your logic does not need to change per call.
 
-<AccordionGroup>
-  <Accordion title="How do I send the images?">
-    Face match takes `multipart/form-data`: `image1` as a file and either `image2` as a file or `image2_url` as a public `https` URL. Liveness takes JSON with the selfie as base64 in `person`; a `data:image/jpeg;base64,` prefix is accepted.
-  </Accordion>
-  <Accordion title="What is the image size limit?">
-    10 MB per image. Larger images return `IDTO_503` (413) and are not billed.
-  </Accordion>
-  <Accordion title="What do IDTO_509 and IDTO_609 mean?">
-    No decision could be produced: `IDTO_509` for face match and `IDTO_609` for liveness, both HTTP 500 and not billed. Retry with a clearer, front-facing photo.
-  </Accordion>
-  <Accordion title="Can I rely on the keys inside data.extras?">
-    No. `extras` carries supplementary signals whose keys can differ from call to call. Build your logic on `is_match`, `match_score`, `confidence`, `is_live` and `liveness_score`.
-  </Accordion>
-</AccordionGroup>
+### What do I do with a MEDIUM confidence non-match?
+
+Scores from 60 to below 70 are `MEDIUM` but not a match. Send them to manual review instead of rejecting the user outright. Common causes are an old or worn ID photo, glasses, heavy shadows or a selfie taken at an angle.
+
+### Should I run liveness before face match?
+
+Yes. Face match compares any two images, including a photo of a photo. Running liveness first makes sure the selfie came from a live person in front of the camera. Then pass that same selfie to face match as `image1` and the ID photo as `image2`.
+
+### What should I build my logic on?
+
+Use `is_match`, `match_score` and `confidence` for face match, and `is_live` for liveness. Treat `liveness_score` as supporting detail. `data.extras` carries supplementary signals whose keys can differ from call to call, so log it but do not branch on it.
+
+## Input
+
+### How do I send the images?
+
+Face match takes `multipart/form-data`: `image1` as a file and either `image2` as a file or `image2_url`. Liveness takes JSON with the selfie as base64 in `person`; a `data:image/jpeg;base64,` prefix is accepted and stripped.
+
+### What are the rules for image2_url?
+
+Use a public `https` URL on the default port that returns the image directly, without a redirect, within a few seconds. A URL that is not `https`, points at a private address, does not return an image or does not answer in time is rejected with `IDTO_001` (400) and is not billed. When in doubt, upload the file as `image2` instead.
+
+### What is the image size limit?
+
+10 MB per image. Larger images return `IDTO_503` (413) and are not billed. A file that cannot be read as an image is rejected and not billed. JPEG and PNG are the safest formats.
+
+### What happens if an image is missing?
+
+A face match call without `image1` is rejected. A call with neither `image2` nor `image2_url` returns `IDTO_001` (400) with the message "Invalid input: either image2 or image2_url is required." A liveness call with an empty `person` returns `IDTO_001` (400). None of these are billed.
+
+## Billing and errors
+
+### Am I charged when faces do not match or liveness fails?
+
+Yes. A 2xx response with `is_match: false` or `is_live: false` is a completed check and is billed, with `billed: true`. Only non-2xx errors are free, and they carry `billed: false`.
+
+### What do IDTO_509 and IDTO_609 mean?
+
+No decision could be produced: `IDTO_509` for face match and `IDTO_609` for liveness, both HTTP 500 and not billed. Retry once with a clearer, front-facing photo. If it repeats, ask the user to retake the selfie in better light.
+
+### Which errors should I handle?
+
+| HTTP | `error_code` | Cause | Billed |
+| --- | --- | --- | --- |
+| 400 | `IDTO_001` | Missing image, bad `image2_url` | No |
+| 413 | `IDTO_503` | Image too large, or a liveness selfie that is not an image | No |
+| 429 | `IDTO_006` | The verification source is rate limiting | No |
+| 500 | `IDTO_509` / `IDTO_609` | No decision produced | No |
+| 503 | `IDTO_008` | Busy, retry with backoff | No |
+
+### Why does a check inside a workflow show billed false?
+
+When you pass `workflow_session_token` for a workflow that already charges for the face step, the call is not charged again and `billed` is `false`. This applies to both face match and liveness.
+
+## Retries and limits
+
+### Can I retry safely?
+
+Yes. Both endpoints accept an `Idempotency-Key` header. Retry with the same key and the same request and you get the stored first response back without a second charge. A retry while the first call is still running returns `IDTO_004` (409); the same key with a different request returns `IDTO_010` (422). Use a new key for each new selfie.
+
+### How long should my client wait?
+
+idto waits up to 30 seconds for a verification source to answer. Set your client timeout to about 60 seconds, and on a client-side timeout retry with the same `Idempotency-Key`.
+
+### Is there a request quota?
+
+There is no fixed per-key quota for server calls. Throttling shows up as `IDTO_006` (429) and load shedding as `IDTO_008` (503), neither billed. Back off with jitter. See [Rate limits](/concepts/rate-limits).
+
+## Going live
+
+### What should I show the end user?
+
+Do not show scores or codes. On `is_live: false`, ask for a new selfie with the face centred, eyes open and good light. On a `LOW` non-match, explain the selfie did not match the ID photo and offer one retake. On `IDTO_503`, ask for a smaller or clearer photo.
+
+### How should I capture the selfie?
+
+The idto SDK face step guides the user through capture for you. If you capture yourself, use the front camera, one face in frame, no screen or printed photo, and send the original image rather than a heavily compressed copy.
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fface%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fface%2Ffaq)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Face%20and%20liveness%20FAQ) with the page link.

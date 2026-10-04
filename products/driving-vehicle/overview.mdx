@@ -12,6 +12,11 @@ Use this module to onboard drivers, delivery partners and vehicle owners. Verify
 | [Verify a driving licence](/api-reference/driving-vehicle/driving-licence) `POST /v2/verify/driving_licence` | Checks licence number and date of birth with the issuer and returns holder details, validity and vehicle classes. | Every 2xx, including `IDTO_202` (no record) |
 | [Driving licence OCR](/api-reference/driving-vehicle/dl-ocr) `POST /v2/verify/dl_ocr` | Reads the fields printed on a licence image. | Every 2xx, including `IDTO_202` (nothing readable) |
 | [Vehicle RC](/api-reference/driving-vehicle/vehicle-rc) `POST /verify/vehicle_rc` | Returns the registration record for a vehicle number. v1 contract. | Only when `status` is `success` |
+| [Driving licence (v1)](/api-reference/driving-vehicle/driving-licence-v1) `POST /verify/driving_licence` | v1 contract. Checks licence number and date of birth with the issuer. | Only when `status` is `success` |
+| [Vehicle RC plus](/api-reference/driving-vehicle/vehicle-rc-plus) `POST /verify/vehicle_rc_plus` | Registration record with permit, blacklist and challan details. v1 contract. | Only when `status` is `success` |
+| [Vehicle challan](/api-reference/driving-vehicle/vehicle-challan) `POST /verify/vehicle_challan` | Traffic e-challans recorded against a vehicle number. v1 contract. | Only when `status` is `success` |
+| [FASTag toll history](/api-reference/driving-vehicle/fastag-toll-history) `POST /verify/fastag_toll_history` | Recent toll plaza crossings on a vehicle's FASTag. v1 contract. | Only when `status` is `success` |
+| [FASTag verification](/api-reference/driving-vehicle/fast-tag-verification) `POST /verify/fast_tag_verification` | FASTag details on record for a vehicle number. v1 contract. | Only when `status` is `success` |
 
 ## How a licence check works
 
@@ -59,4 +64,4 @@ Each endpoint page lists its full set. Common questions: [FAQ](/products/driving
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdriving-vehicle%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdriving-vehicle%2Foverview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Driving%20licence%20and%20vehicle) with the page link.

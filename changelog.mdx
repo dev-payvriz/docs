@@ -9,7 +9,7 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="October 2, 2026" tags={["Added"]}>
 **Added**
 
-- `POST /v2/verify/vpa_verification` verifies a UPI ID and returns the holder name.
+- [`POST /v2/verify/vpa_verification`](/api-reference/bank/vpa-verification) verifies a UPI ID and returns the holder name.
 
 </Update>
 
@@ -42,8 +42,8 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="September 14, 2026" tags={["Added", "Fixed"]}>
 **Added**
 
-- `POST /v2/verify/employment_history`.
 - Mobile profile is available as a silent workflow step.
+- [`POST /v2/verify/employment_history`](/api-reference/business/employment-history).
 
 **Fixed**
 
@@ -100,14 +100,14 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="August 20, 2026" tags={["Added"]}>
 **Added**
 
-- Verification links: create a shareable link with `POST /merchant/verification-links`, list them with `GET`, and revoke one with `DELETE /merchant/verification-links/{link_id}`. The link opens the hosted verification flow for your end user.
+- [Verification links](/api-reference/integration/verification-links-create): create, list and revoke shareable links from your dashboard session. Each link opens the hosted verification flow for your end user.
 
 </Update>
 
 <Update label="August 17, 2026" tags={["Added"]}>
 **Added**
 
-- `POST /verify/court_check` accepts an optional `father_name` to narrow matches.
+- [`POST /verify/court_check`](/api-reference/credit-legal/court-check) accepts an optional `father_name` to narrow matches.
 
 </Update>
 
@@ -128,9 +128,8 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="August 2, 2026" tags={["Added", "Fixed"]}>
 **Added**
 
-- Aadhaar OTP verification on v2: `/v2/verify/okyc_generate_otp` and `/v2/verify/okyc_get_result`.
-- `POST /v2/verify/digilocker`. The v1 `POST /verify/digilocker` stays available.
-- Slow employment history lookups return `202` with a `reference_id`; fetch the result from `GET /verify/result/{reference_id}`.
+- [`POST /v2/verify/digilocker`](/api-reference/aadhaar/digilocker). The v1 `POST /verify/digilocker` stays available.
+- Aadhaar OTP verification on v2: [`/v2/verify/okyc_generate_otp`](/api-reference/aadhaar/okyc-generate-otp) and [`/v2/verify/okyc_get_result`](/api-reference/aadhaar/okyc-get-result).
 
 **Fixed**
 
@@ -160,9 +159,9 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="July 24, 2026" tags={["Added", "Improved"]}>
 **Added**
 
-- `POST /v2/verify/pan_detailed`.
-- `POST /v2/verify/gst_verification_basic`.
-- `POST /verify/esign/document` returns the signed PDF of a completed eSign document.
+- [`POST /v2/verify/pan_detailed`](/api-reference/pan/pan-detailed).
+- [`POST /v2/verify/gst_verification_basic`](/api-reference/business/gst-verification-basic).
+- [`POST /verify/esign/document`](/api-reference/esign/esign-document) returns the signed PDF of a completed eSign document.
 
 **Improved**
 
@@ -181,8 +180,8 @@ Each entry is dated by the day the change reached production. Subscribe with the
 **Added**
 
 - Workflow steps can be marked skippable, with a review and finalize screen at the end of the session.
-- The web SDK shows a skip option on skippable steps and the new review screen.
 - iOS SDK 0.1.0, a native Swift wrapper around the hosted verification flow.
+- The web SDK shows a skip option on skippable steps and the new review screen.
 
 **Improved**
 
@@ -193,8 +192,8 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="July 21, 2026" tags={["Fixed"]}>
 **Fixed**
 
-- v2 errors raised inside a workflow now return their real HTTP status.
 - An upstream bank verification fault is no longer reported as a configuration error.
+- v2 errors raised inside a workflow now return their real HTTP status.
 
 </Update>
 
@@ -208,11 +207,11 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="July 17, 2026" tags={["Improved", "Deprecated"]}>
 **Improved**
 
-- `/v2/verify/bank_verification` returns `account_number` masked to the last four digits, in the same format for every source.
+- [`/v2/verify/bank_verification`](/api-reference/bank/bank-verification) returns `account_number` masked to the last four digits, in the same format for every source.
 
 **Deprecated**
 
-- `extras.name_match_score` is no longer returned by `/v2/verify/bank_verification`, because the score was not comparable across sources.
+- `extras.name_match_score` is no longer returned by [`/v2/verify/bank_verification`](/api-reference/bank/bank-verification), because the score was not comparable across sources.
 
 </Update>
 
@@ -223,30 +222,30 @@ Each entry is dated by the day the change reached production. Subscribe with the
 
 **Fixed**
 
-- `POST /verify/esign` no longer returns a server error when `user_id` is not a UUID.
+- [`POST /verify/esign`](/api-reference/esign/esign) no longer returns a server error when `user_id` is not a UUID.
 
 </Update>
 
 <Update label="July 15, 2026" tags={["Added", "Fixed", "Deprecated"]}>
 **Added**
 
-- `POST /verify/esign` accepts coordinate-based signature placement.
+- [`POST /verify/esign`](/api-reference/esign/esign) accepts coordinate-based signature placement.
 - Android SDK 0.1.0, a native Kotlin wrapper around the hosted verification flow.
 
 **Fixed**
 
-- Credit report returns a no-record response, instead of an error, when the bureau has no record for the person.
+- [Credit report](/api-reference/credit-legal/credit-report) returns a no-record response, instead of an error, when the bureau has no record for the person.
 
 **Deprecated**
 
-- The Aadhaar QR route is now `POST /verify/aadhaar_qr`. The misspelled `POST /verify/aadhar_qr` keeps working as an alias; move to the new path.
+- The Aadhaar QR route is now [`POST /verify/aadhaar_qr`](/api-reference/aadhaar/aadhaar-qr-v1). The misspelled `POST /verify/aadhar_qr` keeps working as an alias; move to the new path.
 
 </Update>
 
 <Update label="July 13, 2026" tags={["Added"]}>
 **Added**
 
-- v2 OCR for PAN, driving licence and Aadhaar: `/v2/verify/pan_ocr`, `/v2/verify/dl_ocr` and `/v2/verify/aadhaar_ocr`.
+- v2 OCR for PAN, driving licence and Aadhaar: [`/v2/verify/pan_ocr`](/api-reference/pan/pan-ocr), [`/v2/verify/dl_ocr`](/api-reference/driving-vehicle/dl-ocr) and [`/v2/verify/aadhaar_ocr`](/api-reference/aadhaar/aadhaar-ocr).
 
 </Update>
 
@@ -260,14 +259,14 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="July 11, 2026" tags={["Added"]}>
 **Added**
 
-- Aadhaar QR verification: decode the secure QR printed on an Aadhaar card.
+- [Aadhaar QR verification](/api-reference/aadhaar/aadhaar-qr-v1): decode the secure QR printed on an Aadhaar card.
 
 </Update>
 
 <Update label="July 9, 2026" tags={["Improved"]}>
 **Improved**
 
-- `/v2/verify/face_match` and `/v2/verify/liveness` return canonical response keys.
+- [`/v2/verify/face_match`](/api-reference/face/face-match) and [`/v2/verify/liveness`](/api-reference/face/liveness) return canonical response keys.
 
 </Update>
 
@@ -282,15 +281,15 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="June 26, 2026" tags={["Added"]}>
 **Added**
 
-- React Native SDK 0.2.0 is published on npm as `@idto/react-native-sdk`, with a navigation allow-list, DigiLocker pop-up support and a `readyTimeout` option.
 - Flutter SDK 0.3.0 is published on pub.dev as `idto_flutter`.
+- React Native SDK 0.2.0 is published on npm as `@idto/react-native-sdk`, with a navigation allow-list, DigiLocker pop-up support and a `readyTimeout` option.
 
 </Update>
 
 <Update label="June 24, 2026" tags={["Fixed"]}>
 **Fixed**
 
-- `POST /verify/mobile/get_otp` no longer returns intermittent 503 responses.
+- [`POST /verify/mobile/get_otp`](/api-reference/mobile/mobile-get-otp) no longer returns intermittent 503 responses.
 - A malformed `X-Client-ID` header now returns 401 instead of a server error.
 
 </Update>
@@ -298,6 +297,112 @@ Each entry is dated by the day the change reached production. Subscribe with the
 <Update label="June 23, 2026" tags={["Added"]}>
 **Added**
 
-- `POST /verify/invoice_ocr` reads the fields of an uploaded invoice.
+- [`POST /verify/invoice_ocr`](/api-reference/documents/invoice-ocr-v1) reads the fields of an uploaded invoice.
+- Workflow v2 sessions, with [`GET /sdk/v2/session/{session_token}/state`](/api-reference/integration/session-state) to read a session's progress.
+- The web SDK runs workflow v2 sessions built in the dashboard.
 
 </Update>
+
+<Update label="June 10, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- Low-balance emails no longer repeat; each alert is sent at most once a day.
+
+</Update>
+
+<Update label="June 1, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/credit_report`](/api-reference/credit-legal/credit-report) returns a credit report with the person's consent.
+
+</Update>
+
+<Update label="May 29, 2026" tags={["Improved"]}>
+**Improved**
+
+- Verification calls that end in an error are no longer charged.
+
+</Update>
+
+<Update label="May 7, 2026" tags={["Fixed"]}>
+**Fixed**
+
+- A vehicle RC lookup with no matching record is reported as no record instead of an error.
+
+</Update>
+
+<Update label="April 17, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /v2/verify/bank_verification`](/api-reference/bank/bank-verification) verifies a bank account by penny drop.
+
+</Update>
+
+<Update label="April 15, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /v2/verify/cin_mca_verification`](/api-reference/business/cin-mca-verification), the first v2 endpoint.
+
+</Update>
+
+<Update label="March 30, 2026" tags={["Added"]}>
+**Added**
+
+- The web SDK lets the user upload a PAN card image.
+
+</Update>
+
+<Update label="February 20, 2026" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/court_check`](/api-reference/credit-legal/court-check) searches court records for a person.
+
+</Update>
+
+<Update label="September 22, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/esign`](/api-reference/esign/esign) sends a document for electronic signature.
+
+</Update>
+
+<Update label="August 19, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/digilocker/verify_account`](/api-reference/aadhaar/digilocker-verify-account) and [`POST /verify/digilocker/fetch_aadhaar`](/api-reference/aadhaar/digilocker-fetch-aadhaar) complete the DigiLocker Aadhaar fetch.
+
+</Update>
+
+<Update label="July 30, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/bank_verification/pennyless`](/api-reference/bank/bank-verification-pennyless) verifies a bank account without a penny drop.
+
+</Update>
+
+<Update label="July 22, 2025" tags={["Added"]}>
+**Added**
+
+- DigiLocker sessions: [`POST /verify/digilocker/initiate_session`](/api-reference/aadhaar/digilocker-initiate-session), [`POST /verify/digilocker/get_reference`](/api-reference/aadhaar/digilocker-get-reference) and [`POST /verify/digilocker/user_details`](/api-reference/aadhaar/digilocker-user-details).
+
+</Update>
+
+<Update label="July 17, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /verify/pan_all_in_one`](/api-reference/pan/pan-all-in-one) and [`POST /verify/pan_nsdl`](/api-reference/pan/pan-nsdl) verify a PAN.
+- [`POST /verify/vehicle_rc`](/api-reference/driving-vehicle/vehicle-rc) looks up a vehicle registration.
+- [`POST /verify/mobile_profile`](/api-reference/mobile/mobile-profile) returns the profile linked to a mobile number.
+- [`POST /verify/gst_advance`](/api-reference/business/gst-advance) returns detailed GST registration data.
+- [`POST /verify/mobile/get_otp`](/api-reference/mobile/mobile-get-otp) starts OTP-based mobile number verification.
+
+</Update>
+
+<Update label="June 16, 2025" tags={["Added"]}>
+**Added**
+
+- [`POST /auth/sdk/token`](/api-reference/integration/sdk-token) issues the token that opens the hosted verification flow.
+
+</Update>
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Changelog) with the page link.

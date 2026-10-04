@@ -1,0 +1,66 @@
+---
+title: "Look up an IFSC"
+sidebarTitle: "IFSC Lookup (v1)"
+description: "Get the bank, branch, address and payment rails for an IFSC. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/ifsc_verification"
+---
+
+Send an IFSC and get back the bank and branch it belongs to, the branch address and the payment rails the branch supports. Use it to check an IFSC a user typed before you run a penny drop. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `ifsc` | Required. 11-character IFSC (`ABCD0123456`). |
+| `user_id` | Optional. Your own reference for the end user. |
+
+## How to read the result
+
+- `status: "success"`: the IFSC exists. `result` carries `bank`, `branch`, `address`, `city`, `state`, `ifsc`, `ifsc_subcode`, `micr`, `nbin`, `category`, `swift_code`, the rail flags `imps`, `neft`, `rtgs`, `upi`, `card` and `ft`, and `status`, `reference_id` and `verification_id` for the lookup itself.
+- An IFSC that does not exist is a non-2xx error with the wrapped `detail` body and is not charged.
+
+<Note>
+The keys under `result` are passed through as the source returns them. Treat every one as optional.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real IFSC | 200, `status: "success"`, `result.bank` filled | Yes |
+| An IFSC that does not exist | non-2xx, `{"detail": {...}}` | No |
+| Body without `ifsc` | 422 | No |
+
+Questions about this product are answered in the [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Look%20up%20an%20IFSC) with the page link.

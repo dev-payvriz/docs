@@ -1,0 +1,67 @@
+---
+title: "Get FASTag toll history"
+sidebarTitle: "FASTag toll history (v1)"
+description: "Recent toll plaza crossings recorded on a vehicle's FASTag. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/fastag_toll_history"
+---
+
+Send a vehicle registration number and get back the recent toll plaza crossings recorded on its FASTag, with plaza, time and direction. Use it to confirm a vehicle is in active use. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `vehicle_number` | Required. Registration number as printed on the RC, for example `KA01AB1234`. |
+| `user_id` | Optional. Your own reference for the end user. |
+
+## How to read the result
+
+- `status: "success"`: `result.no_of_records` is the count and `result.toll_records[]` lists each crossing with `toll_plaza_name`, `toll_plaza_geocode`, `toll_lane_direction`, `toll_read_time`, `toll_sequence_id`, `vehicle_reg_number` and `vehicle_type`.
+- `request_id` and `client_ref_num` identify the lookup; quote them with `tranx_id` to support.
+- No record or an unknown vehicle is a non-2xx error and is not charged.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "Vehicle number is required" when `vehicle_number` is empty | No |
+| `102` | 400 | Wrapped `detail` body: the vehicle number was rejected | No |
+| `103` | 404 | Wrapped `detail` body: no toll record found | No |
+| `104` | 409 | Wrapped `detail` body: the lookup could not be completed for this vehicle | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A vehicle with a FASTag in active use | 200, `result.toll_records` has entries | Yes |
+| A vehicle with no crossings | 404, `error_code` `103` | No |
+| Body without `vehicle_number` | 422 | No |
+
+Questions about this product are answered in the [Driving Licence and Vehicle FAQ](/products/driving-vehicle/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Get%20FASTag%20toll%20history) with the page link.

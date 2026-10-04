@@ -1,0 +1,77 @@
+---
+title: "Verify a bank account (v1)"
+sidebarTitle: "Bank Verification (v1)"
+description: "Penny drop on a bank account and IFSC. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/bank_verification"
+---
+
+Send an account number and IFSC. idto deposits a small amount through the banking network and returns whether the account is valid and the name the bank holds for it. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+<Tip>
+For new integrations use [Bank Verification](/api-reference/bank/bank-verification). It gives you idempotent retries, a `billed` flag and one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `account_number` | Required. Account number as the bank issued it. |
+| `ifsc` | Required. 11-character IFSC (`ABCD0123456`). `ifsc_code` is accepted as an alias. |
+| `name` | Optional. The name you expect on the account. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
+
+## How to read the result
+
+- `status` is the only key every bank source returns. `success` means the penny drop completed and the call is charged.
+- `status: "failure"` with HTTP 200 means the bank rejected the account. It is not charged.
+- On most accounts `result` carries `account_holder_name`, `account_number`, `account_ifsc`, `is_valid` and `failure_reason`. Compare `result.account_holder_name` with the name you hold before paying out.
+- Depending on the bank source enabled for your account, an account that does not validate can also come back as `status: "success"` with `result.is_valid: false`, which is charged. Always read `result.is_valid`.
+
+<Note>
+More than one bank source can serve this endpoint. Only `status`, `tranx_id` and `timestamp` are present whichever source answered; every key under `result` (and `result` itself) is optional, so read it defensively.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` saying the account number and IFSC are required, when either is empty | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real, active account and its IFSC | 200, `status: "success"`, `result.is_valid: true` | Yes |
+| A closed or wrong account number | 200, `status: "failure"`, or `status: "success"` with `result.is_valid: false` | No for `failure`, Yes for `success` |
+| `account_number: ""` | 400 | No |
+| Body without `ifsc` | 422 | No |
+
+Questions about this product are answered in the [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Verify%20a%20bank%20account%20%28v1%29) with the page link.

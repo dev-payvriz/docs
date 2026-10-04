@@ -10,6 +10,13 @@ idto mobile verification covers two jobs. From your server, the mobile profile A
 | Endpoint | What it does | Billing |
 |---|---|---|
 | [`POST /verify/mobile_profile`](/api-reference/mobile/mobile-profile) | v1. Returns the profile linked to a 10-digit mobile number in a `result` object. No idempotency. | Charged only when `status` is `success`. No record found is a non-2xx error and is not charged. |
+| [`POST /verify/mobile/get_otp`](/api-reference/mobile/mobile-get-otp) | v1. Sends an OTP by SMS and returns a `sessionId`. Step 1 of 2. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/mobile/verify_otp`](/api-reference/mobile/mobile-verify-otp) | v1. Checks the code the user typed. Step 2 of 2. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/mobile_to_vpa`](/api-reference/mobile/mobile-to-vpa) | v1. Lists the UPI IDs linked to a mobile number with the name on each. No idempotency. | Charged only when `status` is `success`, including an empty list. |
+| [`POST /verify/mobile_profile_advance`](/api-reference/mobile/mobile-profile-advance) | v1. Network, porting and subscriber details plus the linked profile. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/mobile_to_pan`](/api-reference/mobile/mobile-to-pan) | v1. Looks up the PAN linked to a mobile number. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/mobile_reachability`](/api-reference/mobile/mobile-reachability) | v1. Activity, tenure and recycling signals for a number, with an optional name check. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/mobile_profile/address_intelligence`](/api-reference/mobile/mobile-profile-address-intelligence) | v1. Looks up the addresses linked to a mobile number. No idempotency. | Charged only when `status` is `success`. |
 
 ## How a profile lookup works
 
@@ -58,4 +65,4 @@ See [SDK modules](/sdks/modules) to add the mobile step to a workflow.
 - [Mobile profile API reference](/api-reference/mobile/mobile-profile)
 - [Mobile FAQ](/products/mobile/faq)
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fmobile%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fmobile%2Foverview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Mobile%20overview) with the page link.

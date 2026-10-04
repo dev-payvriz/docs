@@ -1,0 +1,42 @@
+---
+title: "Revoke a verification link"
+sidebarTitle: "Revoke link"
+description: "Turn a verification link off permanently."
+openapi: "openapi2.0.json DELETE /merchant/verification-links/{link_id}"
+---
+
+Revoking a link stops it at once: it starts no new sessions, and sessions already in progress through it can no longer renew their session token, so they stop within 15 minutes. Revoking cannot be undone; create a new link instead. Revoking a link that is already revoked returns it unchanged with its original `revoked_at`.
+
+## Authentication
+
+Send a dashboard login token as `Authorization: Bearer <token>` (from `POST /auth/login`, valid 12 hours). `X-Client-ID` and `X-API-Key` are not accepted. Team members with the owner, admin or developer role can revoke links. Not billed.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Log in with your production dashboard account. |
+| Staging | `https://dev.idto.ai` | Log in with your staging dashboard account. |
+
+## Errors
+
+| HTTP | `detail` | What to do |
+|---|---|---|
+| 401 | Could not validate credentials | Log in again for a fresh token. |
+| 401 | Not authenticated | Send `Authorization: Bearer <token>`; API keys are not accepted here. |
+| 403 | Your role does not permit this action. | Ask an owner, admin or developer to revoke the link. |
+| 404 | Verification link not found | Use an `id` from [List links](/api-reference/integration/verification-links-list). |
+| 422 | A list naming `link_id` | `link_id` is not a UUID. |
+
+## Test scenarios
+
+| Input | Expected result |
+|---|---|
+| `id` of an active link | 200, `status: "revoked"`, `revoked_at` set |
+| Same `id` again | 200, unchanged |
+| `id` of a link on another account | 404 |
+| `link_id` that is not a UUID | 422 |
+
+More answers in the [Integration FAQ](/products/integration/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Revoke%20a%20verification%20link) with the page link.

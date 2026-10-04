@@ -1,0 +1,47 @@
+---
+title: "List verification links"
+sidebarTitle: "List links"
+description: "List every verification link on your account with its status and remaining runs."
+openapi: "openapi2.0.json GET /merchant/verification-links"
+---
+
+Returns every verification link on your account, newest first. Use `status` and `runs_left` to see which links still work, and `id` to revoke one.
+
+## Authentication
+
+Send a dashboard login token as `Authorization: Bearer <token>` (from `POST /auth/login`, valid 12 hours). `X-Client-ID` and `X-API-Key` are not accepted. Every team member role can list links. Not billed.
+
+## Reading `status`
+
+| `status` | Meaning |
+|---|---|
+| `active` | The link starts new sessions. |
+| `expired` | Past `expires_at`. Sessions already in progress can finish. |
+| `spent` | `runs_used` has reached `max_runs`. Sessions already in progress can finish. |
+| `revoked` | Revoked by you. Permanent. Sessions already in progress stop when their session token expires. Takes priority over `expired` and `spent`. |
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Log in with your production dashboard account. |
+| Staging | `https://dev.idto.ai` | Log in with your staging dashboard account. |
+
+## Errors
+
+| HTTP | `detail` | What to do |
+|---|---|---|
+| 401 | Could not validate credentials | Log in again for a fresh token. |
+| 401 | Not authenticated | Send `Authorization: Bearer <token>`; API keys are not accepted here. |
+
+## Test scenarios
+
+| Input | Expected result |
+|---|---|
+| Valid token, account with links | 200, array newest first |
+| Valid token, account without links | 200, `[]` |
+| Expired token | 401 |
+
+See [Create a verification link](/api-reference/integration/verification-links-create) for the request that makes a link. More answers in the [Integration FAQ](/products/integration/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20List%20verification%20links) with the page link.

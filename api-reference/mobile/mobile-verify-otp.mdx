@@ -1,0 +1,67 @@
+---
+title: "Verify a mobile OTP"
+sidebarTitle: "Mobile OTP: verify (v1)"
+description: "Check the OTP a user typed. Step 2 of 2. v1 endpoint, charged when the code matches."
+openapi: "openapi2.0.json POST /verify/mobile/verify_otp"
+---
+
+Step 2 of mobile number verification. Send the `sessionId` from [Send a mobile OTP](/api-reference/mobile/mobile-get-otp) and the code the user typed. A match proves the user holds the number. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success` (the code matched). A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `session_id` | Required. The `sessionId` from the send step. |
+| `otp` | Required. The code the user typed. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
+
+## How to read the result
+
+- `status: "success"`: the code matched. `details` is a short confirmation string.
+- A 200 response without `status: "success"` means the code did not match or the session expired. It is not charged, and its other keys are not part of the contract. Let the user retry or send a new OTP.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "Session ID is required" or "OTP is required" when either is empty | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| none | 503 | Wrapped `detail` body: the SMS service did not answer in time. Retry after a few seconds | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| The code from the SMS | 200, `status: "success"` | Yes |
+| A wrong code | 200 without `status: "success"` | No |
+| `otp: ""` | 400 | No |
+| Body without `session_id` | 422 | No |
+
+Questions about this product are answered in the [Mobile FAQ](/products/mobile/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Verify%20a%20mobile%20OTP) with the page link.

@@ -27,6 +27,22 @@ Aadhaar is India's 12-digit national identity number. idto gives you four ways t
 | [`POST /verify/digilocker/user_details`](/api-reference/aadhaar/digilocker-user-details) | v1. Unmasked DigiLocker profile | Charged when `status` is `success` |
 | [`POST /verify/digilocker/fetch_aadhaar`](/api-reference/aadhaar/digilocker-fetch-aadhaar) | v1. e-Aadhaar XML file | Charged when the file is returned |
 | [`POST /verify/digilocker/verify_account`](/api-reference/aadhaar/digilocker-verify-account) | v1. Is this mobile registered with DigiLocker? | Charged for both answers |
+| [`POST /verify/okyc_generate_otp`](/api-reference/aadhaar/okyc-generate-otp-v1) | v1. Sends the OKYC OTP, returns `sessionId` | Charged when `status` is `success` |
+| [`POST /verify/okyc_get_result`](/api-reference/aadhaar/okyc-get-result-v1) | v1. Checks the OTP, returns the Aadhaar record | Charged when `status` is `success` |
+| [`POST /verify/aadhaar_qr`](/api-reference/aadhaar/aadhaar-qr-v1) | v1. Reads the QR and checks its signature | Charged when `status` is `success` |
+| [`POST /verify/aadhaar_ocr`](/api-reference/aadhaar/aadhaar-ocr-v1) | v1. Reads one side of the printed card | Charged when `status` is `success` |
+| [`POST /verify/digilocker`](/api-reference/aadhaar/digilocker-v1) | v1. Exchanges the DigiLocker code for the unmasked profile | Charged when `status` is `success` |
+| [`POST /verify/digilocker/issued_docs`](/api-reference/aadhaar/digilocker-issued-docs) | v1. Lists the holder's issued documents with their `uri` | Charged when `status` is `success` |
+| [`POST /verify/digilocker/get_issued_docs`](/api-reference/aadhaar/digilocker-get-issued-docs) | v1. One issued document as a file, by `uri` | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_pan`](/api-reference/aadhaar/digilocker-fetch-pan) | v1. PAN as a PDF file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_pan/xml`](/api-reference/aadhaar/digilocker-fetch-pan-xml) | v1. PAN as an XML file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_dl`](/api-reference/aadhaar/digilocker-fetch-dl) | v1. Driving licence as a PDF file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_dl/xml`](/api-reference/aadhaar/digilocker-fetch-dl-xml) | v1. Driving licence as an XML file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_uan`](/api-reference/aadhaar/digilocker-fetch-uan) | v1. UAN card as a PDF file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_degree`](/api-reference/aadhaar/digilocker-fetch-degree) | v1. Degree certificate as a PDF file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_12thmarksheet`](/api-reference/aadhaar/digilocker-fetch-12thmarksheet) | v1. Class XII marksheet as a PDF file | Charged when the file is returned |
+| [`POST /verify/digilocker/fetch_10thmarksheet`](/api-reference/aadhaar/digilocker-fetch-10thmarksheet) | v1. Class X marksheet as a PDF file | Charged when the file is returned |
+| [`GET /verify/digilocker/doc_master`](/api-reference/aadhaar/digilocker-doc-master) | v1. DigiLocker document type codes and names | Charged on every call |
 
 v2 endpoints return `billed` and support `Idempotency-Key`. v1 endpoints have no idempotency, so a retry can be charged twice.
 
@@ -111,4 +127,4 @@ See [SDK modules](/sdks/modules) to add the Aadhaar step to a workflow.
 - [DigiLocker guide](/guides/digilocker-integration)
 - [Aadhaar FAQ](/products/aadhaar/faq)
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/aadhaar/overview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/aadhaar/overview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Aadhaar%20overview) with the page link.

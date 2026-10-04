@@ -1,0 +1,62 @@
+---
+title: "Create a verification link"
+sidebarTitle: "Create link"
+description: "Create a shareable link that runs one of your workflows in the hosted verification flow."
+openapi: "openapi2.0.json POST /merchant/verification-links"
+---
+
+A verification link lets you collect a verification without building a front end. You pick one of your workflow templates, set how many people can use the link and for how long, and share the returned `url` by email, SMS or chat. Each person who opens it runs the workflow in the hosted flow, and the results reach you as they do for any session: the [session.completed webhook](/api-reference/webhooks/session-completed) and the dashboard.
+
+## Authentication
+
+These endpoints take a dashboard login token, not your `X-Client-ID` and `X-API-Key`. Sending only the API key pair returns 401 `Not authenticated`. Get a token by logging in with a dashboard user's email and password at `POST /auth/login`; send it as `Authorization: Bearer <token>`. The token is valid for 12 hours. Team members with the owner, admin or developer role can create links.
+
+## Before you start
+
+- Your account needs an API client (create one under API credentials in the dashboard).
+- `workflow_template_id` must be an active workflow template assigned to your account.
+- Keep at least ₹100 in your idto balance. Below that, people who open the link see a message asking them to contact you, and no session starts.
+
+## Billing
+
+Creating, listing and revoking links is not billed. Each verification a person completes through the link is billed as usual.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Log in with your production dashboard account. Links open at `https://try.idto.ai/v/<token>`. |
+| Staging | `https://dev.idto.ai` | Log in with your staging dashboard account. Verifications run through staging links reach live sources and deduct staging credits. |
+
+## Errors
+
+| HTTP | `detail` | What to do |
+|---|---|---|
+| 400 | A link label is required | Send a non-blank `label`. |
+| 400 | max_runs must be between 1 and 500 | Pick a `max_runs` in range. |
+| 400 | expires_in_days must be between 1 and 90 | Pick an `expires_in_days` in range. |
+| 400 | mobile_verification cannot be skippable on a shared link: it is how the person is identified | Remove `mobile_verification` from `options.skippable`. |
+| 400 | Create an API client for your account before sharing a verification link | Create an API client in the dashboard. |
+| 400 | Inactive customer | Contact tech@idto.ai to reactivate the account. |
+| 401 | Could not validate credentials | Log in again for a fresh token. |
+| 401 | Not authenticated | Send `Authorization: Bearer <token>`; API keys are not accepted here. |
+| 403 | Your role does not permit this action. | Ask an owner, admin or developer to create the link. |
+| 404 | Workflow template not found | Use an active template assigned to your account. |
+| 422 | A list naming the field | A required field is missing, a field has the wrong type, or the body has an unknown field. |
+
+## Test scenarios
+
+| Input | Expected result |
+|---|---|
+| Valid body, active template, account with an API client | 201, `status: "active"`, `runs_left` equals `max_runs` |
+| `max_runs: 0` | 400 |
+| `expires_in_days: 91` | 400 |
+| `options.skippable: ["mobile_verification"]` | 400 |
+| Body without `brand` | 422 |
+| Body with an unknown field | 422 |
+| A `workflow_template_id` from another account | 404 |
+| `X-Client-ID` and `X-API-Key` only | 401 `Not authenticated` |
+
+Manage existing links with [List links](/api-reference/integration/verification-links-list) and [Revoke a link](/api-reference/integration/verification-links-revoke). More answers in the [Integration FAQ](/products/integration/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Create%20a%20verification%20link) with the page link.

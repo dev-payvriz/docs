@@ -30,7 +30,7 @@ export IDTO_API_KEY="your_api_key"
 
 Read the base URL from configuration rather than hardcoding it, so promoting a build to production is a configuration change only.
 
-## The dashboard's Sandbox Mode
+## Sandbox Mode in the dashboard
 
 A new dashboard account opens in **Sandbox Mode**. In that mode the dashboard's built-in API tester shows sample output in the browser and makes no API call. It is a way to explore response shapes, not a test environment, and nothing it shows reaches either base URL above. See the [Dashboard guide](/guides/dashboard).
 
@@ -44,6 +44,39 @@ A new dashboard account opens in **Sandbox Mode**. In that mode the dashboard's 
 | Keys | Issued by your account manager | Generated in the dashboard |
 | Webhook secret | Set separately per environment | Set separately per environment |
 
+## Check connectivity
+
+`GET /health` on either base URL returns `{"status":"ok"}` with HTTP 200 and needs no keys. Use it to confirm that your servers can reach idto, for example from a new network or after a firewall change, before you debug a verification call.
+
+```bash
+curl -s "$IDTO_BASE_URL/health"
+```
+
+## Testing on staging
+
+Because staging reaches live sources, plan your tests so that most of them never need one.
+
+- **Input errors are free.** A malformed PAN, Aadhaar number, IFSC or GSTIN, or missing consent, is rejected with `IDTO_001` or `IDTO_005` before any source is called. These calls are never billed, so you can test every validation path as often as you like.
+- **Found and no-record results cost a credit each.** Test them with a small set of identities you are authorised to verify, and reuse the same ones.
+- **Retries can be tested without extra charges.** Send a request with an `Idempotency-Key`, then send it again with the same key and body: the second call returns the stored response and is not billed. See [Idempotency](/concepts/idempotency).
+- **Billing is visible in every v2 response.** Assert on the `billed` field in your tests rather than on your balance.
+
+Each endpoint page has a Test scenarios table listing the inputs that produce each outcome.
+
+## Promote to production
+
+1. Complete **Switch to Production** in the dashboard and recharge your production balance.
+2. Create a production key pair under **API Credentials**. The secret is shown once, when you create it, so copy it straight into your secret manager.
+3. If you use webhooks, set the webhook URL and generate a secret in the production dashboard. Webhook settings from staging do not carry over.
+4. Change the base URL and key pair in your production configuration. No code change is needed.
+5. Call `GET /health`, then run one real verification and confirm the response carries `billed: true` and a `tranx_id`.
+
+## Rotate keys
+
+You can hold more than one key pair in an environment. To rotate without downtime, create a new pair, deploy it, confirm traffic is flowing on it, then disable or delete the old pair in **API Credentials**. A disabled pair is rejected with HTTP 403 and `Client is inactive`, so you can disable first and delete once you are sure nothing still uses it.
+
+Your webhook URL and secret are held on one of your active key pairs. After you disable or delete a pair, open the webhook settings and confirm the URL and secret are still set. If they are empty, set them again, or deliveries stop.
+
 ## Next steps
 
 <CardGroup cols={2}>
@@ -51,4 +84,4 @@ A new dashboard account opens in **Sandbox Mode**. In that mode the dashboard's 
   <Card title="Go-live checklist" icon="list-check" href="/go-live-checklist">Everything to confirm before you switch the base URL.</Card>
 </CardGroup>
 
-Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Environments) with the page link.

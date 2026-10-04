@@ -40,6 +40,58 @@ idto gives you one API for the identity and business checks an Indian KYC or onb
   <Card title="SDKs and sessions" icon="layer-group" href="/products/integration/overview">Hosted verification flows for web, Android, iOS, Flutter and React Native.</Card>
 </CardGroup>
 
+## Choose how to integrate
+
+There are two ways to run checks, and most teams use both.
+
+| | Direct API | Hosted verification flow (SDK) |
+| --- | --- | --- |
+| Who collects the data | Your own screens | idto's screens, inside your web or mobile app |
+| Authentication | `X-Client-ID` and `X-API-Key`, from your server only | A short-lived SDK token your server mints per user session |
+| How you get the result | In the HTTP response | From the session, and by webhook when the session completes |
+| Best for | Back-office checks, bulk jobs, custom UX | Customer onboarding with document capture, OTP, selfie and consent screens |
+
+Call the API directly when you already hold the data (a PAN, a GSTIN, a bank account) or want full control of the user interface. Use a [hosted flow](/products/integration/overview) when the user has to photograph documents, enter an OTP or take a selfie, so you do not build and maintain those screens yourself. SDKs exist for [Web](/sdks/web), [Android](/sdks/android), [iOS](/sdks/ios), [Flutter](/sdks/flutter) and [React Native](/sdks/react-native).
+
+Never put your API key in a browser or mobile app. Client-side code uses an SDK token, which your server mints per user session and which expires after 15 minutes.
+
+## Pick checks by use case
+
+| You need to | Start with |
+| --- | --- |
+| Confirm who an individual is | [PAN](/products/pan/overview), then [Aadhaar](/products/aadhaar/overview) by OTP, DigiLocker or QR |
+| Pay out to a user's bank account | [Bank](/products/bank/overview) penny drop, then compare the registered name |
+| Onboard a business | [GST and CIN](/products/business/overview) |
+| Onboard a driver or delivery partner | [Driving licence and vehicle](/products/driving-vehicle/overview) |
+| Prove the user is present | [Face match and liveness](/products/face/overview) |
+| Confirm an address | [Invoice and utility bill OCR](/products/documents/overview) |
+| Assess lending risk | [Credit report and court checks](/products/credit-legal/overview) |
+| Get a document signed | [eSign](/products/esign/overview) |
+
+## How a v2 call works
+
+Every v2 call is a `POST` to `/v2/verify/<product>` with your key pair in the headers. Once the request is authenticated, the response always has the same top-level fields:
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `"success"` on every 2xx response, `"error"` on every other response |
+| `error_code` | `null` when a record was found; `IDTO_202` when the check ran and found no record; an `IDTO_*` code on an error |
+| `message` | A human-readable sentence you can log or show |
+| `data` | The result, or `null` |
+| `billed` | `true` when the call was charged |
+| `tranx_id` | idto's id for the call. Store it and quote it to support |
+
+An authentication failure (401 or 403) returns a plain `detail` message instead. Branch on `error_code`, not on `status`: a no-record result is a successful, billed check. Errors are never billed. See [Request and response](/concepts/request-response) and [Billing and consent](/concepts/billing-consent).
+
+## A typical integration
+
+1. Get staging keys and make a first call against `https://dev.idto.ai`, following the [Quickstart](/quickstart).
+2. Pick the products for your flow from the table above and read each product's overview and FAQ.
+3. Handle every outcome in the endpoint's outcomes table: found, no record, bad input, and retryable errors.
+4. Send an `Idempotency-Key` on every v2 call, so a retry after a timeout is never charged twice. See [Idempotency](/concepts/idempotency).
+5. If you use a hosted flow, mint SDK tokens on your server and set up [webhooks](/concepts/webhooks) for session results.
+6. Work through the [Go-live checklist](/go-live-checklist), then switch the base URL and keys to production.
+
 ## v1 and v2
 
 idto exposes two API generations side by side: `/verify/*` (v1) and `/v2/verify/*` (v2). Both are live and both work. v2 is the current standard: a single response envelope across every product, standardized `IDTO_*` error codes, and idempotency support. Use v2 wherever a product has a v2 endpoint; each product page says which version it is. See [API Versioning](/concepts/api-versioning) for the full comparison and for which endpoints are v2-only versus v1-only today.
@@ -48,4 +100,4 @@ idto exposes two API generations side by side: `/verify/*` (v1) and `/v2/verify/
 
 Head to the [Quickstart](/quickstart) to get credentials and make your first call. From there, [Authentication](/authentication) covers both auth methods in depth, and [Handling errors](/error-codes) explains how to handle every outcome a verification call can return.
 
-Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20idto%3A%20Identity%20and%20KYC%20Verification%20API%20for%20India) with the page link.

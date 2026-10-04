@@ -1,0 +1,71 @@
+---
+title: "Check mobile number reachability"
+sidebarTitle: "Mobile reachability (v1)"
+description: "Activity, tenure and recycling signals for a mobile number, with an optional name check. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/mobile_reachability"
+---
+
+Send a mobile number, and optionally the name you hold, to learn how long the number has been active, how much it is used, whether it has been recycled and whether the name fits the number. Use it to judge how reliable a number is before you rely on it for contact or OTP. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `phone_number` | Required. 10 digits after removing spaces and symbols. Do not add the country code. |
+| `first_name`, `middle_name`, `last_name` | Optional. Send to get `result.name_number_match`. |
+| `user_id` | Optional. Your own reference for the end user. |
+
+## How to read the result
+
+- `status: "success"`: signals were returned in `result`.
+- Tenure: `active_since`, `first_seen`, `last_seen`, `latest_identity_lifetime`. Change: `identity_changes`, `num_recycles`. A recently recycled number is weaker evidence of identity.
+- Usage: `activity_spreads`, `incoming_activity_spreads`, `outgoing_activity_spreads`, `incoming_call_scores`, `outgoing_call_scores` and `out_in_ratios`, each with `days_7_score`, `days_14_score`, `days_30_score` and `days_60_score`. Any score can be `null` when there is not enough activity.
+- `dnd_active`, `network_connection_score`, `original_carrier` and `original_circle` describe the line.
+- `name_number_match` is `null` unless you sent a name; then it carries `match_prediction`, `name_string_match_score`, `first_name_match_remark` and `last_name_match_remark`.
+
+<Note>
+The keys under `result` are passed through as the source returns them. Many are `null` for numbers with little history; read them defensively.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "phone_number is required" or "phone_number must be 10 digits" | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| An active mobile number | 200, `status: "success"`, scores filled | Yes |
+| `phone_number: "12345"` | 400 | No |
+| Body without `phone_number` | 422 | No |
+
+Questions about this product are answered in the [Mobile FAQ](/products/mobile/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Check%20mobile%20number%20reachability) with the page link.

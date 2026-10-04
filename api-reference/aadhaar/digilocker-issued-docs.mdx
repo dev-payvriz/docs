@@ -1,0 +1,45 @@
+---
+title: "List the holder's DigiLocker documents"
+sidebarTitle: "DigiLocker: issued documents"
+description: "List the documents issued to the holder in DigiLocker, with the uri you need to download each one."
+openapi: "openapi2.0.json POST /verify/digilocker/issued_docs"
+---
+
+Returns the documents issuers have pushed to the holder's DigiLocker: name, issuer, document type, available formats (`mime`) and the `uri` of each. Pass a `uri` to [Download an issued document](/api-reference/aadhaar/digilocker-get-issued-docs) to get the file.
+
+Needs a `reference_key` from [Get a reference key](/api-reference/aadhaar/digilocker-get-reference), valid for one hour. Get one by starting a session with [Start a DigiLocker session](/api-reference/aadhaar/digilocker-initiate-session), letting the holder sign in and consent on DigiLocker, then exchanging the returned `code`. See the [DigiLocker guide](/guides/digilocker-integration) and the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow).
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged when `status` is `success`. `chargeble` and `user_consent` are `"true"` only on a charged call. Errors are not charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "reference_key is required", "error_code": null, ...}}` | No |
+| none | 404 | Same shape, `message` "Reference key not found" | No |
+| none | 410 | Same shape, `message` "Reference key expired". Start again from `initiate_session` | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "reference_key"], ...}]}` when a required field is missing | No |
+| none | 500 | DigiLocker refused or failed the request, or our side failed. Body is not part of the contract. Retry once after a few seconds | No |
+
+Every wrapped `detail` object also carries `data: null`, `tranx_id` and `timestamp`.
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20List%20the%20holder%27s%20DigiLocker%20documents) with the page link.

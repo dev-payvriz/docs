@@ -4,46 +4,90 @@ sidebarTitle: "FAQ"
 description: "Common questions about creating eSign dockets and downloading signed documents."
 ---
 
-## General
+## Setting up a docket
 
-<AccordionGroup>
-  <Accordion title="Which signature types are supported?">
-    Set `signature_type` per signer, for example `aadhaar` for Aadhaar-based eSign or `electronic` for an electronic signature.
-  </Accordion>
-  <Accordion title="Can several people sign one document?">
-    Yes. Add one entry per signer in `signers_info`. `signature_sequence` on the document sets whether they sign in order (`sequential`, using each signer's `sequence`) or in any order (`parallel`).
-  </Accordion>
-  <Accordion title="What am I charged for?">
-    Only for creating a docket, and only when the response `status` is `success`. Fetching the document and receiving the webhook are free.
-  </Accordion>
-  <Accordion title="How long can I download the signed PDF?">
-    idto archives the signed PDF as soon as every signer has signed and serves it from that archive. Download it when you get the webhook and store it on your side.
-  </Accordion>
-</AccordionGroup>
+### Which signature types are supported?
 
-## Technical
+Set `signature_type` per signer, for example `aadhaar` for Aadhaar-based eSign or `electronic` for an electronic signature.
 
-<AccordionGroup>
-  <Accordion title="Does return_url carry the signed document?">
-    No. It only brings the signer back to your site. Call `POST /verify/esign/document` to get the PDF.
-  </Accordion>
-  <Accordion title="How do I place the signature precisely?">
-    Pass `signer_position.appearance` as an array of `{x1, y1, x2, y2}` boxes instead of a preset. `page_number` picks the page or pages for every box.
-  </Accordion>
-  <Accordion title="Why do I get 502 when fetching?">
-    The status or the file could not be fetched at that moment, or the signed file is not ready yet. Retry with backoff. 502 is never billed.
-  </Accordion>
-  <Accordion title="What does 410 mean?">
-    The signed copy was deleted upstream before idto archived it. It cannot be regenerated. Contact support with the `docket_id`.
-  </Accordion>
-  <Accordion title="Can I retry a create call safely?">
-    No. `POST /verify/esign` has no idempotency support, so a retry can create and charge a second docket.
-  </Accordion>
-  <Accordion title="Is there a maximum file size?">
-    Each PDF can be at most 10 MB after base64 decoding. Larger files return 422.
-  </Accordion>
-</AccordionGroup>
+### Can several people sign one document?
+
+Yes. Add one entry per signer in `signers_info`. `signature_sequence` on the document sets whether they sign in order (`sequential`, using each signer's `sequence`) or in any order (`parallel`). Each signer's `document_to_be_signed` must match the `reference_doc_id` of the document they sign.
+
+### How is each signer authenticated and invited?
+
+`authentication_mode` takes `email`, `mobile`, `both` or `none`, and decides how the signer proves who they are before signing. `trigger_esign_request` sets whether the signing invitation is sent to that signer. `final_copy_recipients` is a comma-separated list of emails that receive the signed copy.
+
+### What document formats are accepted?
+
+PDF only. Set `content_type` to `pdf` and put the file in `content` as base64. A `data:` prefix and line breaks in the base64 are accepted and removed. Each PDF can be at most 10 MB after decoding. A file that is not valid base64, or is larger than 10 MB, returns HTTP 422 and is not billed.
+
+## Signature placement
+
+### How do I place the signature?
+
+Set `signer_position.appearance` to a preset, one of `top-left`, `top-right`, `bottom-left` or `bottom-right`, written exactly like that in lower case. Any other string, such as `bottom` or `Top-Left`, returns 422.
+
+### How do I place the signature precisely?
+
+Pass `signer_position.appearance` as an array of `{x1, y1, x2, y2}` boxes instead of a preset, where `x1`, `y1` is the top-left corner and `x2`, `y2` the bottom-right corner. An empty array returns 422. `page_number` picks the page or pages for every box: `"1"`, `"all"`, or a list such as `"3,5"`.
+
+## Billing
+
+### What am I charged for?
+
+Only for creating a docket, and only when the response `status` is `success`. A charged response carries `"chargeble": "true"` and `"user_consent": "true"`. Fetching the document and receiving the webhook are free, however many times you call them.
+
+### What if my balance is too low?
+
+The create call returns HTTP 400 with "Insufficient credits for this operation." No docket is created and nothing is charged. Recharge, then create the docket again.
+
+## Retries and errors
+
+### Can I retry a create call safely?
+
+No. `POST /verify/esign` has no idempotency support, so a retry can create and charge a second docket and can send signers a second invitation. Retry a create only when you received no response at all, and record every `docket_id` and `tranx_id` you get back.
+
+### What do create errors look like?
+
+A body that fails validation returns 422 with `{"detail": [...]}` listing the bad fields. A rejection from the signing service keeps that service's HTTP status and returns `{"detail": {"status": "error", "message": "...", "error_code": ..., "data": null, "tranx_id": "...", "timestamp": "..."}}`. If the signing service cannot be reached, you get HTTP 500. None of these are charged.
+
+### How long should my client wait on create?
+
+idto waits up to 30 seconds for the signing service. Set your client timeout to about 60 seconds so you do not give up on a docket that is still being created, then retry it by mistake.
+
+## Downloading the signed PDF
+
+### Does return_url carry the signed document?
+
+No. It only brings the signer back to your site. Call `POST /verify/esign/document` with the `docket_id` to get the PDF.
+
+### How do I know signing is finished?
+
+Configure a webhook in the dashboard and listen for `esign.completed`, which idto sends once every signer has signed and the PDF is archived. You can also call `POST /verify/esign/document`: it returns `signing_status: "pending"` with `content: null` while signing is open, and `signing_status: "signed"` with the base64 PDF in `content` once it is done.
+
+### How long can I download the signed PDF?
+
+idto watches each docket for up to 90 days after it is created and archives the signed PDF shortly after every signer has signed. The archived copy is what `POST /verify/esign/document` serves. A docket that is still unsigned after 90 days is no longer watched, so it gets no archive and no webhook. Download the PDF when you get the webhook and store it on your side.
+
+### Why do I get 404 when fetching?
+
+Either the `docket_id` was not created by your account ("No eSign docket with this docket_id was found for your account."), or you passed a `document_id` that is not in that docket ("No signed document with this document_id was found in this docket.").
+
+### Why do I get 502 when fetching?
+
+The status or the file could not be fetched at that moment, or the signed file is not ready yet. Retry with backoff. 502 is never billed.
+
+### What does 410 mean?
+
+The signed copy was deleted upstream before idto archived it. It cannot be regenerated. Contact support with the `docket_id`.
+
+## Going live
+
+### What should I check before going live?
+
+Create a docket on staging with one signer and a preset placement, sign it, receive the `esign.completed` webhook, and download the PDF. Then switch the base URL to `https://prod.idto.ai` and your production keys. See the [eSign workflow guide](/guides/esign-workflow) and the [Go-live checklist](/go-live-checklist).
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/esign/faq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/esign/faq)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20eSign%20FAQ) with the page link.

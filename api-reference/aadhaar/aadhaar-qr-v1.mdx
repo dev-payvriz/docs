@@ -1,0 +1,58 @@
+---
+title: "Read and check an Aadhaar QR code (v1)"
+sidebarTitle: "Aadhaar QR (v1)"
+description: "Decode the QR on an Aadhaar card or e-Aadhaar and check its UIDAI signature."
+openapi: "openapi2.0.json POST /verify/aadhaar_qr"
+---
+
+Upload an image of the QR code on an Aadhaar card or e-Aadhaar as `multipart/form-data`, either as a `file` part or as base64 in `image_b64`. idto decodes the QR and checks the UIDAI signature, then returns the name, date of birth, gender, address and photo stored in it. The same endpoint also answers at the older spelling `/verify/aadhar_qr`; use `/verify/aadhaar_qr`. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+<Tip>
+For new integrations use [Aadhaar QR](/api-reference/aadhaar/aadhaar-qr): it supports `Idempotency-Key`, returns a `billed` flag and uses one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## How to read the result
+
+- `status: "success"`: the QR was decoded. `data.authentic` is `true` when the UIDAI signature matched and `false` when it did not; reject the card on `false`. Charged.
+- No readable QR: `error_code` is `IDTO_204` and you are not charged. Depending on how your account is set up this arrives as HTTP 422 inside `detail`, or as HTTP 200 with `status: "failed"`. Branch on `error_code`, not on the HTTP status.
+- Billing signal: `chargeble` and `user_consent` are `"true"` only on a charged call.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| `IDTO_001` | 400 | `{"detail": {"status": "failed", "message": "Send exactly one of file or image_b64", "error_code": "IDTO_001"}}`. The same shape is used for "Image file is required", "Image exceeds the maximum supported size" and "Unsupported image format". No `tranx_id` | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| `IDTO_204` | 422 | `{"detail": {"status": "error", "message": "No readable Aadhaar QR was found in the image.", "error_code": "IDTO_204", ...}}` | No |
+| `IDTO_503` | 413 | Same shape, `message` "The image could not be processed. Please try a clearer, smaller image." | No |
+| `IDTO_008` | 503 | Same shape, `message` "The verification service is momentarily busy. Please retry shortly." | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "...", "loc": ["body", "file"], ...}]}` when a form field has the wrong type | No |
+| none | 500 | Body is not part of the contract. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `data: null`, `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A clear image of a secure QR | 200, `status: "success"`, `data.authentic: true` | Yes |
+| An image with no QR | `error_code: "IDTO_204"` | No |
+| Both `file` and `image_b64` | 400, `IDTO_001` | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Read%20and%20check%20an%20Aadhaar%20QR%20code%20%28v1%29) with the page link.

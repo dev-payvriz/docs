@@ -77,6 +77,9 @@
               "api-reference/pan/pan-ocr",
               "api-reference/pan/pan-nsdl",
               "api-reference/pan/pan-all-in-one",
+              "api-reference/pan/aadhar-to-pan",
+              "api-reference/pan/pan-detailed-v1",
+              "api-reference/pan/pan-verification",
               "products/pan/faq"
             ]
           },
@@ -94,6 +97,22 @@
               "api-reference/aadhaar/digilocker-user-details",
               "api-reference/aadhaar/digilocker-fetch-aadhaar",
               "api-reference/aadhaar/digilocker-verify-account",
+              "api-reference/aadhaar/aadhaar-ocr-v1",
+              "api-reference/aadhaar/aadhaar-qr-v1",
+              "api-reference/aadhaar/digilocker-doc-master",
+              "api-reference/aadhaar/digilocker-fetch-10thmarksheet",
+              "api-reference/aadhaar/digilocker-fetch-12thmarksheet",
+              "api-reference/aadhaar/digilocker-fetch-degree",
+              "api-reference/aadhaar/digilocker-fetch-dl-xml",
+              "api-reference/aadhaar/digilocker-fetch-dl",
+              "api-reference/aadhaar/digilocker-fetch-pan-xml",
+              "api-reference/aadhaar/digilocker-fetch-pan",
+              "api-reference/aadhaar/digilocker-fetch-uan",
+              "api-reference/aadhaar/digilocker-get-issued-docs",
+              "api-reference/aadhaar/digilocker-issued-docs",
+              "api-reference/aadhaar/digilocker-v1",
+              "api-reference/aadhaar/okyc-generate-otp-v1",
+              "api-reference/aadhaar/okyc-get-result-v1",
               "products/aadhaar/faq"
             ]
           },
@@ -105,6 +124,20 @@
               "api-reference/business/gst-advance",
               "api-reference/business/cin-mca-verification",
               "api-reference/business/employment-history",
+              "api-reference/business/business-pan",
+              "api-reference/business/cin-mca-verification-v1",
+              "api-reference/business/employment-history-v1",
+              "api-reference/business/gst-verification-basic-v1",
+              "api-reference/business/gst-verification",
+              "api-reference/business/mobile-to-uan",
+              "api-reference/business/pan-to-cin",
+              "api-reference/business/pan-to-din",
+              "api-reference/business/pan-to-gst",
+              "api-reference/business/pan-to-uan",
+              "api-reference/business/pf-employee-passbook",
+              "api-reference/business/shop-establishment-verification",
+              "api-reference/business/uan-verification",
+              "api-reference/business/verify-udyam",
               "products/business/faq"
             ]
           },
@@ -123,6 +156,10 @@
               "products/bank/overview",
               "api-reference/bank/bank-verification",
               "api-reference/bank/bank-verification-pennyless",
+              "api-reference/bank/vpa-verification",
+              "api-reference/bank/bank-verification-v1",
+              "api-reference/bank/ifsc-verification",
+              "api-reference/bank/vpa-verification-v1",
               "products/bank/faq"
             ]
           },
@@ -131,6 +168,13 @@
             "pages": [
               "products/mobile/overview",
               "api-reference/mobile/mobile-profile",
+              "api-reference/mobile/mobile-get-otp",
+              "api-reference/mobile/mobile-profile-address-intelligence",
+              "api-reference/mobile/mobile-profile-advance",
+              "api-reference/mobile/mobile-reachability",
+              "api-reference/mobile/mobile-to-pan",
+              "api-reference/mobile/mobile-to-vpa",
+              "api-reference/mobile/mobile-verify-otp",
               "products/mobile/faq"
             ]
           },
@@ -141,6 +185,11 @@
               "api-reference/driving-vehicle/driving-licence",
               "api-reference/driving-vehicle/dl-ocr",
               "api-reference/driving-vehicle/vehicle-rc",
+              "api-reference/driving-vehicle/driving-licence-v1",
+              "api-reference/driving-vehicle/fast-tag-verification",
+              "api-reference/driving-vehicle/fastag-toll-history",
+              "api-reference/driving-vehicle/vehicle-challan",
+              "api-reference/driving-vehicle/vehicle-rc-plus",
               "products/driving-vehicle/faq"
             ]
           },
@@ -150,6 +199,8 @@
               "products/face/overview",
               "api-reference/face/face-match",
               "api-reference/face/liveness",
+              "api-reference/face/face-match-v1",
+              "api-reference/face/liveness-v1",
               "products/face/faq"
             ]
           },
@@ -158,6 +209,10 @@
             "pages": [
               "products/documents/overview",
               "api-reference/documents/invoice-ocr",
+              "api-reference/documents/invoice-ocr-v1",
+              "api-reference/documents/ocr",
+              "api-reference/documents/passport",
+              "api-reference/documents/voter-verification",
               "products/documents/faq"
             ]
           },
@@ -176,6 +231,10 @@
               "products/integration/overview",
               "api-reference/integration/sdk-token",
               "api-reference/integration/session-state",
+              "api-reference/integration/verification-links-create",
+              "api-reference/integration/verification-links-list",
+              "api-reference/integration/verification-links-revoke",
+              "api-reference/integration/name-match",
               "products/integration/faq"
             ]
           },

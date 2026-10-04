@@ -1,0 +1,76 @@
+---
+title: "Compare two faces (v1)"
+sidebarTitle: "Face Match (v1)"
+description: "Compare a selfie with a document photo. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/face_match"
+---
+
+Upload a selfie as `image1` and the document photo as `image2` (or pass its URL in `image2_url`). idto compares the two faces. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+<Tip>
+For new integrations use [Face match](/api-reference/face/face-match). It gives you idempotent retries, a `billed` flag and one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`, whether or not the faces match. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `image1` | Required. Selfie file, sent as `multipart/form-data`. |
+| `image2` | Document photo file. Send `image2` or `image2_url`. |
+| `image2_url` | URL of the document photo, when you do not upload `image2`. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
+
+## How to read the result
+
+- `status: "success"`: the comparison ran and is charged, match or not.
+- On most accounts the body carries `is_match` (the decision), `match` (0 to 100), `match_score` (0 to 1), blur flags for each image (`is_person_image_blurry`, `is_card_image_blurry`) and whether a face was found in each (`person_image_correctly_identified`, `card_image_correctly_identified`).
+- Ask for a new capture when a blur flag is `true` or a face was not found, rather than trusting `is_match`.
+
+<Note>
+More than one face source can serve this endpoint. Only `status`, `tranx_id` and `timestamp` are present whichever source answered; on some accounts the result arrives in a `data` object instead of the top-level keys above. Read every other key defensively.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "Either image2 or image2_url is required" when both are missing | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| `IDTO_008` | 503 | `{"detail": {"status": "failed", "message": "The verification service is momentarily busy. Please retry shortly.", "error_code": "IDTO_008", "data": null}}` with a `Retry-After` header | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| Selfie and document photo of the same person | 200, `status: "success"`, `is_match: true` | Yes |
+| Photos of two different people | 200, `status: "success"`, `is_match: false` | Yes |
+| `image1` only | 400 | No |
+| No `image1` | 422 | No |
+
+Questions about this product are answered in the [Face and Liveness FAQ](/products/face/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Compare%20two%20faces%20%28v1%29) with the page link.

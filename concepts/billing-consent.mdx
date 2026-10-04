@@ -31,7 +31,31 @@ A **raised error** (any non-2xx response) is never billed. `status` is `"error"`
 }
 ```
 
-Charging and persisting the result happen in the same database transaction, so a failed credit deduction rolls back the whole call rather than leaving a billed record with no corresponding charge. There is no separate `_billable` marker anywhere in the response, `billed` is the single source of truth, and it means the same thing on every v2 product regardless of which underlying provider served the request.
+`billed` is the single source of truth, and it means the same thing on every v2 product regardless of which underlying provider served the request. Every v2 body also carries `chargeble` and `user_consent` as the strings `"true"` or `"false"`. These are legacy flags kept for older integrations and simply mirror `billed`; despite its name, `user_consent` in a response does not report whether consent was given. Branch on `billed`.
+
+### Billing per outcome
+
+| Outcome | HTTP | `status` | `error_code` | `billed` |
+| --- | --- | --- | --- | --- |
+| Full match | 200 | `success` | `null` | `true` |
+| Definitive no record | 200 | `success` | `IDTO_202` | `true` |
+| Same call, replayed with its `Idempotency-Key` | 200 | as first response | as first response | as first response, no new charge |
+| Step already paid for by a verification session | 200 | `success` | as above | `false` |
+| Bad input, missing consent | 400 or 422 | `error` | `IDTO_001`, `IDTO_005` | `false` |
+| Source busy or failing | 429 or 503 | `error` | `IDTO_006`, `IDTO_008`, `IDTO_103`, `IDTO_403` | `false` |
+| Unreadable Aadhaar QR | 422 | `error` | `IDTO_204` | `false` |
+
+A replayed response is a copy of the stored first response, so its `billed` value describes that first charge. It is not a second one.
+
+### When the charge is taken
+
+Without an `Idempotency-Key`, the call record and the charge are committed together: if the deduction fails, the whole call fails and nothing is recorded as billed. With a key, idto stores the result first, so that a retry can be replayed, and then takes the charge once for that call. Either way a verification is charged at most once.
+
+### Balance
+
+Before a standalone verification runs, idto checks that your balance covers it. If it does not, the call is rejected with HTTP 400 and the message `Insufficient credits for this operation.`, nothing is sent to a verification source and nothing is billed. Recharge from **Billing** in the dashboard and resend. A replay of a stored result skips this check, so a retry of a call that already completed still gets its answer when the balance is low. Calls whose step is paid for by a verification session skip the per-call balance check.
+
+To audit charges, open **Transactions** in the dashboard. Each verification shows whether it was charged, and a call that was retried automatically shows its attempts with the one that was charged.
 
 For the full per-code billing table, see [Error Codes](/reference/v2-error-codes).
 
@@ -60,6 +84,28 @@ If `user_consent` is missing or not truthy, the request is rejected before any v
 }
 ```
 
-This is a raised error (HTTP 400), so it is never billed, you can correct the request and resend without losing a credit. `true`, `"true"`, and `"True"` are all accepted as truthy; anything else, including `false`, an empty string, or a missing field, triggers `IDTO_005`.
+This is a raised error (HTTP 400), so it is never billed, you can correct the request and resend without losing a credit. On `pan_validation`, `pan_detailed` and `okyc_generate_otp`, only `true`, `"true"` and `"True"` are accepted; anything else, including `false`, `"yes"`, `1`, an empty string, or a missing field, triggers `IDTO_005`. `aadhaar_qr` reads the field more loosely (in a multipart form, `true`, `1` and `yes` in any letter case all count). Send the JSON boolean `true`, or the string `true` in a form, on every product so the same value works everywhere.
+
+Input checks run before the consent check. On the PAN products, a missing or malformed `pan_number` returns `IDTO_001` (400) even when consent is also missing, so fix input errors first and expect `IDTO_005` only once the rest of the request is valid.
+
+### Capturing consent
+
+`user_consent: true` is your statement that the person agreed to this verification. idto checks that the field is present and truthy; it cannot check how you obtained the agreement. Before you send it:
+
+1. Show the person what will be verified and why, before they enter their details.
+2. Record their agreement on your side with a timestamp and the text they saw.
+3. Send `user_consent: true` only for a request made after that agreement, and never hardcode it for every call.
+
+When you use an idto verification session (SDK or verification link), the consents the user gives in the flow are recorded against the session. The session completion webhook and the session state endpoint carry a summary of them: `consent_type`, `consent_version` and `consented_at`, never the consent text.
 
 The other v2 products do not currently declare a `user_consent` field. Consent enforcement is added product by product as each one is built, so check the specific endpoint's request schema (under the API Reference tab) rather than assuming every v2 product requires it. If you don't see `user_consent` listed as a required field for the endpoint you're calling, it isn't enforced there today.
+
+## Production checklist
+
+- Your code reads `billed` for cost tracking and `error_code` for the verification outcome, never `chargeble` or `user_consent`.
+- `IDTO_202` is handled as a definitive, billed answer, not retried as a failure.
+- Retries send the same `Idempotency-Key`, so a timeout never turns into two charges.
+- A low-balance alert is set so `Insufficient credits for this operation.` never reaches production traffic.
+- Consent is captured and stored before any request that sends `user_consent: true`.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Billing%20%26%20Consent) with the page link.

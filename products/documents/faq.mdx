@@ -5,35 +5,66 @@ description: "Answers to common questions about invoice and utility bill OCR, ac
 
 ## General
 
-<AccordionGroup>
-  <Accordion title="Which documents are accepted?">
-    Tax invoices and utility bills. Delivery challans, rent agreements, bank statements and other documents return `IDTO_202` with `data.document_type` set.
-  </Accordion>
-  <Accordion title="Am I charged when the document is rejected?">
-    Yes. A rejection by type or a document with no invoice details is HTTP 200 with `IDTO_202` and `billed: true`, because the document was read. Errors (non-2xx) are never billed.
-  </Accordion>
-  <Accordion title="Does idto verify the GSTIN or bank account on the invoice?">
-    No. Invoice OCR returns what is printed. Verify a GSTIN or a bank account with the matching verification endpoint.
-  </Accordion>
-</AccordionGroup>
+### Which documents are accepted?
+
+Tax invoices and utility bills. Delivery challans, rent agreements, bank statements and other documents return `IDTO_202` with `data.document_type` set to what idto detected: `DELIVERY_CHALLAN`, `RENT_AGREEMENT`, `BANK_STATEMENT` or `OTHER`.
+
+### What do I get back for an accepted document?
+
+`document_type` (`TAX_INVOICE` or `UTILITY_BILL`), the `buyer` the bill is addressed to and the `vendor` that issued it (each with `name`, `address`, `gstin`, `pan`, `contact`, `email`, `state` and `state_code`), `invoice_details` (`invoice_number`, `invoice_date` as `YYYY-MM-DD`, `order_reference`), `line_items` (`description`, `hsn_sac`, `quantity`, `unit_rate`, `total_amount`), `totals` (`cgst`, `sgst`, `igst`, `grand_total`, `amount_in_words`) and `bank_details`. Treat every field as optional: a value missing from the document comes back `null`.
+
+### Does idto verify the GSTIN or bank account on the invoice?
+
+No. Invoice OCR returns what is printed. Verify a GSTIN with [GST basic](/api-reference/business/gst-verification-basic) or a bank account with [bank verification](/api-reference/bank/bank-verification).
+
+### Can I use it for address verification?
+
+Yes, that is its main use. For a utility bill or invoice addressed to your user, `buyer.address` is the address on the bill. Compare `buyer.name` with the name you hold before you accept the address.
+
+### What does the no invoice details message mean?
+
+The document was read, but none of the buyer's address, the vendor's name, the invoice number or the grand total could be found on it. You get `IDTO_202` with `data: null` and a message asking for a tax invoice or a utility bill that shows the billing address.
+
+## Billing
+
+### Am I charged when the document is rejected?
+
+Yes. A rejection by type or a document with no invoice details is HTTP 200 with `IDTO_202` and `billed: true`, because the document was read. Errors (non-2xx) are never billed.
+
+### Why did a call inside a workflow come back with billed false?
+
+When you send `workflow_session_token` as a form field for a workflow that already charges for the address step, the individual call is not charged again and `billed` is `false`.
 
 ## Technical
 
-<AccordionGroup>
-  <Accordion title="How do I upload the file?">
-    Send `multipart/form-data` with the document in the `file` field, at most 12 MB.
-  </Accordion>
-  <Accordion title="What does IDTO_008 mean on this endpoint?">
-    The reader is at capacity or the service is busy. It is HTTP 503 and not billed; retry with backoff.
-  </Accordion>
-  <Accordion title="Can I retry a timed-out upload safely?">
-    Yes. Send an `Idempotency-Key` header. Replaying the same key with the same file within 48 hours returns the first response without a new charge.
-  </Accordion>
-  <Accordion title="How do I tell the user what they uploaded?">
-    On a type rejection, read `data.document_type` (for example `BANK_STATEMENT`) and show the `message`, which names the detected type and asks for a tax invoice or utility bill.
-  </Accordion>
-</AccordionGroup>
+### How do I upload the file?
 
----
+Send `multipart/form-data` with the document in the `file` field. JPEG, PNG and PDF are accepted. Any other type, or an empty file, returns `IDTO_001` (400) and is not billed.
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdocuments%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdocuments%2Ffaq)
+### How large can the file be?
+
+Keep it under 5 MB. The request itself is capped at 12 MB, but a file above 5 MB can be rejected by the reader with `IDTO_503` (413), which is not billed. Compress a large scan or send only the pages that hold the bill.
+
+### What does IDTO_008 mean on this endpoint?
+
+The reader is at capacity or the service is busy. It is HTTP 503 and not billed; retry with backoff.
+
+### Can I retry a timed-out upload safely?
+
+Yes. Send an `Idempotency-Key` header. Replaying the same key with the same file within 48 hours returns the first response without a new charge. Replaying the key with a different file returns `IDTO_010` (422).
+
+### Which errors should I retry?
+
+Retry `IDTO_006` (429) and `IDTO_008` (503) with backoff and the same `Idempotency-Key`. Do not retry `IDTO_001` or `IDTO_503` with the same file; fix or replace it. Contact support on `IDTO_007` (500).
+
+## End users
+
+### How do I tell the user what they uploaded?
+
+On a type rejection, read `data.document_type` (for example `BANK_STATEMENT`) and show the `message`, which names the detected type and asks for a tax invoice or utility bill.
+
+### What should I ask for when the upload fails?
+
+On `IDTO_503`, ask for a smaller or clearer file. On `IDTO_202` with `data: null`, ask for a bill that clearly shows the billing address and invoice details, photographed flat and in full.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Documents%20FAQ) with the page link.

@@ -1,0 +1,75 @@
+---
+title: "Check a selfie for liveness (v1)"
+sidebarTitle: "Liveness (v1)"
+description: "Check one base64 selfie for spoofing and capture problems. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/liveness"
+---
+
+Send one selfie as a base64 string. idto checks whether it shows a live person and flags capture problems such as blur, low light, a mask or more than one face. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+<Tip>
+For new integrations use [Liveness](/api-reference/face/liveness). It gives you idempotent retries, a `billed` flag and one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`, whether or not the selfie is live. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `person` | Required. The selfie, base64 encoded. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
+
+## How to read the result
+
+- `status: "success"`: the check ran and is charged, live or not.
+- On most accounts `result.is_live` is the decision and `result.liveness_confidence` its confidence.
+- The capture flags (`eye_closed`, `has_mask`, `is_face_aligned`, `is_face_occluded`, `is_low_light_image`, `is_person_image_blurry`, `multiple_face_detected`, `person_image_correctly_identified`) tell you why a selfie should be retaken.
+
+<Note>
+More than one liveness source can serve this endpoint. Only `status`, `tranx_id` and `timestamp` are present whichever source answered; on some accounts the result arrives in a `data` object instead of `result`. Read every other key defensively.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "base64 person image is required" when `person` is empty | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| `IDTO_008` | 503 | `{"detail": {"status": "failed", "message": "The verification service is momentarily busy. Please retry shortly.", "error_code": "IDTO_008", "data": null}}` with a `Retry-After` header | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A clear selfie of a live person | 200, `status: "success"`, `result.is_live: true` | Yes |
+| A photo of a photo or a screen | 200, `status: "success"`, `result.is_live: false` | Yes |
+| `person: ""` | 400 | No |
+| Body without `person` | 422 | No |
+
+Questions about this product are answered in the [Face and Liveness FAQ](/products/face/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Check%20a%20selfie%20for%20liveness%20%28v1%29) with the page link.

@@ -1,0 +1,78 @@
+---
+title: "Verify a driving licence (v1)"
+sidebarTitle: "Driving Licence (v1)"
+description: "Check a licence number and date of birth with the issuer. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/driving_licence"
+---
+
+Send a licence number and the holder's date of birth. idto checks them with the issuer and returns the holder's name, address, validity and vehicle classes. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+<Tip>
+For new integrations use [Verify a driving licence](/api-reference/driving-vehicle/driving-licence). It gives you idempotent retries, a `billed` flag and one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. Depending on the source enabled for your account, an invalid licence or a licence with no record can come back as `status: "success"` with `error_code` `IDTO_201` or `IDTO_202` and `data: null`; that call is charged. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `licence_number` | Required. Licence number as printed, for example `KA0120200000001`. |
+| `dob` | Required. Holder's date of birth, for example `1990-01-01`. |
+| `user_id` | Optional. Your own reference for the end user. |
+| `workflow_session_token` | Optional. Pass only when the call is part of an idto workflow session. |
+
+## How to read the result
+
+- `status: "success"` with holder fields: the licence was found. On most accounts the fields are top level: `name`, `date_of_birth`, `dependent_name`, `address`, `pincode`, `blood_group`, `document_id`, `document_type`, `photo_base64`, `rto_details`, `validity.non_transport` and `validity.transport` (`issue_date`, `expiry_date`) and `vehicle_class_details[]` (`authority`, `category`).
+- On some accounts the holder details arrive in a `data` object with a `message` instead.
+- `status: "success"` with `error_code` set and `data: null`: `IDTO_201` means the licence number is invalid, `IDTO_202` means no record. Both are charged.
+- Otherwise a licence that is not found is a non-2xx error and is not charged.
+
+<Note>
+More than one licence source can serve this endpoint. Only `status`, `tranx_id` and `timestamp` are present whichever source answered. Read every other key defensively.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| `IDTO_201` | 200 | `status: "success"`, `data: null`: licence number invalid (some accounts) | Yes |
+| `IDTO_202` | 200 | `status: "success"`, `data: null`: no record (some accounts) | Yes |
+| `IDTO_001` or none | 400 | Licence number or date of birth empty or in a format the issuer rejects | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "..."], ...}]}` when a required field is missing | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real licence with the holder's date of birth | 200, `status: "success"`, holder name present | Yes |
+| A licence number with the wrong date of birth | 200 with `IDTO_202`, or a non-2xx error | Yes for 200, No for an error |
+| `dob: ""` | 400 | No |
+| Body without `dob` | 422 | No |
+
+Questions about this product are answered in the [Driving Licence and Vehicle FAQ](/products/driving-vehicle/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Verify%20a%20driving%20licence%20%28v1%29) with the page link.

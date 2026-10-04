@@ -29,4 +29,4 @@ The `tranx_id` lets us find the exact call. Do not send full identity numbers, O
 
 On a v2 endpoint, if your client timed out and you do not know whether the call completed, retry it with the same `Idempotency-Key` and the same body. If the first call finished with a 2xx, you receive its stored response and are not billed again. If it is still running you receive `IDTO_004` (409); wait and retry. If it ended in an error, nothing was stored, so the retry runs the verification again. v1 endpoints do not support idempotency. See [Idempotency](/concepts/idempotency).
 
-Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Support) with the page link.

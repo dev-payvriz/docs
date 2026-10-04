@@ -10,7 +10,11 @@ idto bank verification confirms that an Indian bank account exists and returns t
 | Endpoint | What it does | Billing |
 |---|---|---|
 | [`POST /v2/verify/bank_verification`](/api-reference/bank/bank-verification) | Penny drop. Returns a fixed response shape with `account_holder_name`, a masked account number and IFSC. Supports `Idempotency-Key`, and blocks identical concurrent requests automatically. | Billed on every 2xx, including an invalid account (`IDTO_202`). Never billed on an error. |
+| [`POST /v2/verify/vpa_verification`](/api-reference/bank/vpa-verification) | Checks that a UPI ID exists and returns the registered name. No deposit. Supports `Idempotency-Key`. | Billed on every 2xx, including a UPI ID that does not exist (`IDTO_202`). Never billed on an error. |
 | [`POST /verify/bank_verification/pennyless`](/api-reference/bank/bank-verification-pennyless) | v1. Checks the account without a deposit. Response fields are passed through as the bank network returns them. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/bank_verification`](/api-reference/bank/bank-verification-v1) | v1 penny drop. Response fields under `result` depend on the bank source on your account. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/ifsc_verification`](/api-reference/bank/ifsc-verification) | v1. Returns the bank, branch, address and payment rails for an IFSC. No idempotency. | Charged only when `status` is `success`. |
+| [`POST /verify/vpa_verification`](/api-reference/bank/vpa-verification-v1) | v1 UPI ID check. Returns `result.vpa_holder_name` and `result.is_valid`. No idempotency. | Charged only when `status` is `success`, which can include a UPI ID that does not exist. |
 
 Start with `/v2/verify/bank_verification` for new integrations.
 
@@ -67,4 +71,4 @@ See [SDK modules](/sdks/modules) to add the bank step to a workflow.
 - [Idempotency](/concepts/idempotency)
 - [Bank FAQ](/products/bank/faq)
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fbank%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fbank%2Foverview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Bank%20overview) with the page link.

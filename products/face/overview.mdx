@@ -11,6 +11,8 @@ Use this module to bind a person to an identity document. Liveness confirms that
 |---|---|---|
 | [Liveness](/api-reference/face/liveness) `POST /v2/verify/liveness` | Checks one base64 selfie for presentation attacks and capture problems. | Every 2xx, including `is_live: false` |
 | [Face match](/api-reference/face/face-match) `POST /v2/verify/face_match` | Compares two faces and returns a 0 to 100 score and a match decision. | Every 2xx, including `is_match: false` |
+| [Liveness (v1)](/api-reference/face/liveness-v1) `POST /verify/liveness` | v1 contract. Checks one base64 selfie. No idempotency. | Only when `status` is `success` |
+| [Face match (v1)](/api-reference/face/face-match-v1) `POST /verify/face_match` | v1 contract. Compares a selfie with a document photo. No idempotency. | Only when `status` is `success` |
 
 ## How a selfie check works
 
@@ -59,4 +61,4 @@ Each endpoint page lists its full set. Common questions: [FAQ](/products/face/fa
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fface%2Foverview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fface%2Foverview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Face%20and%20liveness) with the page link.

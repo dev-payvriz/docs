@@ -4,7 +4,9 @@ sidebarTitle: "Dashboard"
 description: "A tour of the idto dashboard: keys, webhooks, workflows, verification links, transactions, billing, team and going live."
 ---
 
-The dashboard is where you manage everything that is not an API call: keys, webhook settings, verification workflows, links, usage and billing. The sidebar groups these as **Home**, **Analytics**, **Transactions**, **Workflow**, **Verification**, **Billing**, **API Testing**, **API Credentials**, **Branding**, **Settings** and **Team**.
+The dashboard is where you manage everything that is not an API call: keys, webhook settings, verification workflows, links, usage and billing. The sidebar groups these as **Home**, **Analytics**, **Transactions**, **Workflow**, **Verification**, **Billing**, **API Testing**, **API Credentials**, **Branding**, **Settings** and **Team**. **Settings** is listed but not yet available. **Webhooks** has no sidebar entry of its own; see [Webhooks](#webhooks) below for how to reach it.
+
+What you see depends on your role. A section your role cannot use is hidden or read-only, so if a teammate cannot find **API Credentials**, check their role under **Team** first.
 
 ## Sandbox Mode
 
@@ -12,7 +14,9 @@ A new account opens in **Sandbox Mode**, shown by a banner at the top of the das
 
 ## API Credentials
 
-Create the `X-Client-ID` and `X-API-Key` pair your backend sends. The key is shown masked; copy it when you create it and store it in a secret manager. To replace a key, delete it and create a new one, then roll your backend over to the new pair.
+Create the `X-Client-ID` and `X-API-Key` pair your backend sends. Give each key a name that says where it is used, such as the service or environment, so you know which one to remove later. The key is shown masked; copy it when you create it and store it in a secret manager. To replace a key, delete it and create a new one, then roll your backend over to the new pair.
+
+Deleting a key is permanent. Any server still sending it gets HTTP 403 `Client is inactive` from then on, so roll over in this order: create the new key, deploy it everywhere, confirm your calls succeed with it, then delete the old one.
 
 <Frame caption="API Credentials">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-api-credentials.png" alt="API Credentials" />
@@ -22,13 +26,15 @@ Create the `X-Client-ID` and `X-API-Key` pair your backend sends. The key is sho
 
 Set the URL that receives completion events, and set a signing secret. Set the secret **before** you expect deliveries: until a secret exists, deliveries fail. See [Webhooks](/concepts/webhooks).
 
+The Webhooks page is not in the sidebar. The workflow builder shows a **Set up a webhook** link while no URL is set; follow it to open the page. The URL must use `https`. Click **Generate secret** for the first secret and **Rotate secret** to replace it; the secret is shown once. Saving an empty URL turns delivery off.
+
 <Frame caption="Webhook settings">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-webhooks.png" alt="Webhook settings" />
 </Frame>
 
 ## Workflow
 
-Build a verification flow from steps such as PAN, Aadhaar, bank account and face. The SDKs and verification links run the workflow you build here.
+Build a verification flow from steps such as PAN, Aadhaar, bank account and face. The SDKs and verification links run the workflow you build here. Creating or editing a workflow needs the Owner, Admin or Developer role; every role can view them.
 
 <Frame caption="Workflow builder">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-workflow-builder.png" alt="Workflow builder" />
@@ -36,7 +42,7 @@ Build a verification flow from steps such as PAN, Aadhaar, bank account and face
 
 ## Verification links
 
-Send a user a link to a hosted verification flow instead of building the screens yourself. Each link runs one of your workflows.
+Send a user a link to a hosted verification flow instead of building the screens yourself. Each link runs one of your workflows. The list shows each link's state: **Active** links can still be used, **Spent** links have used all the runs they allow, **Expired** links are past their expiry time, and **Revoked** links were turned off by you. Copy a link from the list to send it, and revoke a link you sent by mistake; a revoked link cannot be used again. If no webhook URL is set, the link still works but its results are not delivered anywhere, so set one first.
 
 <Frame caption="Verification links">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-verification-links.png" alt="Verification links" />
@@ -46,6 +52,12 @@ Send a user a link to a hosted verification flow instead of building the screens
 
 Every verification call, with its outcome and `tranx_id`. Use the `tranx_id` from an API response to find the call here, and quote it when you write to support.
 
+The top of the page summarises the selected period: total transactions, success rate, failed calls and average latency. Narrow the list by date range, product and status, or search by transaction id. Open a transaction to see its request and response payloads and its turnaround time.
+
+Each row says whether you were charged. When idto retried a call automatically, the row shows **Show attempts**: expand it to see each attempt, which one was charged, and the ones marked **Retried, not charged**. A retried call is charged at most once.
+
+**Export CSV** downloads the filtered list. Export needs the Owner, Admin or Member role.
+
 <Frame caption="Transactions">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-transactions.png" alt="Transactions" />
 </Frame>
@@ -54,13 +66,24 @@ Every verification call, with its outcome and `tranx_id`. Use the `tranx_id` fro
 
 Your balance and usage. A call your balance cannot cover is rejected before any verification runs and is not billed, so keep an eye on the balance and recharge before it runs out.
 
+Until you switch to production, this page shows **You are in Simulation Mode** and has no billing details. In production, add credits by bank transfer to the account shown on the page, then upload the payment screenshot or receipt (PNG, JPG or PDF) and submit it for verification.
+
 <Frame caption="Billing">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-billing.png" alt="Billing" />
 </Frame>
 
 ## Team
 
-Invite teammates to your account and manage who has access.
+Invite teammates by email and choose a role for each. Only the Owner and Admin roles can open this page.
+
+| Role | Can use |
+| --- | --- |
+| Owner, Admin | Everything, including billing, team and company profile |
+| Developer | View all data, run live API tests, manage API keys, webhooks and workflows |
+| Member | View all data, view billing, export transactions |
+| Viewer | View only |
+
+Give production key access only to the people who deploy your backend: in practice, Developer for engineers, Member for finance and operations, Viewer for everyone else.
 
 <Frame caption="Team">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-users.png" alt="Team" />
@@ -74,4 +97,4 @@ When your integration is ready, complete **Switch to Production**: company basic
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-switch-to-production.png" alt="Switch to Production" />
 </Frame>
 
-Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Dashboard%20guide) with the page link.

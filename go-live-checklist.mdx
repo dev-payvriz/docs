@@ -12,6 +12,7 @@ Work through this list before you switch your base URL to `https://prod.idto.ai`
 - [ ] Generate production keys under **API Credentials**. Staging keys do not work in production. See [Environments](/environments).
 - [ ] Store `X-API-Key` in a secret manager, never in a mobile app, web bundle or repository. See [Authentication](/authentication).
 - [ ] Recharge your production balance. A call your balance cannot cover is rejected before any verification runs and is not billed.
+- [ ] You have a plan to rotate keys: create a second pair, deploy it, then disable the old one. A disabled pair is rejected with 403 `Client is inactive`. See [Environments](/environments#rotate-keys).
 
 <Frame caption="Switch to Production in the dashboard">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-switch-to-production.png" alt="Dashboard Switch to Production form" />
@@ -24,30 +25,52 @@ Work through this list before you switch your base URL to `https://prod.idto.ai`
 - [ ] Products that require consent send `user_consent: true`, and you record the consent you collected. See [Billing and consent](/concepts/billing-consent).
 - [ ] Inputs are checked client-side against [Input formats](/reference/input-formats) before you call, so format errors never cost a round trip.
 - [ ] Every v2 call sends an `Idempotency-Key`, and retries reuse it with the same body. See [Idempotency](/concepts/idempotency).
+- [ ] Idempotency keys are at most 255 characters and unique per verification, for example a UUID you store with the request. A longer key returns `IDTO_001` (400).
+- [ ] Uploads are JPEG, PNG or PDF. Document OCR files stay under 5 MB, Aadhaar QR images under 11 MB and face images under 10 MB; a larger file returns `IDTO_503` (413).
+- [ ] Your HTTP client timeout is generous, and a timed-out call is retried with the same `Idempotency-Key`, never a new one.
 
 ## 3. Responses
 
 - [ ] You branch on `error_code`, not on `status`. `IDTO_202` is a definitive no-record result with `status: "success"` and is billed.
 - [ ] You store `tranx_id` with every result, so support can trace a call.
-- [ ] Retries are limited to 429 and 503, with backoff. See [Rate limits](/concepts/rate-limits).
+- [ ] Automatic retries are limited to `IDTO_004` (409), `IDTO_006` (429) and the 503 codes `IDTO_008`, `IDTO_103` and `IDTO_403`, with backoff. `IDTO_206` (429) needs a new OTP, not a retry. See [Rate limits](/concepts/rate-limits).
+- [ ] A low balance is handled: it returns HTTP 400 with `error_code: null` and the message "Insufficient credits for this operation."
+- [ ] Calls made inside a workflow session pass `workflow_session_token`, so a step the session already charges for is not charged twice. Those calls return `billed: false`.
 - [ ] `IDTO_007` (500) alerts your team rather than retrying.
 - [ ] You do not parse `message` text; it can change. Codes are stable. See [Error codes](/reference/v2-error-codes).
 
 ## 4. SDK and webhooks (if you use them)
 
 - [ ] SDK tokens are minted on your server per user session. See [Authentication](/authentication).
+- [ ] Your app handles token expiry: an SDK token lasts 15 minutes, so mint it just before the flow starts, not at login.
+- [ ] A user who hits a session's limit of 60 verification calls (HTTP 429) is sent into a new session.
 - [ ] A webhook secret is set in the dashboard **before** you expect deliveries. Until one exists, deliveries fail. See [Webhooks](/concepts/webhooks).
 - [ ] Your receiver verifies `X-Idto-Signature` and rejects stale timestamps.
 - [ ] Your receiver deduplicates on `X-Idto-Event-Id`, since a delivery can be retried.
+- [ ] Your webhook URL is HTTPS and answers with a 2xx within 10 seconds. Do the slow work after you respond: a slow or failed answer is retried with backoff, up to 5 attempts in all.
 
 <Frame caption="Webhook settings in the dashboard">
   <img src="https://idto-sdk-usage-demo-bucket.s3.ap-south-1.amazonaws.com/docs/v1/img/dashboard-webhooks.png" alt="Dashboard webhook settings" />
 </Frame>
 
-## 5. Operations
+## 5. Test every outcome on staging
+
+Run each of these against `https://dev.idto.ai` and confirm your code does the right thing. The input-error cases never reach a source and are never billed.
+
+- [ ] A found record: `error_code: null`, `billed: true`.
+- [ ] A no-record result: `IDTO_202`, `data: null`, `billed: true`.
+- [ ] A malformed input: `IDTO_001` (400), `billed: false`.
+- [ ] Missing consent on a product that needs it: `IDTO_005` (400).
+- [ ] The same request sent twice with one `Idempotency-Key`: the second returns the stored first response.
+- [ ] The same key sent with a different body: `IDTO_010` (422).
+- [ ] A wrong `X-API-Key`: HTTP 401 with a `detail` message, and your code does not retry it.
+
+## 6. Operations
 
 - [ ] Logs never contain full identity numbers, OTPs, images or API keys.
+- [ ] Your monitoring calls `GET /health` on `https://prod.idto.ai` and alerts on a rising rate of 5xx responses from verification calls.
+- [ ] Full identity numbers you receive, such as the Aadhaar number from Aadhaar OCR, are masked before you store or display them.
 - [ ] You watch your balance in the dashboard **Billing** page, and someone owns recharges.
 - [ ] Your team knows to write to tech@idto.ai with the `tranx_id`. See [Support](/support).
 
-Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Go-live%20checklist) with the page link.

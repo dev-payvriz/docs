@@ -5,38 +5,76 @@ description: "Answers to common questions about driving licence verification, li
 
 ## General
 
-<AccordionGroup>
-  <Accordion title="Which date formats does driving licence verification accept?">
-    `YYYY-MM-DD`, `DD-MM-YYYY` and `DD/MM/YYYY`. Any other format returns `IDTO_001` (400) and is not billed.
-  </Accordion>
-  <Accordion title="Am I charged when the licence is not found?">
-    Yes. A well-formed request that finds no matching record returns HTTP 200 with `error_code: "IDTO_202"` and `billed: true`, because the check ran to a definitive answer. Errors (non-2xx) are never billed.
-  </Accordion>
-  <Accordion title="Can I verify a licence from a photo alone?">
-    Read the photo with [Driving licence OCR](/api-reference/driving-vehicle/dl-ocr), then send the extracted `dl_number` and `dob` to [Verify a driving licence](/api-reference/driving-vehicle/driving-licence). OCR on its own only tells you what is printed on the card.
-  </Accordion>
-  <Accordion title="Is Vehicle RC billed the same way as the v2 endpoints?">
-    No. Vehicle RC is a v1 endpoint. It is charged only when `status` is `success`, and a charged response carries `chargeble: "true"`. It has no `billed` field and no `error_code` on success.
-  </Accordion>
-</AccordionGroup>
+### Which endpoint should I use?
+
+Use [Verify a driving licence](/api-reference/driving-vehicle/driving-licence) to confirm a licence against the issuing record. Use [Driving licence OCR](/api-reference/driving-vehicle/dl-ocr) to pre-fill the licence number and date of birth from a photo of the card. Use [Vehicle RC](/api-reference/driving-vehicle/vehicle-rc) to look up a vehicle's registration by its number.
+
+### Can I verify a licence from a photo alone?
+
+Read the photo with Driving licence OCR, then send the extracted `data.dl_number` as `licence_number` and `data.dob` as `dob` to Verify a driving licence. OCR on its own only tells you what is printed on the card. Let the user confirm the values you read before you verify them.
+
+### What does licence verification return?
+
+`dl_number`, `name`, `dob`, `relative_name`, `address`, `pincode`, `status`, `issuing_authority`, `validity`, `vehicle_classes`, `blood_group` and `photo`, from the issuing record. Check `status` and `validity` to confirm the licence is current, and `vehicle_classes` to confirm it covers the vehicle your user will drive.
+
+### What does licence OCR return?
+
+What is printed on the card: `dl_number`, `name`, `relative_name`, `dob`, `doi` (date of issue), `doe` (date of expiry), `blood_group`, `address` and `pincode`. Dates come back as `YYYY-MM-DD`, which Verify a driving licence accepts as is.
+
+### Is Vehicle RC billed the same way as the v2 endpoints?
+
+No. Vehicle RC is a v1 endpoint. It is charged only when `status` is `success`, and a charged response carries `chargeble: "true"`. It has no `billed` field and no `error_code` on success.
+
+## Input and validation
+
+### Which date formats does driving licence verification accept?
+
+`YYYY-MM-DD`, `DD-MM-YYYY` and `DD/MM/YYYY`. A missing or unreadable date returns `IDTO_001` (400), "A valid date of birth is required", and is not billed.
+
+### How should I format the licence number?
+
+Send it as printed. Spaces and hyphens are ignored; at least 8 letters and digits must remain. For example `KA0120200000001` and `KA01 20200000001` are both accepted. An empty or too short number returns `IDTO_001` (400) without a lookup.
+
+### What does Vehicle RC need?
+
+`vehicle_number`, plus optional `user_id` and `workflow_session_token`. A body without `vehicle_number` returns 422 and is not charged.
+
+## Billing
+
+### Am I charged when the licence is not found?
+
+Yes. A well-formed request that finds no matching record returns HTTP 200 with `error_code: "IDTO_202"` and `billed: true`, because the check ran to a definitive answer. Errors (non-2xx) are never billed.
+
+### Am I charged when OCR cannot read a licence?
+
+Yes. An image with no readable licence returns HTTP 200 with `IDTO_202`, "No driving licence could be read from the document", and `billed: true`. Ask for a clearer photo.
+
+### Why did a call inside a workflow come back with billed false?
+
+When you pass `workflow_session_token` for a workflow that already charges for that step, the individual call is not charged again. On the v2 endpoints `billed` is `false`; on Vehicle RC the response carries no `chargeble: "true"`.
 
 ## Technical
 
-<AccordionGroup>
-  <Accordion title="How should I format the licence number?">
-    Send it as printed. Spaces and hyphens are ignored; at least 8 letters and digits must remain. For example `KA0120200000001` and `KA01 20200000001` are both accepted.
-  </Accordion>
-  <Accordion title="Can I retry a timed-out call safely?">
-    On the two v2 endpoints, send an `Idempotency-Key` header. Replaying the same key and body within 48 hours returns the first response without a new charge. Vehicle RC has no idempotency support, so a retry can be charged twice.
-  </Accordion>
-  <Accordion title="What file size does licence OCR accept?">
-    Up to 12 MB per upload. Larger files return `IDTO_503` (413) and are not billed.
-  </Accordion>
-  <Accordion title="Why are some Vehicle RC fields null?">
-    The registry does not hold every field for every vehicle. Every documented key is always present; a value is `null` when the registry does not hold it.
-  </Accordion>
-</AccordionGroup>
+### Can I retry a timed-out call safely?
 
----
+On the two v2 endpoints, send an `Idempotency-Key` header. Replaying the same key and body within 48 hours returns the first response without a new charge. Vehicle RC has no idempotency support, so a retry can be charged twice.
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fdriving-vehicle%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fdriving-vehicle%2Ffaq)
+### What file does licence OCR accept?
+
+JPEG, PNG or PDF in a multipart field named `file`. Keep it under 5 MB: the request is capped at 12 MB, but the reader can reject anything above 5 MB with `IDTO_503` (413). Neither an oversized nor an unsupported file is billed; an unsupported type returns `IDTO_001` (400).
+
+### Which errors should I retry?
+
+Retry `IDTO_006` (429) and `IDTO_008` (503) with backoff and the same `Idempotency-Key`. Do not retry `IDTO_001` without fixing the input. Contact support on `IDTO_007` (500).
+
+### Why are some Vehicle RC fields null?
+
+The registry does not hold every field for every vehicle. Every documented key is always present; a value is `null` when the registry does not hold it.
+
+## End users
+
+### What should I tell a driver whose licence is not found?
+
+Ask them to check the licence number and date of birth against the card and try again. If they confirm both and the result is still `IDTO_202`, send the application to manual review rather than retrying, since each attempt is billed.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Driving%20licence%20and%20vehicle%20FAQ) with the page link.

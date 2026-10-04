@@ -4,7 +4,7 @@ sidebarTitle: "Idempotency"
 description: "Use the Idempotency-Key header on any v2 endpoint to make retries safe without re-running or re-billing a verification."
 ---
 
-Every `/v2/verify/*` POST endpoint accepts an optional `Idempotency-Key` header. It exists for one situation: your request timed out, your connection dropped, or your process crashed after sending the request but before you saw the response, and you don't know whether the verification ran or whether you were charged. Retrying with the same key answers that safely.
+Every `/v2/verify/*` POST endpoint accepts an optional `Idempotency-Key` header, including the file-upload endpoints such as the OCR products and `aadhaar_qr`. It exists for one situation: your request timed out, your connection dropped, or your process crashed after sending the request but before you saw the response, and you don't know whether the verification ran or whether you were charged. Retrying with the same key answers that safely.
 
 ```http
 POST /v2/verify/pan_validation HTTP/1.1
@@ -24,13 +24,15 @@ Idempotency-Key: pan-check-a1b2c3d4
 
 Pick a unique string per logical operation, a UUID, a request id from your own job queue, or any client-chosen value that won't collide with another distinct verification attempt. Keys are scoped per customer account, so two different accounts can safely reuse the same string. The only hard constraint is length: at most 255 characters. A longer key is rejected outright with `IDTO_001` (400), before anything is attempted.
 
+Generate the key once, when you decide to verify something, and store it next to the job before the first attempt. A key generated inside the retry loop is a new key on every attempt and protects nothing.
+
 ## What happens on retry
 
-idto fingerprints the request body under each key. What happens next depends on whether the body matches:
+idto fingerprints the request body under each key. The fingerprint is taken over the parsed body with its keys sorted, so field order and whitespace do not matter, but every value does: `"ABCDE1234F"` and `"abcde1234f"` are different bodies. For file uploads the file bytes are part of the fingerprint, so re-encoding or re-compressing an image between attempts makes it a different request.
 
 <CardGroup cols={2}>
   <Card title="Same key, same body" icon="rotate">
-    The stored result from the first attempt is returned as-is. The verification is not re-run and the account is not billed again.
+    The stored result from the first attempt is returned as-is, with HTTP 200 and the same `tranx_id`. The verification is not re-run and the account is not billed again.
   </Card>
   <Card title="Same key, different body" icon="triangle-exclamation">
     Rejected with `IDTO_010` (422). The key is bound to the first body it was used with; reusing it for a different request is a client error, not a new lookup.
@@ -49,12 +51,49 @@ idto fingerprints the request body under each key. What happens next depends on 
 }
 ```
 
-If a second request with the same key arrives while the first one is still being processed, it is rejected with `IDTO_004` (409) rather than queued or replayed, since there is no completed result yet to return.
+If a second request with the same key arrives while the first one is still being processed, it is rejected with `IDTO_004` (409) and the message `An identical request is already in progress; retry shortly.` It is not queued or replayed, since there is no completed result yet to return. Wait a few seconds and send the same request with the same key again.
 
-If the first attempt ended in a raised error (non-2xx), no result is stored and the key is released, so a retry with the same key runs the verification again. Only 2xx results are replayed.
+If the first attempt ended in a raised error (non-2xx), no result is stored and the key is released, so a retry with the same key runs the verification again. Only 2xx results are replayed, and that includes a billed no-record result (`IDTO_202`): retrying it with the same key returns the same no-record answer without a second charge.
+
+A replay is answered before the balance check, so a stored result is returned even if your balance has since run low.
 
 Omitting the header is fine and is the default: without it, every request runs and bills independently, with no replay protection.
+
+## How long a key lasts
+
+| State | How long | What a retry with the same body gets |
+| --- | --- | --- |
+| Completed (2xx stored) | 48 hours from the first request | The stored result, not billed again |
+| Completed, older than 48 hours | Expired | A fresh run, billed as a new call |
+| In progress | Up to 5 minutes | `IDTO_004` (409) |
+| In progress, older than 5 minutes | Treated as abandoned | A fresh run under the same key |
+
+The 5-minute rule covers the case where idto stopped processing your first attempt without finishing it. After that window the key is handed to the next request with the same body, so a retry loop never gets stuck on `IDTO_004` forever. Keep your total retry window well inside 48 hours if you rely on replay.
+
+## Bank verification without a key
+
+`bank_verification` has one extra guard even when you send no header: two identical requests (same body) in flight at the same moment are not both sent out. The second gets `IDTO_004` (409) while the first runs. This guard is released as soon as the first request finishes, so it does not replay anything: a later identical request without a key runs and bills again. Send an `Idempotency-Key` if you want replay.
+
+## What to do with each response
+
+| Response | Meaning | Next step |
+| --- | --- | --- |
+| 2xx | Finished (fresh or replayed) | Use the result; do not retry |
+| 409 `IDTO_004` | First attempt still running | Back off a few seconds, retry with the same key |
+| 422 `IDTO_010` | Key reused for a different body | Bug in your client: use a new key for the new request |
+| 429 `IDTO_006`, 503 `IDTO_008` | Capacity or source limit, not billed | Back off, retry with the same key |
+| 400 or other 4xx | Request problem, not billed | Fix the request; the key was released |
+
+## Production checklist
+
+- One key per logical verification, persisted before the first attempt.
+- Every retry of that verification reuses the key and the exact same body.
+- Retries use exponential backoff and stop well inside 48 hours.
+- `IDTO_010` is logged and alerted on, since it always means a client bug.
+- Your own records store `tranx_id`; a replay returns the same one, so it doubles as a duplicate check.
 
 ## v2 only
 
 `Idempotency-Key` is part of the v2 contract. v1 (`/verify/*`) has no equivalent, retrying a v1 request always runs it again. See [API Versioning](/concepts/api-versioning) for how the two contracts differ.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Idempotency) with the page link.

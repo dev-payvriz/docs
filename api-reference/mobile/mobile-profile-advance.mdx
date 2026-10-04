@@ -1,0 +1,70 @@
+---
+title: "Fetch an extended mobile profile"
+sidebarTitle: "Mobile profile advance (v1)"
+description: "Network, porting and subscriber details plus the profile linked to a mobile number. v1 endpoint, charged only when status is success."
+openapi: "openapi2.0.json POST /verify/mobile_profile_advance"
+---
+
+Send a mobile number and get back network details (operator, circle, porting, roaming, connection status) together with the profile linked to the number. Collect the user's consent before you call it. This is a v1 endpoint: the response is a flat object, not the v2 envelope, and there is no `billed` field.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response `status` is `success`. A charged response carries `chargeble` and `user_consent`, both the string `"true"`, spelled exactly as shown. An error response is never charged.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Request
+
+| Field | Rule |
+|---|---|
+| `mobile` | Required. 10-digit Indian mobile number. |
+| `user_id` | Optional. Your own reference for the end user. |
+
+## How to read the result
+
+- `status: "success"` with `message` and a `result` object: data was found.
+- `result` commonly carries the network keys `is_valid`, `is_ported`, `is_roaming`, `last_ported_date`, `connection_type`, `subscriber_status`, `connection_status`, `msisdn`, `current_service_provider`, `original_service_provider`, `roaming_service_provider` and `porting_history`.
+- It can also carry profile keys such as a name, date of birth, gender, email, PAN, alternate numbers and addresses. Which profile keys appear depends on the source enabled for your account.
+- When nothing is found the response is a non-2xx error and is not charged.
+
+<Note>
+More than one source can serve this endpoint. Only `status`, `message` and `result` are present on every successful response, plus `tranx_id` and `timestamp`. Every key under `result` is optional; read it defensively.
+</Note>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `message` "mobile is required" when `mobile` is empty | No |
+| none | 404 | Wrapped `detail` body when no data exists for the number | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}`: recharge and retry | No |
+| none | 400 | Same shape, `message` starting `No vendor configured for customer`: this product is not enabled on your account; write to tech@idto.ai | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` (no keys sent) or `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` (keys not recognised) | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": "..."}`, a string naming the missing or invalid field | No |
+| varies | 4xx, 502, 503 | `{"detail": {"status": "error", "message": "...", "error_code": ...}}`: the verification source could not complete the call; its status is passed through and `message` varies. Retry later | No |
+| none | 500 | Our side failed. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A mobile number with a linked profile | 200, `status: "success"`, `result` filled | Yes |
+| `mobile: ""` | 400 | No |
+| Body without `mobile` | 422, `detail` is a string | No |
+
+Questions about this product are answered in the [Mobile FAQ](/products/mobile/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Fetch%20an%20extended%20mobile%20profile) with the page link.

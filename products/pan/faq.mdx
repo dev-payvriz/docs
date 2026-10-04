@@ -4,53 +4,102 @@ sidebarTitle: "FAQ"
 description: "Answers to common questions about PAN validation, PAN detailed, PAN OCR and the v1 PAN endpoints."
 ---
 
-## General
+## Choosing an endpoint
 
-<AccordionGroup>
-  <Accordion title="Which PAN endpoint should I start with?">
-    Start with [PAN Validation](/api-reference/pan/pan-validation) if you only need to know the PAN is real and active and want the name on record. Use [PAN Detailed](/api-reference/pan/pan-detailed) when you also need address, masked Aadhaar, gender, DOB or linked bank accounts. Use [PAN OCR](/api-reference/pan/pan-ocr) to prefill the number from a photo of the card.
-  </Accordion>
-  <Accordion title="Am I charged when the PAN has no record?">
-    Yes on v2. A no-record result is a definitive answer: HTTP 200, `status: "success"`, `error_code: "IDTO_202"`, `billed: true`. Errors (bad format, missing consent, rate limits, service errors) are never charged. On the v1 endpoints a `status: "failed"` result is not charged.
-  </Accordion>
-  <Accordion title="Why do I have to send user_consent?">
-    The v2 PAN lookups need the end user's consent to fetch their record. Send `user_consent: true` only after you have recorded that consent. `user_consent: false` returns `IDTO_005` (400) and is not charged.
-  </Accordion>
-  <Accordion title="Does PAN OCR confirm the PAN is real?">
-    No. OCR only reads the card. Call PAN Validation on the number you read, after the user confirms it, to check it against the record.
-  </Accordion>
-  <Accordion title="What does the holder category mean?">
-    It is read from the fourth character of the PAN: `P` individual, `C` company, `H` HUF, `F` firm, `A` AOP, `T` trust, `B` BOI, `L` local authority, `J` artificial juridical person, `G` government. Any other character gives `unknown`.
-  </Accordion>
-  <Accordion title="Should I move from pan_nsdl or pan_all_in_one to v2?">
-    For new work, yes. v2 gives you `Idempotency-Key` support, a `billed` flag on every response and one error format. `pan_all_in_one` maps to `pan_detailed`. `pan_nsdl` matches a name and DOB you supply; there is no v2 endpoint with the same match flags today, so keep using it for that check. See [Migrate from v1](/migrate-from-v1).
-  </Accordion>
-</AccordionGroup>
+### Which PAN endpoint should I start with?
 
-## Technical
+Start with [PAN Validation](/api-reference/pan/pan-validation) if you only need to know the PAN is real and active and want the name on record. Use [PAN Detailed](/api-reference/pan/pan-detailed) when you also need address, masked Aadhaar, gender, DOB or linked bank accounts. Use [PAN OCR](/api-reference/pan/pan-ocr) to prefill the number from a photo of the card.
 
-<AccordionGroup>
-  <Accordion title="How do I tell a found PAN from a missing one?">
-    Read `error_code`, not `status`. `null` with `data` means found. `IDTO_202` with `data: null` means no record. Both come back with `status: "success"`.
-  </Accordion>
-  <Accordion title="What format must pan_number follow?">
-    Ten characters: five letters, four digits, one letter, in upper case, for example `ABCDE1234F`. An empty value or a wrong shape returns `IDTO_001` (400) before any lookup runs, so it is not charged. A body without the field at all returns `IDTO_001` with HTTP 422.
-  </Accordion>
-  <Accordion title="How do I retry safely after a timeout?">
-    Send the same `Idempotency-Key` header with the same body. You get the stored first response back and are not charged again. If the first call is still running you get `IDTO_004` (409); wait and retry. Reusing a key with a different body returns `IDTO_010` (422). v1 PAN endpoints do not support this header.
-  </Accordion>
-  <Accordion title="Which PAN detailed fields can be empty?">
-    Most fields can be missing for a given PAN, depending on what the record holds. `gender`, `email`, `phone_number`, `masked_aadhaar` and `dob` can be `null`; `bank_details` can be an empty list. Write your code to treat each field as optional.
-  </Accordion>
-  <Accordion title="Why are email, phone and account numbers masked?">
-    PAN Detailed masks personal data before it leaves idto: email keeps the first two characters of the local part, phone keeps the last two digits, Aadhaar and bank account numbers keep the last four digits.
-  </Accordion>
-  <Accordion title="What files does PAN OCR accept?">
-    JPEG, PNG or PDF in a multipart field named `file`. Keep it under 5 MB; larger files can return `IDTO_503` (413). Other types or an empty file return `IDTO_001` (400).
-  </Accordion>
-  <Accordion title="Why was a call inside a workflow returned with billed false?">
-    When you pass `workflow_session_token` for a workflow that already charges for the PAN step, the individual call is not charged again and `billed` is `false`.
-  </Accordion>
-</AccordionGroup>
+### Does PAN OCR confirm the PAN is real?
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/pan/faq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/pan/faq)
+No. OCR only reads the card. It returns the number, name, father's name and DOB it could read, and `pan_number` is `null` unless the text it read has a valid PAN shape. Show the values to the user to confirm, then call PAN Validation on the confirmed number to check it against the record.
+
+### Should I move from pan_nsdl or pan_all_in_one to v2?
+
+For new work, yes. v2 gives you `Idempotency-Key` support, a `billed` flag on every response and one error format. `pan_all_in_one` maps to `pan_detailed`. `pan_nsdl` matches a name and DOB you supply; there is no v2 endpoint with the same match flags today, so keep using it for that check. See [Migrate from v1](/migrate-from-v1).
+
+## Input and validation
+
+### What format must pan_number follow?
+
+Ten characters: five letters, four digits, one letter, for example `ABCDE1234F`. idto trims spaces and upper-cases the value before checking it. An empty value or a wrong shape returns `IDTO_001` (400) before any lookup runs, so it is not charged. A body without the field at all, or with a field of the wrong type, returns `IDTO_001` with HTTP 422.
+
+### Why is a correctly shaped PAN rejected with IDTO_001?
+
+The fourth character of a PAN is the holder type, and only `P`, `C`, `H`, `F`, `A`, `T`, `B`, `L`, `J` and `G` are issued. A ten character value with any other letter there passes the shape check but is rejected at lookup as an invalid PAN: HTTP 400, `IDTO_001`, `billed: false`. The sample `ABCDE1234F` used across these docs has `D` in that position, so it gets this response. Ask the user to re-check the number.
+
+### What does the holder category mean?
+
+It is read from that same fourth character: `P` individual, `C` company, `H` HUF, `F` firm, `A` AOP, `T` trust, `B` BOI, `L` local authority, `J` artificial juridical person, `G` government. Any other character gives `unknown`.
+
+### What files does PAN OCR accept?
+
+JPEG, PNG or PDF in a multipart field named `file`. Keep it under 5 MB; larger files can return `IDTO_503` (413). Other types or an empty file return `IDTO_001` (400). If the image is readable but no PAN can be found on it, you get HTTP 200 with `IDTO_202` and the message "No PAN could be read from the document. Please upload a clear PAN image.", which is billed.
+
+## Outcomes and billing
+
+### How do I tell a found PAN from a missing one?
+
+Read `error_code`, not `status`. `null` with `data` means found. `IDTO_202` with `data: null` means the lookup completed and there is no record for that PAN. Both come back with HTTP 200 and `status: "success"`.
+
+### Am I charged when the PAN has no record?
+
+Yes on v2. A no-record result is a definitive answer: HTTP 200, `status: "success"`, `error_code: "IDTO_202"`, `billed: true`. Errors (bad format, missing consent, rate limits, busy sources) are never charged and carry `billed: false`. On the v1 endpoints a `status: "failed"` result is not charged.
+
+### Which errors should I expect, and are any billed?
+
+| HTTP | `error_code` | Cause | Billed |
+| --- | --- | --- | --- |
+| 400 | `IDTO_001` | Empty or malformed PAN, or a PAN the lookup rejects as invalid | No |
+| 422 | `IDTO_001` | Missing field or wrong type in the body | No |
+| 400 | `IDTO_005` | `user_consent` is `false` | No |
+| 409 | `IDTO_004` | Same `Idempotency-Key` already in flight | No |
+| 422 | `IDTO_010` | `Idempotency-Key` reused with a different body | No |
+| 429 | `IDTO_006` | The verification source is rate limiting | No |
+| 503 | `IDTO_008` | Busy, retry with backoff | No |
+
+Authentication failures (401, 403) are not billed either. The full list is in [Error codes](/reference/v2-error-codes).
+
+### Why was a call inside a workflow returned with billed false?
+
+When you pass `workflow_session_token` for a workflow that already charges for the PAN step, the individual call is not charged again and `billed` is `false`.
+
+## Consent and data
+
+### Why do I have to send user_consent?
+
+The v2 PAN lookups (Validation and Detailed) need the end user's consent to fetch their record. Send `user_consent: true` only after you have recorded that consent, and keep your own record of when and how it was given. `user_consent: false` returns `IDTO_005` (400) and leaving the field out returns `IDTO_001` (422); neither is charged. PAN OCR reads a document the user uploaded and has no consent field.
+
+### Why are email, phone and account numbers masked?
+
+PAN Detailed masks personal data before it leaves idto: email keeps the first two characters of the local part, phone keeps the last two digits, Aadhaar and bank account numbers keep the last four digits.
+
+### Which PAN detailed fields can be empty?
+
+Most fields can be missing for a given PAN, depending on what the record holds. `gender`, `email`, `phone_number`, `masked_aadhaar` and `dob` can be `null`; `bank_details` can be an empty list. Write your code to treat each field as optional.
+
+## Retries and timeouts
+
+### How do I retry safely after a timeout?
+
+Send the same `Idempotency-Key` header with the same body. You get the stored first response back and are not charged again. If the first call is still running you get `IDTO_004` (409); wait and retry. Reusing a key with a different body returns `IDTO_010` (422). Keys can be up to 255 characters. Use a new key for every new verification. v1 PAN endpoints do not support this header, so a retry there runs a second lookup.
+
+### How long should my client wait?
+
+idto waits up to 30 seconds for a verification source to answer before it gives up on it. Set your HTTP client timeout comfortably above that, around 60 seconds, so you read idto's answer instead of cutting the call short. If your client times out anyway, retry with the same `Idempotency-Key`.
+
+### Is there a request quota?
+
+There is no fixed per-key quota on server calls. When a source throttles you get `IDTO_006` (429), and when capacity is short you get `IDTO_008` (503). Neither is billed. Retry with backoff and jitter and spread bulk jobs over time. See [Rate limits](/concepts/rate-limits).
+
+## Going live
+
+### What should I show the end user?
+
+Never show raw codes. For `IDTO_001`, ask the user to check and re-enter the PAN. For `IDTO_202`, say the PAN could not be verified and offer to re-enter it or upload the card. For `IDTO_005`, ask for consent again. For `IDTO_006` and `IDTO_008`, retry in the background and only then ask the user to try again in a moment.
+
+### What changes when I move to production?
+
+Switch the base URL from `https://dev.idto.ai` to `https://prod.idto.ai` and use your production key pair from the dashboard. Request and response shapes are the same. Before you switch, confirm your code branches on `error_code`, stores `tranx_id` for support, and sends an `Idempotency-Key` on every v2 call. The [Go-live checklist](/go-live-checklist) has the full list.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20PAN%20FAQ) with the page link.

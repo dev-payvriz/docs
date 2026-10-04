@@ -4,50 +4,96 @@ sidebarTitle: "FAQ"
 description: "Answers to common questions about Aadhaar OKYC, DigiLocker, Aadhaar QR and Aadhaar OCR on idto."
 ---
 
-## General
+## Choosing a method
 
-<AccordionGroup>
-  <Accordion title="Which Aadhaar method should I use?">
-    Use OKYC when the person has the phone linked to their Aadhaar. Use DigiLocker when they can sign in to DigiLocker, or when you need the e-Aadhaar XML. Use Aadhaar QR when they have their card or e-Aadhaar in hand: a matched signature is strong proof without an OTP. Use Aadhaar OCR only to pre-fill a form, because it reads the card and does not check it.
-  </Accordion>
-  <Accordion title="Am I charged when the Aadhaar number is invalid?">
-    On OKYC send OTP, yes: an invalid number returns 200 with `error_code: "IDTO_202"` and `billed: true`, because the check ran to a definitive answer. On OKYC submit OTP, a wrong OTP is a 422 `IDTO_205` and is not billed. Any non-2xx response on a v2 endpoint is never billed.
-  </Accordion>
-  <Accordion title="Am I charged for a QR whose signature does not match?">
-    Yes. Every readable QR is billed, whatever the signature result, because the QR was read. Only an image with no readable QR (`IDTO_204`, 422) is free. Read `data.authentic` before you accept the card.
-  </Accordion>
-  <Accordion title="Do I get the full Aadhaar number back?">
-    From Aadhaar OCR, yes: `data.aadhaar_number` is the full 12 digits as printed, so mask it before you show or store it. OKYC does not return the number. Aadhaar QR returns the QR's reference, which for an old QR is the masked number (`XXXXXXXX` plus the last 4 digits).
-  </Accordion>
-  <Accordion title="Can I test without sending a real OTP or being charged?">
-    There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources, sends real OTPs and deducts credits from your staging account, so test with an Aadhaar whose holder has agreed to it. The Test scenarios table on each endpoint page lists inputs that return each error without reaching a source.
-  </Accordion>
-  <Accordion title="Do I need the person's consent?">
-    Yes. OKYC send OTP and Aadhaar QR reject a request without `user_consent: true` with `IDTO_005`. DigiLocker asks the person for consent on its own sign-in page, and the session call takes `consent` and `consent_purpose`. Record consent on your side before every call.
-  </Accordion>
-</AccordionGroup>
+### Which Aadhaar method should I use?
 
-## Technical
+Use OKYC when the person has the phone linked to their Aadhaar. Use DigiLocker when they can sign in to DigiLocker, or when you need the e-Aadhaar XML. Use Aadhaar QR when they have their card or e-Aadhaar in hand: a matched signature is strong proof without an OTP. Use Aadhaar OCR only to pre-fill a form, because it reads the card and does not check it.
 
-<AccordionGroup>
-  <Accordion title="How many times can a user retry the OTP?">
-    A wrong or expired OTP returns `IDTO_205`, and the user can retry with the same `session_id` until the attempt limit for that session is reached. After that you get `IDTO_206` (429) and must call `okyc_generate_otp` again for a new `session_id`. A malformed OTP (not 6 digits) is rejected with `IDTO_001` and does not use up an attempt.
-  </Accordion>
-  <Accordion title="Why is dob null when year_of_birth is set?">
-    Some Aadhaar records release only the year of birth. idto then returns the year in `year_of_birth` and leaves `dob` null rather than inventing a day and month.
-  </Accordion>
-  <Accordion title="Where do I get code_verifier for /v2/verify/digilocker?">
-    Start the session with `/verify/digilocker/initiate_session`. After the user consents, your `redirect_url` receives `code` and `codeVerifier` as query parameters. Send them as `code` and `code_verifier`. See the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow).
-  </Accordion>
-  <Accordion title="Can I use one DigiLocker code for both the profile and the e-Aadhaar XML?">
-    No. A `code` can be exchanged once. For the XML, exchange it with `/verify/digilocker/get_reference`, then call both `user_details` and `fetch_aadhaar` with the `reference_key` within one hour.
-  </Accordion>
-  <Accordion title="Should I send the QR image or qr_data?">
-    The image works for every account. `qr_data` is the text you decoded from the QR yourself; if your account returns `IDTO_001` for it, send the image instead. Never send both.
-  </Accordion>
-  <Accordion title="Is it safe to retry after a timeout?">
-    On the v2 endpoints, yes, with an `Idempotency-Key` header: the same key and body return the first response, without a second OTP or charge. The v1 DigiLocker endpoints have no idempotency, so a retry runs again and can be charged twice.
-  </Accordion>
-</AccordionGroup>
+### Can I test without sending a real OTP or being charged?
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/aadhaar/faq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/aadhaar/faq)
+There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources, sends real OTPs and deducts credits from your staging account, so test with an Aadhaar whose holder has agreed to it. The Test scenarios table on each endpoint page lists inputs that return each error without reaching a source.
+
+## Input and validation
+
+### What format must aadhaar_number follow?
+
+Twelve digits, with no spaces inside the number. Aadhaar numbers never start with 0 or 1, so those are rejected too. A wrong length returns `IDTO_001` (400) with "Aadhaar number must be 12 digits", and a number starting with 0 or 1 returns `IDTO_001` (400) with "Aadhaar number is invalid". Neither reaches a source and neither is billed. A well-formed number that the source does not recognise is a different outcome: HTTP 200 with `IDTO_202`, billed.
+
+### What does the OTP step accept?
+
+`session_id` from the send step and the `otp` the user typed, which must be exactly 6 digits. A missing field or a malformed OTP returns `IDTO_001` (400) before anything is sent, so it is not billed and does not use up an attempt. A `session_id` idto did not issue to your account returns `IDTO_205` (422).
+
+### Should I send the QR image or qr_data?
+
+The image works for every account: send `multipart/form-data` with the image in `file` and `user_consent` as a form field, up to 11 MB. A larger image returns `IDTO_503` (413). `qr_data` is the text you decoded from the QR yourself, sent as JSON; if your account returns `IDTO_001` for it, send the image instead. Send exactly one of the two. Both, or neither, returns `IDTO_001` (400).
+
+## Billing and retries
+
+### Am I charged when the Aadhaar number is invalid?
+
+On OKYC send OTP, yes: an invalid number returns 200 with `error_code: "IDTO_202"` and `billed: true`, because the check ran to a definitive answer. On OKYC submit OTP, a wrong OTP is a 422 `IDTO_205` and is not billed. Any non-2xx response on a v2 endpoint is never billed.
+
+### Am I charged for a QR whose signature does not match?
+
+Yes. Every readable QR is billed, whatever the signature result, because the QR was read. Only an image with no readable QR (`IDTO_204`, 422) is free. Read `data.authentic` before you accept the card.
+
+### How many times can a user retry the OTP?
+
+Five times per `session_id`. Each wrong or expired OTP returns `IDTO_205` (422) and uses one attempt. A call that fails for a reason unrelated to the OTP, such as a busy source, gives the attempt back. After the fifth wrong OTP you get `IDTO_206` (429) and must call `okyc_generate_otp` again for a new `session_id`.
+
+### Which errors should I retry?
+
+Retry `IDTO_006` (429), `IDTO_008` (503) and `IDTO_103` (503) with backoff. If OKYC keeps returning `IDTO_103` for one person, offer DigiLocker or Aadhaar QR instead. Do not retry `IDTO_001`, `IDTO_005` or `IDTO_204` without changing the request; ask the user to re-enter the OTP on `IDTO_205`, and start again on `IDTO_206`.
+
+### Is it safe to retry after a timeout?
+
+On the v2 endpoints, yes, with an `Idempotency-Key` header: the same key and body return the first response, without a second OTP or charge. The v1 DigiLocker endpoints have no idempotency, so a retry runs again and can be charged twice.
+
+## Reading the result
+
+### Why is dob null when year_of_birth is set?
+
+Some Aadhaar records release only the year of birth. idto then returns the year in `year_of_birth` and leaves `dob` null rather than inventing a day and month.
+
+### What is in the OKYC address fields?
+
+Each part of the address (`house`, `street`, `locality`, `district`, `state`, `pincode` and so on) has its own key, and `address` joins the parts that are present into one line. Every key is always in the response; a part the record does not hold is `null`. `country` is always set.
+
+### What does authentic: null mean on Aadhaar QR?
+
+The QR was read, but there was no signature result. Either the QR is an older unsigned one (`is_signed: false`), or the signature was not checked. The `message` says which. Treat the card as unverified, exactly as you would `authentic: false`.
+
+### How do I get the photo?
+
+OKYC returns `photo` when the record has one, and `has_photo` tells you whether it does. Aadhaar QR returns the photo only when you send `include_photo: true`; `has_photo` still tells you whether the QR carries one.
+
+### Do I get the full Aadhaar number back?
+
+From Aadhaar OCR, yes: `data.aadhaar_number` is the full 12 digits as printed, so mask it before you show or store it. OKYC does not return the number. Aadhaar QR returns the QR's reference, which for an old QR is the masked number (`XXXXXXXX` plus the last 4 digits).
+
+## DigiLocker
+
+### Where do I get code_verifier for the v2 DigiLocker call?
+
+Start the session with `/verify/digilocker/initiate_session`. After the user consents, your `redirect_url` receives `code` and `codeVerifier` as query parameters. Send them as `code` and `code_verifier`. See the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow).
+
+### Can I use one DigiLocker code for both the profile and the e-Aadhaar XML?
+
+No. A `code` can be exchanged once. For the XML, exchange it with `/verify/digilocker/get_reference`, then call both `user_details` and `fetch_aadhaar` with the `reference_key` within one hour.
+
+### What happens when the code has expired or was already used?
+
+`/v2/verify/digilocker` returns `IDTO_001` (400), "The authorization code is invalid, expired, or already used", and is not billed. Start a new DigiLocker session for the user.
+
+## Data and consent
+
+### Do I need consent from the person?
+
+Yes. OKYC send OTP and Aadhaar QR reject a request without `user_consent: true` with `IDTO_005`. DigiLocker asks the person for consent on its own sign-in page, and the session call takes `consent` and `consent_purpose`. Record consent on your side before every call.
+
+### What does idto keep from an OKYC call?
+
+The OTP is never stored, only the fact that one was submitted. The Aadhaar number from the send step is stored masked to its last 4 digits. The Aadhaar QR photo is returned to you and not stored.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Aadhaar%20FAQ) with the page link.

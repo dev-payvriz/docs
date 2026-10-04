@@ -76,7 +76,7 @@ A few fields worth calling out:
 - `final_copy_recipients` is a comma-separated list of emails to receive the signed copy once complete.
 - Save the `docket_id` and `document_id` you get back. You need them for every call after this.
 
-## Step 2: The signer's redirect (`return_url`)
+## Step 2: Redirect the signer with `return_url`
 
 Each document can carry its own `return_url`. Once a signer finishes (or abandons) signing, they land back on that URL. Treat `return_url` as **redirect-only**, it tells you the signer is done interacting, it never carries the signed document itself. Don't try to parse a document out of the query string or the request that hits `return_url`, there isn't one there.
 
@@ -170,4 +170,4 @@ Full field reference: [Create an eSign request](/api-reference/esign/esign), [Do
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20guides/esign-workflow) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20guides/esign-workflow)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20eSign%20Workflow) with the page link.

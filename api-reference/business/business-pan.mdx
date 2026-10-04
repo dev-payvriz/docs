@@ -1,0 +1,47 @@
+---
+title: "Read the business profile behind a PAN (v1)"
+sidebarTitle: "Business PAN (v1)"
+description: "Send a business PAN and get the organisation's registered details and its director or proprietor."
+openapi: "openapi2.0.json POST /verify/business_pan"
+---
+
+Use this endpoint to read who stands behind a business PAN: the organisation name, CIN, incorporation date, registered contact details and the director or sole proprietor. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## How to read the result
+
+- Business profile form: organisation fields at the top level, the director or proprietor under `director_or_sole_proprietor_details`. Address blocks are absent when the source has no address.
+- PAN status form: `pan_number`, `full_name`, `pan_status` and `category` only. Your account receives one form consistently; ask your account manager which.
+- Charged only when the response `status` is `success`. Billing signal: `chargeble` and `user_consent` are present as `"true"` only on a charged call, spelled exactly as shown. There is no `billed` field on v1.
+- `tranx_id` identifies the call for support.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| none | 400 | `{"detail": {"status": "error", "error_code": null, ...}}` when this product is not enabled for your account. Ask your account manager to enable it. | No |
+| none | 401 | `{"detail": "Could not validate credentials"}` when no credentials are sent; `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` when the key pair is not recognised | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": "1 validation error for ..."}` (plain text) when a field is missing or has the wrong type | No |
+| none | 400 | `{"detail": {"status": "error", ...}}`: the PAN is empty, not valid, or reported invalid by the source | No |
+| none | 404 | `{"detail": {"status": "error", "message": "No record found for given PAN number", ...}}` | No |
+| `IDTO_006`, `IDTO_008`, `IDTO_009` or none | Any other 4xx or 5xx | The verification source could not complete the call. Its status is passed through with the wrapped `detail` body; `message` varies. Retry later. | No |
+| none | 500 | Our side failed. The body is not part of the contract; retry once after a few seconds (this endpoint has no Idempotency-Key). If it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `tranx_id` and `timestamp`.
+
+See the [Business verification FAQ](/products/business/faq) for common questions.
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Read%20the%20business%20profile%20behind%20a%20PAN%20%28v1%29) with the page link.

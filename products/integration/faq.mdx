@@ -6,38 +6,78 @@ description: "Common questions about SDK tokens, session state and completion we
 
 ## General
 
-<AccordionGroup>
-  <Accordion title="Why not put my API key in the app?">
-    Anyone can read a key shipped in a browser or app and run billable calls on your account. Keep it on your server and hand the SDK a 15 minute token instead.
-  </Accordion>
-  <Accordion title="Are integration calls billed?">
-    No. Minting tokens, reading session state and receiving webhooks are free. You pay for the verifications run inside the flow.
-  </Accordion>
-  <Accordion title="Webhook or session state?">
-    Use the webhook to learn about completion as it happens, and session state to confirm a result on demand or to recover after a missed webhook.
-  </Accordion>
-</AccordionGroup>
+### Why not put my API key in the app?
 
-## Technical
+Anyone can read a key shipped in a browser or app and run billable calls on your account. Keep it on your server and hand the SDK a 15 minute token instead.
 
-<AccordionGroup>
-  <Accordion title="How long does an SDK token last?">
-    900 seconds (`expires_in`). Mint a new one for each flow you open rather than caching it.
-  </Accordion>
-  <Accordion title="Can I call session state with my API key?">
-    No. It takes `Authorization: Bearer <SDK token>`. Mint a token from your server first.
-  </Accordion>
-  <Accordion title="Why do I get 403 on session state?">
-    The session belongs to another idto account. Any client of the owning account can read it.
-  </Accordion>
-  <Accordion title="Why is my webhook not arriving?">
-    Check that a signing secret exists: until you generate one in the dashboard, idto does not send events. Also check that the URL is `https://` and returns a 2xx within 10 seconds.
-  </Accordion>
-  <Accordion title="What is partial?">
-    `partial` is `true` when at least one step was skipped or fell back to an alternative.
-  </Accordion>
-</AccordionGroup>
+### Are integration calls billed?
+
+No. Minting tokens, reading session state and receiving webhooks are free. You pay for the verifications run inside the flow.
+
+### Webhook or session state?
+
+Use both. The webhook tells you about completion as it happens. Session state lets you confirm a result on demand, recover after a missed webhook, and check on a user who left the flow.
+
+## SDK tokens
+
+### How do I mint an SDK token?
+
+From your server, call `POST /auth/sdk/token` with `client_id` and `client_secret` in the JSON body, where `client_secret` is your API key. The response has `access_token`, `token_type: "bearer"` and `expires_in`.
+
+### How long does an SDK token last?
+
+900 seconds (`expires_in`), which is 15 minutes. Mint a new one for each flow you open rather than caching and sharing one across users.
+
+### Why does token minting return 401?
+
+`Invalid client credentials` means the client ID is unknown or the key does not match it. `Client is inactive` means the client has been switched off; contact your idto account manager. Neither is billed.
+
+## Session state
+
+### Can I call session state with my API key?
+
+No. `GET /sdk/v2/session/{session_token}/state` takes `Authorization: Bearer <SDK token>`. Mint a token from your server first, then call session state from your server with it.
+
+### Why do I get 401, 403 or 404 on session state?
+
+401 means the SDK token is missing, invalid, revoked or older than 15 minutes; mint a new one. 403 means the session belongs to another idto account; any client of the owning account can read it. 404 means no session exists with that `session_token`.
+
+### What do status and outcome mean?
+
+`status` is `in_progress` while the user is in the flow, `completed` when the flow has finished, and `abandoned` when the session was abandoned. `outcome` is `null` until completion, then one of `verified`, `needs_review` or `not_verified`. Act on `outcome`, and send `needs_review` to a person rather than rejecting the user.
+
+### What is partial?
+
+`partial` is `true` when at least one step was skipped or fell back to an alternative. A session can be `verified` and `partial` at the same time, so check `partial` if your policy needs every step completed in full.
+
+## Webhooks
+
+### What does the session completed webhook contain?
+
+A JSON body with `session_id`, `session_token`, `status`, `outcome`, `partial`, the lists `completed_steps`, `skipped_steps`, `fallback_steps` and `branch_excluded_steps`, a consent summary and an `event_id`. It is sent only when a session completes, not while it is in progress and not when it is abandoned.
+
+### How do I verify a webhook is from idto?
+
+Each request carries `X-Idto-Event-Id`, `X-Idto-Timestamp` and `X-Idto-Signature`. The signature is `sha256=` followed by the hex HMAC-SHA256 of the timestamp, a literal `.`, and the raw request body, keyed with your webhook secret. Compute it over the raw bytes you received, before parsing the JSON, and compare in constant time. See [Verify webhook signatures](/recipes/verify-webhook-signatures).
+
+### Why is my webhook not arriving?
+
+Check that a signing secret exists: until you generate one in the dashboard, idto does not send events. Also check that the URL is `https://` and returns a 2xx within 10 seconds. Anything else counts as a failed attempt.
+
+### How are failed deliveries retried?
+
+idto makes up to 5 attempts in total. After a failure it waits 20, 40, 80 and then 160 seconds before the next attempt. After the fifth failure the event is not retried. Each attempt is signed afresh with a new timestamp, but `X-Idto-Event-Id` stays the same, so use it to drop duplicates. If an event never arrives, read session state instead.
+
+### What happens when I rotate the webhook secret?
+
+The new secret is shown once, so store it straight away. From then on every delivery is signed with the new secret, so update your receiver at the same time you rotate.
+
+## Going live
+
+### What should I check before going live?
+
+Mint tokens only on your server, open one flow per token, verify every webhook signature, deduplicate on `X-Idto-Event-Id`, and confirm the final `outcome` with session state before you act on it. Then switch the base URL to `https://prod.idto.ai` and your production keys. See the [Go-live checklist](/go-live-checklist).
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/integration/faq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/integration/faq)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Integration%20FAQ) with the page link.

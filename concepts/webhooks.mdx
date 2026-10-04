@@ -10,16 +10,22 @@ idto sends two events to one HTTPS URL per account:
 | Session completed | A verification session reaches `completed` | [session.completed](/api-reference/webhooks/session-completed) |
 | eSign completed | Every signer of an eSign document has signed | [esign.completed](/api-reference/webhooks/esign-completed) |
 
+## Route the two events
+
+Both events arrive at the same URL, so your handler must tell them apart. The eSign body carries `"event": "esign.completed"`. The session body has no `event` field at all; it carries `session_id`, `status`, `outcome` and the step lists instead. Route on the presence of `event`, and treat any other `event` value as unknown: acknowledge it with a 2xx and ignore it, so a new event type never turns into a retry storm.
+
+`event_id` is stable per event: `evt_<session_id>_completed` for a session, and a fixed id per signed document for eSign. idto never creates the same event twice, so a duplicate you see is always a retry of the same delivery.
+
 ## Set up
 
-Webhook settings live in the dashboard, under **Webhooks**. There is no API for them.
+Webhook settings live in the dashboard, on the **Webhooks** page. There is no API for them. The page has no sidebar entry: open it from the **Set up a webhook** link the workflow builder shows when no URL is set. Only the Owner, Admin and Developer roles can change it.
 
 <Steps>
   <Step title="Add your URL">
     Enter an `https://` endpoint. Plain `http` is refused.
   </Step>
   <Step title="Generate a signing secret">
-    Click rotate to create the secret. It is shown once, so store it in your secret manager straight away. **Until a secret exists, idto does not send events**: each attempt fails and the event is dropped after 5 attempts.
+    Click **Generate secret** to create the secret. It is shown once, so store it in your secret manager straight away. **Until a secret exists, idto does not send events**: each attempt fails and the event is dropped after 5 attempts.
   </Step>
   <Step title="Verify every delivery">
     Check the signature as below before trusting the body.
@@ -60,15 +66,46 @@ Node, TypeScript, Go, PHP, Ruby and Java versions: [Verify webhook signatures](/
 ## Delivery and retries
 
 - Return any 2xx within 10 seconds. Anything else, a timeout or a connection error counts as a failed attempt.
-- idto makes up to 5 attempts. The wait before a retry is `10 x 2^n` seconds after attempt `n`, capped at one hour: about 20 s, 40 s, 80 s and 160 s.
+- idto makes up to 5 attempts. The first is sent as soon as the event is created. After failed attempt `n`, the next one is sent no earlier than `10 x 2^n` seconds later, capped at one hour: at least 20 s, 40 s, 80 s and 160 s. Retries are picked up by a periodic sweep, so the real gaps can be somewhat longer.
 - The same event can arrive more than once. Deduplicate on `X-Idto-Event-Id`.
 - Events are not ordered. Acknowledge first, then process asynchronously.
+- Each retry goes to the URL that was set when the event was created. Changing the URL affects new events only.
+- Clearing the URL turns delivery off. Events that happen while no URL is set are never created, so they are not sent later either.
 - After the last failed attempt the event is not resent. Recover the state with [Get session state](/api-reference/integration/session-state) or [Download the signed document](/api-reference/esign/esign-document).
 
 ## Rotate the secret
 
-Rotating creates a new secret and every later delivery is signed with it at once. To rotate without dropping events, have your receiver accept either the old or the new secret, rotate, deploy the new secret, then remove the old one.
+Rotating creates a new secret and every later delivery is signed with it at once, including retries of events created before the rotation. idto signs with the current secret only. To rotate without dropping events, have your receiver accept either the old or the new secret, rotate, deploy the new secret, then remove the old one.
+
+## Handle a delivery
+
+<Steps>
+  <Step title="Read the raw body">
+    Take the bytes exactly as received. Parsing and re-serialising the JSON changes the bytes and breaks the signature.
+  </Step>
+  <Step title="Verify, then check freshness">
+    Reject a bad signature or a stale timestamp with a 4xx. A failed check uses up one of the 5 attempts, so log it: a run of signature failures usually means a secret mismatch after a rotation.
+  </Step>
+  <Step title="Deduplicate">
+    If you have already stored this `X-Idto-Event-Id`, return 2xx and stop.
+  </Step>
+  <Step title="Store and acknowledge">
+    Save the event, return 2xx, and do the real work in a background job. Anything slow before the response risks the 10 second limit.
+  </Step>
+  <Step title="Reconcile">
+    For a session, read the authoritative state from [Get session state](/api-reference/integration/session-state) before you act on it. For eSign, download the signed document.
+  </Step>
+</Steps>
+
+## Production checklist
+
+- An `https` URL is saved and a signing secret is generated and stored in a secret manager.
+- Signatures are checked over raw bytes in constant time, with a 300 second timestamp window.
+- Duplicates are dropped on `X-Idto-Event-Id`.
+- The handler answers within 10 seconds and processes asynchronously.
+- Unknown `event` values are acknowledged and ignored.
+- A scheduled job reconciles sessions and eSign documents through the API, so a missed event is recovered rather than lost.
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20concepts/webhooks) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20concepts/webhooks)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Webhooks) with the page link.

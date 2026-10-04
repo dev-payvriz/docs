@@ -1,0 +1,49 @@
+---
+title: "Get the DigiLocker profile (v1)"
+sidebarTitle: "DigiLocker profile (v1)"
+description: "Exchange a DigiLocker code for the holder's DigiLocker profile, unmasked."
+openapi: "openapi2.0.json POST /verify/digilocker"
+---
+
+Exchanges the `code` and `codeVerifier` that DigiLocker sends to your redirect URL for the holder's DigiLocker profile: DigiLocker id, name, date of birth, gender, mobile, email and whether Aadhaar is linked. The profile is passed through as DigiLocker returns it, so mobile and email are not masked. Each `code` can be exchanged once. This is a v1 endpoint: the response is a flat object, not the v2 envelope.
+
+Get the `code` by starting a session with [Start a DigiLocker session](/api-reference/aadhaar/digilocker-initiate-session) and letting the holder sign in and consent. See the [DigiLocker guide](/guides/digilocker-integration).
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+<Tip>
+For new integrations use [DigiLocker profile](/api-reference/aadhaar/digilocker): it supports `Idempotency-Key`, returns a `billed` flag and uses one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## How to read the result
+
+- HTTP 200 with `status: "success"`: the profile is in the top-level fields. `dob` is as DigiLocker returns it, usually `DDMMYYYY`. Charged.
+- Billing signal: `chargeble` and `user_consent` are `"true"` on a charged call. There is no `billed` field on v1.
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 401 | `{"detail": {"status": "error", "message": "Authentication failed", "error_code": null, ...}}` when DigiLocker rejects the code (expired, already used, or from another session). `message` "Token Authentication failed" when DigiLocker returned no profile. Start a new session | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| none | 501 | DigiLocker could not be reached or replied with something unreadable. Body is not part of the contract. Start a new DigiLocker session and retry | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "code"], ...}]}` when a required field is missing | No |
+| none | 500 | Body is not part of the contract. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `data: null`, `tranx_id` and `timestamp`.
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Get%20the%20DigiLocker%20profile%20%28v1%29) with the page link.

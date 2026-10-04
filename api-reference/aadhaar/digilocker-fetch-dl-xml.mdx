@@ -1,0 +1,55 @@
+---
+title: "Download the driving licence XML"
+sidebarTitle: "DigiLocker: DL XML"
+description: "Download the holder's driving licence from DigiLocker as a XML file."
+openapi: "openapi2.0.json POST /verify/digilocker/fetch_dl/xml"
+---
+
+Returns the holder's driving licence from their DigiLocker as a XML file, not JSON. idto looks for the issued document named "Driving License" in the holder's DigiLocker and returns it. Save the body as a file. The `Content-Disposition` filename is `pan.xml`, which does not match this document, so name the saved file yourself. Keep it under the same controls as any identity document copy.
+
+Needs a `reference_key` from [Get a reference key](/api-reference/aadhaar/digilocker-get-reference), valid for one hour. Get one by starting a session with [Start a DigiLocker session](/api-reference/aadhaar/digilocker-initiate-session), letting the holder sign in and consent on DigiLocker, then exchanging the returned `code`. See the [DigiLocker guide](/guides/digilocker-integration) and the [DigiLocker flow](/products/aadhaar/overview#digilocker-flow). The holder must have the driving licence in their DigiLocker and consent to share it.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged only when the response returns the file. Errors return JSON and are not charged. The file response carries no `chargeble` field and no `tranx_id`.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": {"status": "error", "message": "reference_key is required", "error_code": null, ...}}` | No |
+| none | 404 | Same shape, `message` "Reference key not found" | No |
+| none | 410 | Same shape, `message` "Reference key expired". Start again from `initiate_session` | No |
+| none | 404 | Same shape, `message` "Driving License not found in issued docs" | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "reference_key"], ...}]}` when a required field is missing | No |
+| none | 500 | DigiLocker refused or failed the request, or our side failed. Body is not part of the contract. Retry once after a few seconds; if it persists, ask the holder for another document | No |
+
+Every wrapped `detail` object also carries `data: null`, `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A `reference_key` from a holder who has the driving licence in DigiLocker | 200, XML file | Yes |
+| A `reference_key` from a holder without it | 404, "Driving License not found in issued docs" | No |
+| A `reference_key` older than one hour | 410, "Reference key expired" | No |
+| `{"reference_key": ""}` | 400, "reference_key is required" | No |
+
+Questions: [Aadhaar FAQ](/products/aadhaar/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Download%20the%20driving%20licence%20XML) with the page link.

@@ -1,0 +1,63 @@
+---
+title: "Verify a UPI ID"
+sidebarTitle: "UPI ID verification"
+description: "Check that a UPI ID exists and get back the name registered against it."
+openapi: "openapi2.0.json POST /v2/verify/vpa_verification"
+---
+
+Use UPI ID verification before you send money to a UPI ID or save it as a payout destination. One call tells you whether the UPI ID exists and returns the name registered against it, so you can compare it with the name you hold. No deposit is made.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+
+## How to read the result
+
+- `status` is `success` for every completed check, found or not. Branch on `error_code`, never on `status`.
+- `error_code: null` with `data` present: the UPI ID exists. `data.vpa_holder_name` is the registered name and `data.is_valid` is always `true`.
+- `error_code: "IDTO_202"` with `data: null`: the UPI ID does not exist. This is a definitive answer and is billed.
+- `billed` tells you whether this call was charged. It is `true` for both outcomes above, and `false` on every error.
+- `name` in the request is optional. `data.name_match` and `data.name_match_score` can be `null` even when you send it, so compare `data.vpa_holder_name` yourself when they are `null`.
+- `data.extras` can carry extra details such as `ifsc`. It is often an empty object.
+- The request field is `vpa`; `upi_id` is accepted as an alias.
+
+<Tip>
+Send an `Idempotency-Key` header (up to 255 characters) on every call. If a network error makes you retry with the same key and the same body, you get the first result back and are not charged again. See [Idempotency](/concepts/idempotency).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Message | Billed |
+|---|---|---|---|
+| `IDTO_202` | 200 | The UPI ID is invalid or does not exist. | Yes |
+| `IDTO_001` | 400 | UPI ID (vpa) is a required field. | No |
+| `IDTO_001` | 400 | Invalid UPI ID provided. | No |
+| `IDTO_001` | 400 | Idempotency-Key must be at most 255 characters. | No |
+| `IDTO_001` | 422 | A required field is missing or has the wrong type. The message names the field. | No |
+| `null` | 400 | Insufficient credits for this operation. (your idto balance is too low; recharge and retry) | No |
+| `IDTO_004` | 409 | An identical request is already in progress; retry shortly. | No |
+| `IDTO_010` | 422 | Idempotency-Key was already used with a different request body. | No |
+| `IDTO_006` | 429 | Too many requests. Please wait a moment and retry. | No |
+| `IDTO_007` | 500 | Verification could not be completed due to a service configuration issue. Please contact support at tech@idto.ai. | No |
+| `IDTO_008` | 503 | The verification service is momentarily busy. Please retry shortly. | No |
+
+A missing or wrong `X-Client-ID` / `X-API-Key` pair returns 401 with a `detail` string and is not billed. The full code list is in [v2 error codes](/reference/v2-error-codes).
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| A real, active UPI ID | 200, `error_code: null`, `data.vpa_holder_name` filled | Yes |
+| A well-formed UPI ID that does not exist | 200, `error_code: "IDTO_202"`, `data: null` | Yes |
+| `vpa: ""` | 400, `IDTO_001` | No |
+| `vpa: "rahul.sharma"` (no `@`) | 400, `IDTO_001` | No |
+| Body without `vpa` or `upi_id` | 422, `IDTO_001` | No |
+| Same `Idempotency-Key`, same body, sent twice | Second call returns the first response | Charged once |
+| Same `Idempotency-Key`, different `vpa` | 422, `IDTO_010` | No |
+
+Input rules: `vpa` is 5 to 80 characters, a handle of letters, digits, `.`, `_` or `-`, then `@`, then at least two letters (`rahul.sharma@upi`). Questions about bank and UPI checks are answered in the [Bank FAQ](/products/bank/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Verify%20a%20UPI%20ID) with the page link.

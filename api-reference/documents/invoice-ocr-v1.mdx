@@ -1,0 +1,54 @@
+---
+title: "Read a tax invoice or utility bill (v1)"
+sidebarTitle: "Invoice OCR (v1)"
+description: "Read a tax invoice or utility bill into parties, GSTINs, line items, totals and bank details."
+openapi: "openapi2.0.json POST /verify/invoice_ocr"
+---
+
+Upload a tax invoice or utility bill as `multipart/form-data`. idto classifies the document, and for an accepted type returns the buyer and seller (name, address, GSTIN, PAN), invoice number and date, line items, tax totals and any bank details printed on it. Every value is what is printed on the document. This is a v1 endpoint, but its body has the same `status`, `message`, `error_code` and `data` fields as [Invoice OCR](/api-reference/documents/invoice-ocr); `data` has the same fields.
+
+## Environments
+
+| Environment | Base URL | Notes |
+|---|---|---|
+| Staging | `https://dev.idto.ai` | Keys on request from your idto account manager. Calls reach live sources, so use identities you are authorised to verify. Staging credits are deducted from your staging account. |
+| Production | `https://prod.idto.ai` | Keys from the dashboard after go-live. Billed. |
+
+## Billing
+
+Charged when `status` is `success`. That includes `error_code: "IDTO_202"`: the document was read but is not an accepted type, or has no invoice details; when the type is the reason, `data.document_type` says what was uploaded. `chargeble` and `user_consent` are `"true"` only on a charged call. There is no `billed` field on v1.
+
+<Warning>
+This endpoint has no `Idempotency-Key` support. A retried call runs again and can be charged twice. Retry only after you have confirmed the first call failed.
+</Warning>
+
+<Tip>
+For new integrations use [Invoice OCR](/api-reference/documents/invoice-ocr). They support `Idempotency-Key`, return a `billed` flag and use one error format. See [Migrate from v1](/migrate-from-v1).
+</Tip>
+
+## Errors
+
+| Code | HTTP | Body | Billed |
+|---|---|---|---|
+| none | 400 | `{"detail": "Uploaded file is empty"}`, `{"detail": "File exceeds 6 MB limit"}` or `{"detail": "Only JPEG, PNG, or PDF files are accepted"}`. Checked before reading, no `tranx_id` | No |
+| none | 400 | `{"detail": {"status": "error", "message": "Insufficient credits for this operation.", "error_code": null, ...}}` | No |
+| `IDTO_008` | 503 | `{"detail": {"status": "error", "message": "The verification service is momentarily busy. Please retry shortly.", "error_code": "IDTO_008", ...}}`; also returned when the reader is at capacity `message` "The verification service is momentarily busy. Please retry shortly." | No |
+| none | 401 | `{"detail": "Authentication required. Provide either a valid JWT token, API key + client ID, or SDK token."}` | No |
+| none | 403 | `{"detail": "Client is inactive"}` or `{"detail": "Customer is inactive"}` | No |
+| none | 404 | `{"detail": "Customer not found for this client"}` | No |
+| none | 422 | `{"detail": [{"type": "missing", "loc": ["body", "file"], ...}]}` when a required field is missing | No |
+| none | 500 | Body is not part of the contract. Retry once after a few seconds (this endpoint has no Idempotency-Key); if it persists, write to tech@idto.ai with the request time. | No |
+
+Every wrapped `detail` object also carries `data: null`, `tranx_id` and `timestamp`.
+
+## Test scenarios
+
+| Input | Expected result | Billed |
+|---|---|---|
+| GST tax invoice | 200, `error_code: null`, `document_type: TAX_INVOICE` | Yes |
+| Bank statement | 200, `IDTO_202`, `document_type: BANK_STATEMENT` | Yes |
+| File over 6 MB | 400, "File exceeds 6 MB limit" | No |
+
+Questions: [Documents FAQ](/products/documents/faq).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Read%20a%20tax%20invoice%20or%20utility%20bill%20%28v1%29) with the page link.

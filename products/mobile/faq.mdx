@@ -5,39 +5,89 @@ description: "Answers to common questions about idto mobile profile lookups and 
 
 ## General
 
-<AccordionGroup>
-  <Accordion title="Am I charged when no profile is found?">
-    No. When no profile is linked to the number, `/verify/mobile_profile` returns a non-2xx error and you are not charged. You are charged only when the response `status` is `success`.
-  </Accordion>
-  <Accordion title="Does the profile lookup send an OTP to the user?">
-    No. `/verify/mobile_profile` is a server-side lookup and the user receives nothing. To prove a user owns the number, use the mobile step in the idto SDK flow, which sends a 6-digit OTP.
-  </Accordion>
-  <Accordion title="Which numbers can I look up?">
-    Indian mobile numbers. Send the 10-digit number without `+91`.
-  </Accordion>
-  <Accordion title="Can I test without being charged?">
-    There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources and deducts credits from your staging account, so use a number you are authorised to look up. Requests that fail validation (missing or empty `mobile`) are never charged.
-  </Accordion>
-</AccordionGroup>
+### What does the mobile profile lookup return?
 
-## Technical
+`POST /verify/mobile_profile` returns the profile linked to a mobile number inside a `result` object: fields such as `name`, `dob`, `gender`, `email`, `pan` and a list of reported `address` entries. Which fields are filled depends on the record, so treat every field in `result` as optional and use it to pre-fill or cross-check what the user typed, not as proof of identity on its own.
 
-<AccordionGroup>
-  <Accordion title="Is it safe to retry after a timeout?">
-    Not automatically. `/verify/mobile_profile` has no idempotency support, so a retry runs the lookup again and a second `success` is charged again. Record the `tranx_id` of every response and retry only when you received no response at all.
-  </Accordion>
-  <Accordion title="How do I tell a charged call from an uncharged one?">
-    A charged response has `status: "success"` and carries `"chargeble": "true"` and `"user_consent": "true"`, spelled as the API returns them. Every error comes back as a non-2xx response and is not charged.
-  </Accordion>
-  <Accordion title="Why is the profile inside result and not data?">
-    `/verify/mobile_profile` is a v1 endpoint and keeps its original shape: `status`, `result`, `tranx_id`, `timestamp`, plus the billing flags on a charged call. v2 endpoints use the `data` envelope described in [Request and response](/concepts/request-response).
-  </Accordion>
-  <Accordion title="What does an error look like?">
-    Errors raised after authentication use `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`. A body that fails validation returns `{"detail": [...]}` with status 422. Authentication failures return `{"detail": "..."}` with 401, 403 or 404.
-  </Accordion>
-  <Accordion title="Which credentials does it take?">
-    The `X-Client-ID` and `X-API-Key` pair from your dashboard, sent from your server. Never call it from a browser or app with these keys. See [Authentication](/authentication).
-  </Accordion>
-</AccordionGroup>
+### Does the profile lookup send an OTP to the user?
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products%2Fmobile%2Ffaq) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products%2Fmobile%2Ffaq)
+No. `/verify/mobile_profile` is a server-side lookup and the user receives nothing. To prove a user owns the number, use the mobile step in the idto SDK flow, which sends an OTP to the number and verifies it before the next step starts. See [SDK modules](/sdks/modules).
+
+### Which numbers can I look up?
+
+Indian mobile numbers. idto passes the number to the lookup as you send it and does not reformat it, so send the 10-digit number without `+91`, spaces or dashes.
+
+### Do I need consent from the user?
+
+The request has no consent field, but every lookup is made on the basis that you hold your user's consent to look up their number. Collect and record that consent in your own flow before you call.
+
+## Outcomes and billing
+
+### Am I charged when no profile is found?
+
+No. When no profile is linked to the number, `/verify/mobile_profile` returns a non-2xx error and you are not charged. You are charged only when the response `status` is `success`.
+
+### How do I tell a charged call from an uncharged one?
+
+A charged response is HTTP 200 with `status: "success"` and carries `"chargeble": "true"` and `"user_consent": "true"`, spelled as the API returns them. Every error comes back as a non-2xx response without those flags and is not charged. This endpoint has no `billed` field; that flag exists only on v2 endpoints.
+
+### What outcomes should I handle?
+
+| Outcome | HTTP | Charged | What to do |
+| --- | --- | --- | --- |
+| Profile found | 200, `status: "success"` | Yes | Use `result` |
+| No profile for the number | Non-2xx | No | Continue without pre-fill, or ask for another number |
+| `mobile` missing | 422 | No | Fix the request |
+| `mobile` empty | 400 | No | Fix the request |
+| Not enough credits | 400 | No | Recharge your balance |
+| Authentication failed | 401, 403 or 404 | No | Check your key pair |
+
+### What does an error look like?
+
+Errors raised after authentication use `{"detail": {"status": "error", "message": "...", "error_code": null, "data": null, "tranx_id": "...", "timestamp": "..."}}`. A body that fails validation returns `{"detail": [...]}` with status 422. Authentication failures return `{"detail": "..."}` with 401, 403 or 404. Branch on the HTTP status, not on the text of `message`, because the wording of a no-record message can change.
+
+### What does the insufficient credits message mean?
+
+`Insufficient credits for this operation.` means your idto balance cannot cover the lookup, so it was not run and nothing was charged. The response is HTTP 400. Recharge from the dashboard, then retry.
+
+### Can I test without being charged?
+
+There is no sandbox. Staging (`https://dev.idto.ai`) reaches live sources and deducts credits from your staging account, so use a number you are authorised to look up. Requests that fail validation (missing or empty `mobile`) are never charged.
+
+## Retries and timeouts
+
+### Is it safe to retry after a timeout?
+
+Not automatically. `/verify/mobile_profile` has no idempotency support, so a retry runs the lookup again and a second `success` is charged again. Record the `tranx_id` of every response and retry only when you received no response at all.
+
+### How long should my client wait?
+
+idto waits up to about 25 seconds for the source to answer. Set your HTTP client timeout to at least 40 seconds so a slow lookup is not cut off on your side and then retried, which could charge you twice.
+
+### Is there a request quota?
+
+There is no fixed per-key quota on server calls. For bulk jobs, run a small worker pool rather than firing every request at once, and slow down when errors start to rise. See [Rate limits](/concepts/rate-limits).
+
+## Integration
+
+### Why is the profile inside result and not data?
+
+`/verify/mobile_profile` is a v1 endpoint and keeps its original shape: `status`, `result`, `tranx_id`, `timestamp`, plus the billing flags on a charged call. v2 endpoints use the `data` envelope described in [Request and response](/concepts/request-response).
+
+### Which credentials does it take?
+
+The `X-Client-ID` and `X-API-Key` pair from your dashboard, sent from your server. Never call it from a browser or app with these keys. See [Authentication](/authentication).
+
+### What should I store?
+
+Store the `tranx_id` and `timestamp` of every call. Quote the `tranx_id` when you contact support about a specific lookup. Store only the fields of `result` you actually use, and apply the same care you apply to any personal data you hold.
+
+### What should I show the end user?
+
+Nothing from the lookup itself is meant for display as a verdict. When a profile is found, pre-fill the form and let the user correct it. When none is found, let the user carry on and fill the form by hand.
+
+### What changes when I move to production?
+
+Switch the base URL to `https://prod.idto.ai` and use your production key pair. The request and response shapes are the same. Check your retry logic does not resend a request that already got a response. See the [Go-live checklist](/go-live-checklist).
+
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Mobile%20FAQ) with the page link.

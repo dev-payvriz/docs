@@ -36,7 +36,7 @@ export IDTO_API_KEY="your_api_key"
 
 <Step title="Make a call">
 
-`POST /v2/verify/pan_validation` is the smallest useful call: it checks whether a PAN exists and is active, and returns the name and holder category on file. `pan_validation` requires `user_consent: true` in the body: the call is rejected with `IDTO_005` (400) without it. Consent is required per product; each endpoint page says whether it applies.
+`POST /v2/verify/pan_validation` is the smallest useful call: it checks whether a PAN exists and is active, and returns the name and holder category on file. `pan_validation` requires `user_consent: true` in the body: `false` is rejected with `IDTO_005` (400), and leaving the field out is rejected with `IDTO_001` (422). Consent is required per product; each endpoint page says whether it applies.
 
 <CodeGroup>
 
@@ -73,7 +73,24 @@ print(response.json())
 
 <Step title="Read the response">
 
-A match returns HTTP `200` with the PAN holder's name and status:
+`ABCDE1234F` is a placeholder that has the right shape but is not a PAN anyone holds: its fourth character, the holder type, is `D`, and only `P`, `C`, `H`, `F`, `A`, `T`, `B`, `L`, `J` and `G` are issued. So the sample call does not return a match. This is the response the sample call above returned on staging:
+
+```json
+{
+  "status": "error",
+  "message": "Invalid PAN format. Please check and retry.",
+  "error_code": "IDTO_001",
+  "chargeble": "false",
+  "user_consent": "false",
+  "billed": false
+}
+```
+
+The HTTP status is `400`. idto accepted the request, but the lookup rejected the number as invalid, so nothing was verified and nothing was charged: `billed` is `false`. Depending on which verification source serves the call, the same placeholder can instead come back as the billed no-record result described below, so treat it as a wiring test rather than a guaranteed free call. Read `error_code` to tell this apart from other outcomes. `IDTO_001` always means the input needs fixing, so show the user a "check and re-enter your PAN" message rather than retrying.
+
+### With a real PAN you will see
+
+Send a PAN you are authorised to verify and the lookup either finds it or says there is no record. A match returns HTTP `200`. The values below are placeholders; `category` comes from the fourth character of the real PAN, for example `individual` for `P`:
 
 ```json
 {
@@ -86,22 +103,26 @@ A match returns HTTP `200` with the PAN holder's name and status:
     "pan_status": "Active",
     "category": "individual"
   },
+  "chargeble": "true",
+  "user_consent": "true",
   "billed": true,
-  "tranx_id": "8f14e45f-ceea-467e-bd93-4a2c11e0a1b2",
-  "timestamp": "2026-09-14T10:15:30Z"
+  "tranx_id": "00000000-0000-0000-0000-000000000000",
+  "timestamp": "2026-01-01T00:00:00.000000+00:00"
 }
 ```
+
+A well-formed PAN that is not on record also returns HTTP `200` and `status: "success"`, because the lookup completed and gave a definitive answer. It carries `error_code: "IDTO_202"`, the message "Record is invalid or does not exist.", `data: null` and `billed: true`. Do not read `status` alone, or you will treat a missing PAN as verified.
 
 Four fields drive your integration logic:
 
 | Field | What it tells you |
 | --- | --- |
 | `status` | `"success"` for any 2xx response, `"error"` for anything raised. There's no `"failed"` value anywhere in v2. |
-| `error_code` | `null` on a full match. An `IDTO_*` code on a no-record result or a raised error, for example a request without `user_consent` returns `IDTO_005`. |
-| `data` | The verification result. `null` whenever `error_code` is set. |
-| `billed` | Whether this call consumed a credit. A definitive no-record result is still `billed: true`, since it still cost a verification. |
+| `error_code` | `null` on a full match. `IDTO_202` on a no-record result. An `IDTO_*` code on every raised error, such as `IDTO_001` above. |
+| `data` | The verification result. `null` on a no-record result, and absent from raised errors. |
+| `billed` | Whether this call consumed a credit. A definitive no-record result is still `billed: true`, since it still cost a verification. Raised errors are always `billed: false`. |
 
-This is the same four-field shape on every v2 endpoint, not just PAN. Read [Request & Response](/concepts/request-response) for the complete envelope reference, including how multipart (image upload) endpoints differ, and [Error Codes](/error-codes) for how to branch on every outcome.
+Keep the `tranx_id` from every 2xx response: it identifies the call when you contact support. This is the same four-field shape on every v2 endpoint, not just PAN. Read [Request & Response](/concepts/request-response) for the complete envelope reference, including how multipart (image upload) endpoints differ, and [Error Codes](/error-codes) for how to branch on every outcome.
 
 </Step>
 
@@ -111,10 +132,14 @@ This is the same four-field shape on every v2 endpoint, not just PAN. Read [Requ
 | --- | --- | --- | --- |
 | 200 | `null` | Full result in `data` | Yes |
 | 200 | `IDTO_202` | No record for this PAN | Yes |
-| 400 | `IDTO_001` | PAN format is wrong | No |
-| 400 | `IDTO_005` | `user_consent` missing or not `true` | No |
+| 400 | `IDTO_001` | PAN is empty, has the wrong shape, or was rejected as invalid | No |
+| 422 | `IDTO_001` | A required field such as `user_consent` is missing, or has the wrong type | No |
+| 400 | `IDTO_005` | `user_consent` is `false` | No |
 | 401 | none | Missing or wrong key pair | No |
+| 429 | `IDTO_006` | The verification source is rate limiting, retry with backoff | No |
 | 503 | `IDTO_008` | Busy, retry with backoff | No |
+
+To retry safely after a timeout or a `503`, send an `Idempotency-Key` header with a value you generate per verification, and reuse it on the retry with the same body. If the first call completed, you get its stored response back and are not charged twice. See [Idempotency](/concepts/idempotency).
 
 </Step>
 
@@ -127,4 +152,4 @@ This is the same four-field shape on every v2 endpoint, not just PAN. Read [Requ
   <Card title="Error codes" icon="triangle-exclamation" href="/reference/v2-error-codes">Every code, its HTTP status and whether it bills.</Card>
 </CardGroup>
 
-Was this page helpful? Use the feedback buttons below, or write to tech@idto.ai.
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Quickstart) with the page link.

@@ -32,6 +32,10 @@ sequenceDiagram
 |---|---|---|
 | [`POST /auth/sdk/token`](/api-reference/integration/sdk-token) | Client ID and API key in the body | Mint a 15 minute token |
 | [`GET /sdk/v2/session/{session_token}/state`](/api-reference/integration/session-state) | `Authorization: Bearer <SDK token>` | Read status and verdict |
+| [`POST /merchant/verification-links`](/api-reference/integration/verification-links-create) | `Authorization: Bearer <dashboard login token>` | Create a shareable link that runs a workflow |
+| [`GET /merchant/verification-links`](/api-reference/integration/verification-links-list) | `Authorization: Bearer <dashboard login token>` | List links with status and runs left |
+| [`DELETE /merchant/verification-links/{link_id}`](/api-reference/integration/verification-links-revoke) | `Authorization: Bearer <dashboard login token>` | Revoke a link |
+| [`POST /verify/name_match`](/api-reference/integration/name-match) | `X-Client-ID` and `X-API-Key` | Score how closely two names match (v1, charged only when `status` is `success`) |
 | [session.completed webhook](/api-reference/webhooks/session-completed) | Signed with your webhook secret | Push on completion |
 
 ## Outcomes
@@ -58,4 +62,4 @@ Next: [SDK guides](/sdks/web), [Webhooks](/concepts/webhooks), [Integration FAQ]
 
 ---
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/integration/overview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/integration/overview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20Integration%20overview) with the page link.

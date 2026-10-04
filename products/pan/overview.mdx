@@ -22,6 +22,9 @@ The recording shows the PAN step in the idto web SDK, using sample data.
 | Read the PAN number, name, father's name and DOB from a card image | [`POST /v2/verify/pan_ocr`](/api-reference/pan/pan-ocr) | v2 |
 | Check whether a name and DOB you hold match the PAN record | [`POST /verify/pan_nsdl`](/api-reference/pan/pan-nsdl) | v1 |
 | Full record on the older v1 contract | [`POST /verify/pan_all_in_one`](/api-reference/pan/pan-all-in-one) | v1 |
+| Confirm a PAN and read the name, status and holder category on v1 | [`POST /verify/pan_verification`](/api-reference/pan/pan-verification) | v1 |
+| Detailed PAN profile on the v1 contract | [`POST /verify/pan_detailed`](/api-reference/pan/pan-detailed-v1) | v1 |
+| Find the PAN linked to an Aadhaar number | [`POST /verify/aadhar_to_pan`](/api-reference/pan/aadhar-to-pan) | v1 |
 
 A common pattern is OCR first to prefill, then validation on the number the user confirms.
 
@@ -75,4 +78,4 @@ The PAN step in the idto SDKs handles capture and shows the result to the user. 
 - [PAN FAQ](/products/pan/faq)
 - [Input formats](/reference/input-formats)
 
-Was this page helpful? [Yes](mailto:tech@idto.ai?subject=Docs%20helpful%3A%20products/pan/overview) / [No](mailto:tech@idto.ai?subject=Docs%20not%20helpful%3A%20products/pan/overview)
+Was this page helpful? Email us at [tech@idto.ai](mailto:tech@idto.ai?subject=Docs%20feedback%3A%20PAN%20overview) with the page link.
